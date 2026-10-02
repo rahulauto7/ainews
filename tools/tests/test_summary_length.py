@@ -1,11 +1,11 @@
-"""Cases for summary length: 400-550 characters, printed whole.
+"""Cases for summary length: 400-800 characters, printed whole.
 
 Until 2026-10-02 the PDF cut every summary at 1,200 characters
 (`clip_to_sentence`). That morning the rule became "as long as the story
 needs", and the same evening rahul found the result too long to read: "make it
-less pages, like 5-6 pages, so I can cover every section". So summaries are
-400-550 characters, the size that fits two stories a section in six pages
-(see test_page_limit.py), and the builder reports any outside that range.
+max 15 pages". So summaries are 400-800 characters, the size that fits five
+stories a section in 15 pages (see test_page_limit.py), and the builder reports
+any outside that range.
 Nothing shortens a summary on its way to the page: the curator writes it to
 length, and the page prints what was written.
 
@@ -87,16 +87,16 @@ def main():
 
     # ── 1. The range itself ──────────────────────────────────────────────────
     cases += 1
-    check(failures, (builder_helpers.SUMMARY_MIN, builder_helpers.SUMMARY_MAX) == (400, 550),
+    check(failures, (builder_helpers.SUMMARY_MIN, builder_helpers.SUMMARY_MAX) == (400, 800),
           f"summary rule is {builder_helpers.SUMMARY_MIN}-{builder_helpers.SUMMARY_MAX}, "
-          "expected 400-550")
+          "expected 400-800")
 
     # ── 2. A summary at the ceiling reaches the page whole ───────────────────
-    s550 = long_summary(550)
-    _, text = render([story(s550)])
+    s800 = long_summary(800)
+    _, text = render([story(s800)])
     cases += 1
     check(failures, squash(SENTINEL) in text,
-          f"a {len(s550)}-character summary lost its last sentence on the page")
+          f"a {len(s800)}-character summary lost its last sentence on the page")
 
     # ── 3. An over-long summary still prints whole, overleaf if it must ──────
     # The builder reports it; the page never clips it, so nothing the curator
@@ -113,15 +113,15 @@ def main():
     check(failures, squash(SENTINEL) in text,
           "the 12,000-character summary lost its last sentence")
 
-    # ── 4. The builder reports a summary outside 400-550, both ways ──────────
+    # ── 4. The builder reports a summary outside 400-800, both ways ──────────
     now = datetime.now(timezone.utc).isoformat()
     lines = builder_report([
-        story(long_summary(900), title="LongStoryHere", published_at=now),
+        story(long_summary(1200), title="LongStoryHere", published_at=now),
         story(long_summary(300), title="ShortStoryHere", published_at=now),
     ])
     cases += 2
-    check(failures, [l for l in lines if "LongStoryHere" in l and "400-550" in l],
-          f"a 900-character summary must be reported as too long: {lines!r}")
+    check(failures, [l for l in lines if "LongStoryHere" in l and "400-800" in l],
+          f"a 1,200-character summary must be reported as too long: {lines!r}")
     check(failures, [l for l in lines if "ShortStoryHere" in l],
           f"a 300-character summary must be reported as too short: {lines!r}")
 
@@ -130,10 +130,10 @@ def main():
 
     lines = builder_report([
         story(exact(400), title="AtTheFloor", published_at=now),
-        story(exact(550), title="AtTheCeiling", published_at=now),
+        story(exact(800), title="AtTheCeiling", published_at=now),
     ])
     cases += 1
-    check(failures, not lines, f"400 and 550 characters are inside the rule: {lines!r}")
+    check(failures, not lines, f"400 and 800 characters are inside the rule: {lines!r}")
 
     # ── 5. The sentence check names a floor, not a 4-7 range ──────────────────
     pinned = datetime(2026, 10, 2, 12, 0, tzinfo=timezone.utc)

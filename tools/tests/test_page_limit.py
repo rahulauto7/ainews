@@ -1,9 +1,8 @@
-"""Cases for the six-page edition.
+"""Cases for the fifteen-page edition.
 
-Rahul, 2026-10-02: "I am unable to read the full AI news PDF, so make it less
-pages, like 5-6 pages, so I can cover every section, understand every section,
-and read every section." The edition had a cover page and a page per section,
-so sixteen sections meant seventeen pages before a single summary ran long.
+Rahul, 2026-10-02: "I am unable to read the full AI news PDF", then "make it max
+15 pages". The edition had a cover page and a page per section, so sixteen
+sections meant seventeen pages before a single summary ran long.
 
 Since then: page 1 opens with a masthead and a contents list that links to each
 section and names its page, sections flow on from each other, and the send is
@@ -81,10 +80,10 @@ def main():
     failures, cases = [], 0
 
     cases += 1
-    check(failures, PAGE_LIMIT == 6, f"PAGE_LIMIT is {PAGE_LIMIT}; rahul asked for 5-6 pages")
+    check(failures, PAGE_LIMIT == 15, f"PAGE_LIMIT is {PAGE_LIMIT}; rahul asked for 15 pages max")
 
     # ── 1. A full Thursday edition at the builder's limits fits ──────────────
-    # Sixteen sections (quantum runs on Thursdays), two stories each at the
+    # Sixteen sections (quantum runs on Thursdays), the most stories each at the
     # summary ceiling, and both model tables: the most the rules allow.
     full = edition(builder_helpers.STORIES_PER_SECTION[1], builder_helpers.SUMMARY_MAX)
     reader = read(render_edition(full))
@@ -107,9 +106,10 @@ def main():
     check(failures, len(listed) == len(SECTION_ORDER),
           f"contents lists {len(listed)} of {len(SECTION_ORDER)} sections")
 
-    numbers = re.findall(r"\(2\)\s*p(\d)", page1)
+    most = builder_helpers.STORIES_PER_SECTION[1]
+    numbers = re.findall(rf"\({most}\)\s*p(\d+)", page1)
     cases += 1
-    check(failures, len(numbers) == len(SECTION_ORDER) and numbers == sorted(numbers),
+    check(failures, len(numbers) == len(SECTION_ORDER) and numbers == sorted(numbers, key=int),
           f"contents must name each section's page, in order: {numbers}")
 
     # ── 4. A section header is never left alone at the foot of a page ────────
@@ -150,16 +150,17 @@ def main():
 
     # ── 7. A normal (non-Thursday) day has room to spare ─────────────────────
     cases += 1
-    weekday = len(read(render_edition(edition(2, builder_helpers.SUMMARY_MAX,
+    weekday = len(read(render_edition(edition(most, builder_helpers.SUMMARY_MAX,
                                               quantum=False))).pages)
-    check(failures, weekday <= 5, f"15 sections at the summary ceiling took {weekday} pages")
+    check(failures, weekday < PAGE_LIMIT,
+          f"15 sections at the rules' limits took {weekday} pages, no room to spare")
 
     # ── 8. Over the limit: reported by the builder, blocked at send ──────────
-    over = edition(3, 800)
+    over = edition(8, 1000)
     cases += 1
     over_pages = len(read(render_edition(over)).pages)
     check(failures, over_pages > PAGE_LIMIT,
-          f"three 800-character stories a section should overflow, took {over_pages} pages")
+          f"eight 1,000-character stories a section should overflow, took {over_pages} pages")
 
     saved, builder_helpers._ARTS = builder_helpers._ARTS, []
     try:
@@ -180,7 +181,7 @@ def main():
 
     cases += 3
     check(failures, page_problem(PAGE_LIMIT) is None, "a PDF at the limit must not block")
-    check(failures, page_problem(5) is None, "a 5-page PDF must not block")
+    check(failures, page_problem(6) is None, "a 6-page PDF must not block")
     blocked = page_problem(PAGE_LIMIT + 1)
     check(failures, blocked and str(PAGE_LIMIT + 1) in blocked,
           f"a PDF over the limit must block the send: {blocked!r}")

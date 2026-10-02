@@ -36,9 +36,9 @@ O(...)       an opportunity or story not carried by today's feed, verified on th
 rejected     lands in analyzed_content.json as curation_log, and news_digest.py
              prints it tomorrow, so a rejected item is not re-investigated.
 
-Size: two stories a section (one when only one qualifies), summaries of
-400-550 characters. write_analyzed() prints the PDF's page count; over six
-pages, cut the weakest story from a section or tighten summaries, and rerun.
+Size: 3-5 stories a section, summaries of 400-800 characters. write_analyzed()
+prints the PDF's page count; over 15 pages, cut the weakest story from a section
+or tighten summaries, and rerun.
 """
 
 import glob
@@ -54,13 +54,12 @@ import web_text
 
 OUTPUT_FILE = os.path.join(web_text.TMP_DIR, "analyzed_content.json")
 OPPORTUNITY_KEYS = ("ai_hackathons", "product_showcase_opportunities")
-# Two stories a section, 400-550 characters each, is what fits the whole edition
-# in generate_pdf.PAGE_LIMIT pages (rahul, 2026-10-02: "5-6 pages, so I can cover
-# every section"). Measured with both model tables: 550 characters is four or five
-# printed lines, 5 pages on a weekday and 6 on a Thursday, when quantum runs too.
-# 700-character summaries took 7 on a Thursday.
-STORIES_PER_SECTION = (1, 2)
-SUMMARY_MIN, SUMMARY_MAX = 400, 550
+# The most that fits the whole edition in generate_pdf.PAGE_LIMIT pages (rahul,
+# 2026-10-02: "make it max 15 pages"). Measured with both model tables: five
+# 800-character stories a section is 12 pages on a weekday and 13 on a Thursday,
+# when quantum runs too; six 800-character stories took 17.
+STORIES_PER_SECTION = (3, 5)
+SUMMARY_MIN, SUMMARY_MAX = 400, 800
 
 _ARTS = None
 _DECODED = None

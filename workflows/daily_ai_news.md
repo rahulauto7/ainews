@@ -9,14 +9,14 @@ news explanations — see the **Plain-Language News Rule**.
 `QUANTUM_WEEKDAY = 3` in `scrape_rss_feeds.py` is authoritative; `prep_run.py` prints which way today
 falls, so it never has to be worked out by hand.
 
-**Six pages at most.** Rahul, 2026-10-02: "make it less pages, like 5-6 pages, so I can cover every
-section, understand every section, and read every section." So: **two stories per section** (one when
-only one qualifies), **summaries of 400–550 characters**, and a layout where page 1 opens with a short
-masthead and a contents list (each entry links to its section and names its page) and the sections
-flow on from each other. Story URLs sit behind the titles rather than printed. A Thursday edition at
-those limits is 6 pages, a weekday one 5. `write_analyzed()` prints the page count while the builder
-is open, and `verify_edition.py` blocks the send above `PAGE_LIMIT` (6, in `generate_pdf.py`). This
-replaces the "no page limit" rule of the same morning, which produced a 17-page edition.
+**Fifteen pages at most.** Rahul, 2026-10-02: "make it max 15 pages". So: **3–5 stories per
+section**, **summaries of 400–800 characters**, and a layout where page 1 opens with a short masthead
+and a contents list (each entry links to its section and names its page) and the sections flow on
+from each other. Story URLs sit behind the titles rather than printed. A Thursday edition at the top
+of those ranges is 13 pages, a weekday one 12. `write_analyzed()` prints the page count while the
+builder is open, and `verify_edition.py` blocks the send above `PAGE_LIMIT` (15, in
+`generate_pdf.py`). This replaces the "no page limit" rule of the same morning, which produced a
+17-page edition, and a 5–6 page limit he withdrew the same evening.
 
 ---
 
@@ -131,8 +131,8 @@ The rendered-text checks are the ones that used to be done by eye, and each is n
 - **Missing titles** — every story title must appear in the rendered page. Compared on a squashed
   30-character prefix, because `sanitize_text()` folds curly apostrophes, `multi_cell()` wraps
   titles across lines and `_fit_title()` truncates the longest ones.
-- **Page count** — over `PAGE_LIMIT` (6) stops the run. Cut the lowest-relevance story from a
-  two-story section, or tighten the longest summaries, rebuild, and verify again.
+- **Page count** — over `PAGE_LIMIT` (15) stops the run. Cut the lowest-relevance story from the
+  fullest sections, or tighten the longest summaries, rebuild, and verify again.
 
 Flags: `--skip-pdf` (already rendered this run), `--skip-tests`, and no `--send` to verify and back
 up without mailing.
@@ -207,13 +207,14 @@ itself got lost.
   defined in the same sentence. This is the most common failure mode and the one that made the
   2026-09-03 first draft unreadable. `check_quality.py` flags ALL-CAPS acronyms it cannot find
   spelled out, and runs inside `verify_edition.py`.
-- **At least four complete sentences, 400–550 characters** (2026-10-02, the six-page edition). Spend
+- **At least four complete sentences, 400–800 characters** (2026-10-02, the 15-page edition). Spend
   the characters on what happened, the names and terms a newcomer needs, and why it happened; drop
   background that does not change what the reader understands. The test: could he explain the story
   to someone else after reading only that paragraph? Never spend characters on advice. The PDF prints
   every summary whole; no ellipses, no mid-sentence cutoffs. `write_analyzed()` flags a summary
-  outside 400–550 characters.
-- **Six pages is the limit; pick, don't squeeze.** Two stories per section, the two that matter most.
+  outside 400–800 characters.
+- **Fifteen pages is the limit; pick, don't squeeze.** 3–5 stories per section, the ones that matter
+  most.
   A section runs short only when nothing else inside its freshness window qualifies. Finish every
   section; no placeholder stubs in trailing sections.
 - **Do not invent facts.** Many headlines postdate the model's knowledge. Ground claims in what the
@@ -269,7 +270,7 @@ instead and the renderer skips dates there.
 ---
 
 ## Section-Specific Rules
-**All sections:** 2 stories (1 when only one qualifies), sorted by relevance (highest first).
+**All sections:** 3–5 stories, sorted by relevance (highest first).
 Deduplicate across sources — the
 Google News proxies return the same story from a dozen outlets, so pick the most substantive one.
 
@@ -376,8 +377,8 @@ Google News proxies return the same story from a dozen outlets, so pick the most
 - Title cut mid-word → titles go through `_fit_title()`, which measures width and cuts between words;
   cases in `tools/tests/test_fit_title.py`
 - No URL under a story → by design since 2026-10-02: the title is the link, and the line it took
-  went to the six-page limit
-- PDF over six pages → `verify_edition.py` stops the run; `write_analyzed()` already printed the count.
+  went to the page limit
+- PDF over 15 pages → `verify_edition.py` stops the run; `write_analyzed()` already printed the count.
   Cut a story or tighten summaries rather than editing the layout
 - Tests "collect nothing" → they are plain scripts, **not** pytest. `verify_edition.py` runs them;
   `python3 -m pytest tools/tests/` finds nothing because there are no `test_*` functions
@@ -555,11 +556,12 @@ names, https, the keyless rule and that every section is fed.
   parallel. The digest follows the sections and caps each group; its real size is measured on the
   first full scrape. New `find_opportunities.py platforms` (lablab.ai, Devpost newest, Devfolio,
   Unstop) and X posts read in full. Tests 192 → 332 in 17 files.
-  Same evening, on Rahul's word that the PDF was too long to read: six pages at most. Two stories a
-  section, summaries of 400–550 characters (the morning's "no upper limit" is withdrawn), a masthead
-  and linked contents list in place of the cover page and its chart, sections flowing on instead of a
-  page each, story URLs behind the titles. The builder prints the page count and the send blocks
-  above six. Tests 332 → 350 in 18 files.
+  Same evening, on Rahul's word that the PDF was too long to read: 15 pages at most ("make it max 15
+  pages", after a 5–6 page version he withdrew). 3–5 stories a section, summaries of 400–800
+  characters (the morning's "no upper limit" is withdrawn), a masthead and linked contents list in
+  place of the cover page and its chart, sections flowing on instead of a page each, story URLs behind
+  the titles. The builder prints the page count and the send blocks above 15. Tests 332 → 350 in 18
+  files.
 - **2026-10-01:** Thursday, quantum in. Shipped 63 stories in 13 sections, 0 errors and 0 warnings on
   the first verify (acronyms glossed while the builder was open), oldest story 21.3h on the 24h rule
   and 138h on the 7-day rule; sent 00:22 UTC, 19 minutes after the scrape. Fixed `write_analyzed()`,

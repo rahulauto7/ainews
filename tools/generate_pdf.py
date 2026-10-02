@@ -2,10 +2,10 @@
 Generate the daily AI news PDF from analyzed content.
 Reads .tmp/analyzed_content.json → Outputs .tmp/ai_news_daily_YYYY-MM-DD.pdf
 
-Six pages at most (PAGE_LIMIT). Rahul, 2026-10-02: "make it less pages, like 5-6
-pages, so I can cover every section, understand every section, and read every
-section." So page 1 opens with a short masthead and a clickable contents list,
-and the sections then flow one after another instead of taking a page each.
+Fifteen pages at most (PAGE_LIMIT). Rahul, 2026-10-02: "make it max 15 pages".
+A page per section had run a 16-section edition past seventeen pages, so page 1
+opens with a short masthead and a clickable contents list, and the sections then
+flow one after another instead of taking a page each.
 
 Features:
 - Color-coded section headers with unique colors per section
@@ -28,10 +28,10 @@ TMP_DIR = os.path.join(PROJECT_ROOT, ".tmp")
 TODAY = datetime.now().strftime("%Y-%m-%d")
 OUTPUT_FILE = os.path.join(TMP_DIR, f"ai_news_daily_{TODAY}.pdf")
 
-# The edition's length (rahul, 2026-10-02). verify_edition.py blocks the send
-# above it and builder_helpers.write_analyzed() reports the count while the
-# curator can still cut, so the limit is set here and nowhere else.
-PAGE_LIMIT = 6
+# The edition's length (rahul, 2026-10-02: "make it max 15 pages"). verify_edition.py
+# blocks the send above it and builder_helpers.write_analyzed() reports the count
+# while the curator can still cut, so the limit is set here and nowhere else.
+PAGE_LIMIT = 15
 # Lowest y a block may reach before it moves overleaf. Auto page break fires at
 # 282 (margin 15); the gap keeps a block from being split by it.
 PAGE_BOTTOM = 278
@@ -262,7 +262,7 @@ def build_masthead(pdf, sections_data, rendered, links, pages=None):
     """Page 1's top: a title band, then the contents list in two columns.
 
     Replaced the full cover page (title block, coverage chart, contents) on
-    2026-10-02: it took the whole of page 1 out of a six-page budget. Each entry
+    2026-10-02: it spent a whole page out of a fifteen-page budget. Each entry
     links to its section and, once render_edition() has found it, names the page
     the section starts on. Returns the y the first section starts from.
     """
