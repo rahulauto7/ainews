@@ -7,8 +7,11 @@ to spot repeats and re-read yesterday's builder for carry-forward decisions.
 This prints all of that once, in roughly a tenth of the size:
 
   - every article as one line: [idx] date source | headline, grouped by feed
-    category, biggest story (most outlets) first; a short text snippet only
-    for feeds that carry real article text (proxy items carry just the headline)
+    category in the PDF's section order, biggest story (most outlets) first,
+    direct feeds before search proxies; a short text snippet only for feeds that
+    carry real article text (proxy items carry just the headline)
+  - each group capped (cap_for) so the digest stays readable with 200+ sources;
+    the rest are counted on one line and stay in rss_articles.json
   - PRINTED mm-dd when the story already ran in one of the last three editions
   - only opportunity items that pass the gate (is_opportunity)
   - yesterday's opportunities, open-model table and rejections, so nothing
@@ -35,33 +38,71 @@ OUT_FILE = os.path.join(web_text.TMP_DIR, "digest.md")
 TITLE_MAX = 120
 SNIPPET_MAX = 140
 
-# Order follows the PDF's sections, so the digest reads top to bottom in the
-# order the builder is written.
+# Order follows the PDF's sixteen sections, so the digest reads top to bottom in
+# the order the builder is written. Each label names, after "->", the section the
+# group feeds: this list is also the category-to-section map.
 CATEGORY_ORDER = [
-    ("opportunity", "Opportunity feeds -> AI Hackathons / Grants, Fellowships & Programs"),
-    ("quantum", "Quantum (Thursdays)"),
-    ("elon_xai", "Musk / xAI"),
-    ("indian", "Indian publishers"),
-    ("anthropic_claude", "Anthropic & Claude (Google News proxies)"),
-    ("open_model", "Open models"),
-    ("general", "General AI news"),
-    ("company_blog", "Company blogs"),
-    ("showcase", "Product Hunt"),
-    ("ai_research", "arXiv (titles only)"),
+    ("opportunity", "Opportunity feeds -> AI Hackathons / AI Grants, Fellowships & Programs"),
+    ("rsi", "Self-improvement, safety, alignment -> AI Self-Improvement (RSI)"),
+    ("ai_research", "Research: arXiv titles, lab and university feeds -> AI Self-Improvement (RSI)"),
+    ("quantum", "Quantum, Thursdays -> Quantum + AI"),
+    ("problems", "AI failures and gaps -> Unaddressed AI Problems"),
+    ("automation", "Automation, agents, enterprise AI -> AI Automation & Business"),
+    ("business", "Funding, startups, markets -> AI Business Opportunities"),
+    ("showcase", "Product Hunt -> AI Business Opportunities"),
+    ("indian", "Indian publishers -> Indian AI Industry"),
+    ("world", "China, Europe, Japan, Korea, Middle East, Africa -> Global AI News"),
+    ("general", "General AI news -> Global AI News"),
+    ("company_blog", "Other AI companies' own blogs -> Global AI News"),
+    ("openai", "OpenAI -> OpenAI"),
+    ("google", "Google, Gemini, DeepMind -> Google AI"),
+    ("anthropic_claude", "Anthropic and Claude -> Anthropic & Claude Code"),
+    ("xai_grok", "xAI and Grok -> xAI & Grok"),
+    ("open_model", "Open models -> Open Models & Open Weights"),
+    ("closed_model", "Closed models -> Closed Models & Frontier APIs"),
+    ("elon_musk", "Elon Musk in his own words -> Elon Musk on AI"),
+    ("video", "YouTube: leads for any section"),
+    ("social", "X posts, Hacker News, forums: leads for any section"),
 ]
 
-SHORT_SOURCE = {
-    "Anthropic News (via Google News)": "GN-Anthropic",
-    "Claude Code (via Google News)": "GN-ClaudeCode",
-    "Elon Musk on X (via Google News)": "GN-Musk",
-    "Open Models (via Google News)": "GN-OpenModels",
-    "Open Model Benchmarks (via Google News)": "GN-Benchmarks",
-    "AI Hackathons (via Google News)": "GN-Hackathons",
-    "AI Competitions (via Google News)": "GN-Competitions",
-    "AI Programs (via Google News)": "GN-Programs",
-    "AI Applications Open (via Google News)": "GN-Applications",
-    "Quantum + AI (via Google News)": "GN-Quantum",
-}
+# How many articles each group shows, so the digest stays near its old size (about
+# 17k tokens with 34 feeds; keep it under 35k). This limits what the curator reads,
+# never how many stories a section prints: the rest stay in rss_articles.json.
+DIGEST_CAP = 40
+_CAPS = {"general": 60, "ai_research": 25, "video": 25, "social": 25}
+SHORT_MAX = 18
+
+
+def cap_for(category):
+    return _CAPS.get(category, DIGEST_CAP)
+
+
+def _is_proxy(source):
+    return "via Google News" in source or "via Bing News" in source
+
+
+def ranked(items):
+    """[(idx, article)] best first: most outlets, then direct feeds before search
+    proxies, then newest."""
+    items = sorted(items, key=lambda ia: ia[1].get("published") or "", reverse=True)
+    return sorted(items, key=lambda ia: (-(ia[1].get("duplicate_count") or 1),
+                                         _is_proxy(ia[1].get("source", ""))))
+
+
+def short_source(name):
+    """A source name short enough for a digest line."""
+    m = re.match(r"(.+?) (all posts )?on X \(via Google News\)$", name)
+    if m:
+        short = "X-" + m.group(1)
+    elif name.endswith(" (via Google News)"):
+        short = "GN-" + name[: -len(" (via Google News)")]
+    elif name.endswith(" (via Bing News)"):
+        short = "Bing-" + name[: -len(" (via Bing News)")]
+    elif "YouTube" in name:
+        short = "YT-" + re.sub(r"\s*\(?YouTube\)?\s*", " ", name).strip()
+    else:
+        short = name[:16]
+    return short[:SHORT_MAX]
 
 
 def _plain(text):
@@ -73,7 +114,7 @@ def _plain(text):
 
 def snippet(article):
     """Text beyond the headline, or '' for proxy items that carry only the headline."""
-    if "Google News" in article["source"] or article["source"].startswith("arXiv"):
+    if _is_proxy(article["source"]) or article["source"].startswith("arXiv"):
         return ""
     s = _plain(article.get("summary"))
     head = article["title"][:40]
@@ -149,12 +190,12 @@ def build():
             items = gated
         if not items:
             continue
-        # Most outlets first; newest first among equals (two stable sorts).
-        items.sort(key=lambda ia: ia[1].get("published") or "", reverse=True)
-        items.sort(key=lambda ia: -(ia[1].get("duplicate_count") or 1))
+        items = ranked(items)
+        cap = cap_for(cat)
+        hidden = len(items) - cap
         w(f"\n## {label} ({len(items)})")
-        for i, a in items:
-            src = SHORT_SOURCE.get(a["source"], a["source"][:16])
+        for i, a in items[:cap]:
+            src = short_source(a["source"])
             title = a["title"] if len(a["title"]) <= TITLE_MAX else a["title"][:TITLE_MAX - 3] + "..."
             extra = ""
             if (a.get("duplicate_count") or 1) > 1:
@@ -163,10 +204,14 @@ def build():
                 seen = printed_on(a, index, decoded)
                 if seen:
                     extra += f"  PRINTED {seen}"
+            if a.get("also_in"):
+                extra += f"  {{also: {', '.join(a['also_in'])}}}"
             w(f"[{i}] {a.get('published_date', '')[5:]} {src} | {title}{extra}")
             snip = snippet(a)
             if snip:
                 w(f"    > {snip}")
+        if hidden > 0:
+            w(f"(+{hidden} more in rss_articles.json, not shown)")
 
     with open(OUT_FILE, "w", encoding="utf-8") as f:
         f.write("\n".join(lines) + "\n")
