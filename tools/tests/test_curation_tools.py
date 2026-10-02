@@ -115,6 +115,50 @@ def main():
           f"carry_forward_best_for: {block and block['best_for'][0]['why']!r}")
     check(failures, block and block["as_of"] == "2026-09-11", "carry_forward_best_for: as_of must not change")
 
+    # ── Google News decoding behind a consent wall ───────────────────────────
+    # The first cloud run (2026-10-02) got Google's consent page for every item.
+    # The decoder sends consent cookies, falls back to the /rss/articles page,
+    # and says what it met when both fail.
+    class Resp:
+        def __init__(self, text, url, status=200):
+            self.text, self.url, self.status_code = text, url, status
+
+        def raise_for_status(self):
+            pass
+
+    calls = []
+    signed = '<div data-n-a-sg="SIG" data-n-a-ts="1700000000"></div>'
+    batch = ")]}'\n\n" + json.dumps([["wrb.fr", "Fbv4je",
+                                       json.dumps(["garturlres", "https://example.com/story"])]])
+
+    def fake_get(url, headers=None, cookies=None, timeout=None):
+        calls.append((url, cookies))
+        if "/rss/articles/" in url:
+            return Resp(signed, url)
+        return Resp("<html>Before you continue</html>", "https://consent.google.com/ml")
+
+    real_get, real_post = web_text.requests.get, web_text.requests.post
+    web_text.requests.get = fake_get
+    web_text.requests.post = lambda *a, **k: Resp(batch, a[0])
+    try:
+        target = web_text._decode_google_news_uncached("https://news.google.com/rss/articles/CBMiABC?oc=5")
+        cases += 2
+        check(failures, target == "https://example.com/story", f"decoded to {target!r}")
+        check(failures, calls and all(c == web_text.CONSENT_COOKIES for _, c in calls),
+              "every page request must carry the consent cookies")
+
+        web_text.requests.get = lambda url, **k: Resp("<html>consent</html>", "https://consent.google.com/ml")
+        try:
+            web_text._decode_google_news_uncached("https://news.google.com/rss/articles/CBMiXYZ")
+            message = ""
+        except ValueError as exc:
+            message = str(exc)
+        cases += 1
+        check(failures, "consent.google.com" in message,
+              f"a failed decode must say what came back: {message!r}")
+    finally:
+        web_text.requests.get, web_text.requests.post = real_get, real_post
+
     for f in failures:
         print("FAIL:", f)
     print(f"{cases}/{cases} passed" if not failures else f"{len(failures)} failure(s) of {cases}")
