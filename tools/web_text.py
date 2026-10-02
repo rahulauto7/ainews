@@ -62,24 +62,44 @@ def is_google_news(url):
     return "news.google.com" in (url or "")
 
 
+# A cloud machine's request is often answered with Google's cookie-consent page
+# (consent.google.com) instead of the article page, which carries no signature;
+# every Google News item failed this way on the first cloud run, 2026-10-02.
+# These cookies record consent already given, the way a returning browser does.
+CONSENT_COOKIES = {"CONSENT": "YES+cb", "SOCS": "CAI"}
+
+
+def _signature_page(aid, timeout):
+    """(signature, timestamp) from the article page, trying both page paths.
+
+    Raises ValueError naming what came back instead, so a failed run says whether
+    it met a consent wall, a block or a changed page.
+    """
+    seen = []
+    for path in ("articles", "rss/articles"):
+        r = requests.get(f"https://news.google.com/{path}/{aid}", headers=HEADERS,
+                         cookies=CONSENT_COOKIES, timeout=timeout)
+        sg = re.search(r'data-n-a-sg="([^"]+)"', r.text)
+        ts = re.search(r'data-n-a-ts="([^"]+)"', r.text)
+        if sg and ts:
+            return sg.group(1), ts.group(1)
+        seen.append(f"/{path}: HTTP {r.status_code} from {urllib.parse.urlparse(r.url).netloc}")
+    raise ValueError("Google News page carried no decoding signature (" + "; ".join(seen) + ")")
+
+
 def _decode_google_news_uncached(url, timeout=20):
     aid = urllib.parse.urlparse(url).path.rstrip("/").split("/")[-1]
-    page = requests.get(f"https://news.google.com/articles/{aid}",
-                        headers=HEADERS, timeout=timeout).text
-    sg = re.search(r'data-n-a-sg="([^"]+)"', page)
-    ts = re.search(r'data-n-a-ts="([^"]+)"', page)
-    if not (sg and ts):
-        raise ValueError("Google News page carried no decoding signature")
+    sg, ts = _signature_page(aid, timeout)
     inner = ["garturlreq",
              [["X", "X", ["X", "X"], None, None, 1, 1, "US:en", None, 1, None, None,
                None, None, None, 0, 1], "X", "X", 1, [1, 1, 1], 1, 1, None, 0, 0, None, 0],
-             aid, int(ts.group(1)), sg.group(1)]
+             aid, int(ts), sg]
     payload = [[["Fbv4je", json.dumps(inner), None, "generic"]]]
     r = requests.post(
         "https://news.google.com/_/DotsSplashUi/data/batchexecute",
         data={"f.req": json.dumps(payload)},
         headers={**HEADERS, "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8"},
-        timeout=timeout,
+        cookies=CONSENT_COOKIES, timeout=timeout,
     )
     r.raise_for_status()
     arr = json.loads(r.text.split("\n\n")[1])
