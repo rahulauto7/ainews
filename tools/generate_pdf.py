@@ -1,33 +1,44 @@
 """
-Generate an attractive daily AI news PDF from analyzed content.
+Generate the daily AI news PDF from analyzed content.
 Reads .tmp/analyzed_content.json → Outputs .tmp/ai_news_daily_YYYY-MM-DD.pdf
+
+Six pages at most (PAGE_LIMIT). Rahul, 2026-10-02: "make it less pages, like 5-6
+pages, so I can cover every section, understand every section, and read every
+section." So page 1 opens with a short masthead and a clickable contents list,
+and the sections then flow one after another instead of taking a page each.
 
 Features:
 - Color-coded section headers with unique colors per section
-- Cover page with date, table of contents, and topic distribution chart
+- Contents list with each section's page, linked to the section
 - Relevance star ratings per story
-- Source attribution and URLs
+- Story titles link to the source (the URL itself is not printed)
 - Alternating row backgrounds
-- Charts via matplotlib
 """
 
 import json
 import os
 import sys
 import unicodedata
-import io
-from datetime import datetime, timezone
+from datetime import datetime
 
 from fpdf import FPDF
-import matplotlib
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
-from PIL import Image
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TMP_DIR = os.path.join(PROJECT_ROOT, ".tmp")
 TODAY = datetime.now().strftime("%Y-%m-%d")
 OUTPUT_FILE = os.path.join(TMP_DIR, f"ai_news_daily_{TODAY}.pdf")
+
+# The edition's length (rahul, 2026-10-02). verify_edition.py blocks the send
+# above it and builder_helpers.write_analyzed() reports the count while the
+# curator can still cut, so the limit is set here and nowhere else.
+PAGE_LIMIT = 6
+# Lowest y a block may reach before it moves overleaf. Auto page break fires at
+# 282 (margin 15); the gap keeps a block from being split by it.
+PAGE_BOTTOM = 278
+# Section bar (7) + gap (1) + description line (4) + gap (2).
+SECTION_HEAD_H = 14
+# Summary text: 8pt Helvetica on this leading, in a 178mm column.
+SUMMARY_LH = 3.7
 
 # ── Section Config ────────────────────────────────────────────────────────────
 SECTION_CONFIG = {
@@ -160,64 +171,23 @@ class GlobalAINewsPDF(FPDF):
 
     def header(self):
         if self.page_no() == 1:
-            return  # Cover page has custom header
+            return  # page 1 carries the masthead
         self.set_fill_color(26, 26, 46)
-        self.rect(0, 0, 210, 12, "F")
-        self.set_font("Helvetica", "B", 8)
+        self.rect(0, 0, 210, 9, "F")
+        self.set_font("Helvetica", "B", 7.5)
         self.set_text_color(200, 200, 200)
-        self.set_xy(5, 3)
-        self.cell(100, 6, "GLOBAL AI NEWS DAILY BRIEFING", new_x="RIGHT")
-        self.set_xy(150, 3)
-        self.cell(55, 6, TODAY, align="R")
+        self.set_xy(8, 1.5)
+        self.cell(100, 6, "GLOBAL AI NEWS DAILY BRIEFING")
+        self.set_xy(150, 1.5)
+        self.cell(52, 6, TODAY, align="R")
         self.set_text_color(0, 0, 0)
-        self.ln(12)
+        self.set_y(12)
 
     def footer(self):
         self.set_y(-12)
         self.set_font("Helvetica", "I", 7)
         self.set_text_color(150, 150, 150)
         self.cell(0, 10, f"Page {self.page_no()}/{{nb}}  |  Global AI News  |  {TODAY}", align="C")
-
-
-def generate_topic_chart(sections_data):
-    """Generate a bar chart of stories per section. Returns PNG bytes."""
-    labels = []
-    counts = []
-    colors = []
-
-    for section_key in SECTION_ORDER:
-        config = SECTION_CONFIG[section_key]
-        stories = sections_data.get(section_key, [])
-        if stories:
-            labels.append(config["label"])
-            counts.append(len(stories))
-            r, g, b = config["color"]
-            colors.append((r / 255, g / 255, b / 255))
-
-    if not labels:
-        return None
-
-    fig, ax = plt.subplots(figsize=(7, 3.5))
-    bars = ax.barh(range(len(labels)), counts, color=colors, height=0.6)
-    ax.set_yticks(range(len(labels)))
-    ax.set_yticklabels(labels, fontsize=7)
-    ax.set_xlabel("Number of Stories", fontsize=8)
-    ax.set_title("Today's Coverage Distribution", fontsize=10, fontweight="bold")
-    ax.invert_yaxis()
-    ax.spines["top"].set_visible(False)
-    ax.spines["right"].set_visible(False)
-
-    for bar, count in zip(bars, counts):
-        ax.text(bar.get_width() + 0.2, bar.get_y() + bar.get_height() / 2,
-                str(count), va="center", fontsize=7, fontweight="bold")
-
-    plt.tight_layout()
-
-    buf = io.BytesIO()
-    plt.savefig(buf, format="png", dpi=150, bbox_inches="tight")
-    plt.close(fig)
-    buf.seek(0)
-    return buf
 
 
 def sanitize_text(text):
@@ -276,9 +246,9 @@ def render_stars(relevance):
 
 
 def _section_renders(section_key, sections_data, section_extras):
-    """True if this section will produce a page.
+    """True if this section will be drawn.
 
-    A section earns its page by having stories, or by carrying a standing reference
+    A section earns its place by having stories, or by carrying a standing reference
     table in `section_extras` (the open-model `best_for` box), which is worth showing
     on its own. Everything else is skipped so empty sections never reach the PDF.
     """
@@ -288,149 +258,151 @@ def _section_renders(section_key, sections_data, section_extras):
     return bool(extras.get("best_for"))
 
 
-def build_cover_page(pdf, sections_data, section_extras=None):
-    """Build the cover page with title, date, chart, and table of contents."""
-    # Dark header bar
+def build_masthead(pdf, sections_data, rendered, links, pages=None):
+    """Page 1's top: a title band, then the contents list in two columns.
+
+    Replaced the full cover page (title block, coverage chart, contents) on
+    2026-10-02: it took the whole of page 1 out of a six-page budget. Each entry
+    links to its section and, once render_edition() has found it, names the page
+    the section starts on. Returns the y the first section starts from.
+    """
     pdf.set_fill_color(26, 26, 46)
-    pdf.rect(0, 0, 210, 70, "F")
-
-    # Title
-    pdf.set_font("Helvetica", "B", 28)
+    pdf.rect(0, 0, 210, 26, "F")
+    pdf.set_font("Helvetica", "B", 20)
     pdf.set_text_color(255, 255, 255)
-    pdf.set_xy(15, 15)
-    pdf.cell(180, 15, "GLOBAL AI NEWS", align="C")
-
-    # Subtitle
-    pdf.set_font("Helvetica", "", 14)
-    pdf.set_text_color(180, 200, 255)
-    pdf.set_xy(15, 32)
-    pdf.cell(180, 10, "Daily Intelligence Briefing", align="C")
-
-    # Date
-    pdf.set_font("Helvetica", "B", 16)
+    pdf.set_xy(10, 5)
+    pdf.cell(190, 10, "GLOBAL AI NEWS", align="C")
+    pdf.set_font("Helvetica", "", 10)
     pdf.set_text_color(255, 215, 0)
-    pdf.set_xy(15, 48)
+    pdf.set_xy(10, 15)
     nice_date = datetime.now().strftime("%A, %B %d, %Y")
-    pdf.cell(180, 10, nice_date, align="C")
+    pdf.cell(190, 6, f"Daily Intelligence Briefing  |  {nice_date}", align="C")
 
-    pdf.set_text_color(0, 0, 0)
-
-    # Topic distribution chart
-    chart_buf = generate_topic_chart(sections_data)
-    if chart_buf:
-        chart_path = os.path.join(TMP_DIR, "topic_chart.png")
-        with open(chart_path, "wb") as f:
-            f.write(chart_buf.read())
-        pdf.image(chart_path, x=15, y=75, w=180)
-
-    # Table of contents
-    toc_y = 165
-    pdf.set_xy(15, toc_y)
-    pdf.set_font("Helvetica", "B", 12)
+    total = sum(len(sections_data.get(k) or []) for k in rendered)
+    y = 30
+    pdf.set_font("Helvetica", "B", 9)
     pdf.set_text_color(26, 26, 46)
-    pdf.cell(180, 8, "TABLE OF CONTENTS", align="C")
-    toc_y += 12
+    pdf.set_xy(12, y)
+    pdf.cell(186, 5, f"IN THIS EDITION  -  {len(rendered)} sections, {total} stories")
+    y += 6
 
-    pdf.set_font("Helvetica", "", 9)
-    # Number only the sections that actually render, so the TOC numbering matches the
-    # pages that follow it on days a section is absent.
-    rendered = [k for k in SECTION_ORDER
-                if _section_renders(k, sections_data, section_extras)]
-    for i, section_key in enumerate(rendered, 1):
-        config = SECTION_CONFIG[section_key]
-        stories = sections_data.get(section_key, [])
-        count = len(stories)
-
-        r, g, b = config["color"]
+    # Numbered down the left column, then down the right, so the order reads the
+    # same as the pages that follow.
+    rows = (len(rendered) + 1) // 2
+    pdf.set_font("Helvetica", "", 8)
+    for i, key in enumerate(rendered):
+        col, row = divmod(i, rows)
+        x, ry = 12 + col * 95, y + row * 5
+        r, g, b = SECTION_CONFIG[key]["color"]
         pdf.set_fill_color(r, g, b)
-        pdf.rect(20, toc_y, 3, 5, "F")
-
+        pdf.rect(x, ry + 0.8, 2.5, 3.4, "F")
+        count = len(sections_data.get(key) or [])
+        label = f"{i + 1}. {SECTION_CONFIG[key]['label']}" + (f"  ({count})" if count else "")
         pdf.set_text_color(50, 50, 50)
-        pdf.set_xy(26, toc_y)
-        label_text = f"{i}. {config['label']}"
-        if count > 0:
-            label_text += f"  ({count} stories)"
-        pdf.cell(160, 5, label_text)
-        toc_y += 6
+        pdf.set_xy(x + 4, ry)
+        pdf.cell(76, 5, sanitize_text(label), link=links[key])
+        if pages and key in pages:
+            pdf.set_text_color(130, 130, 130)
+            pdf.cell(10, 5, f"p{pages[key]}", align="R", link=links[key])
+    y += rows * 5 + 2
 
-        if toc_y > 280:
-            break
+    pdf.set_draw_color(220, 220, 228)
+    pdf.set_line_width(0.3)
+    pdf.line(12, y, 198, y)
+    pdf.set_text_color(0, 0, 0)
+    return y + 1
 
 
-def build_section(pdf, section_key, stories, extras=None):
-    """Build a full section with header, description, and stories.
+def _story_height(pdf, story):
+    """Height a story block takes: title, metadata line, summary, padding.
+
+    Measured before drawing so the background box and the page break both match
+    the real rendered height.
+    """
+    pdf.set_font("Helvetica", "", 8)
+    pdf.set_x(14)
+    summary_h = pdf.multi_cell(178, SUMMARY_LH, sanitize_text(story.get("summary", "")),
+                               dry_run=True, output="HEIGHT")
+    return 10.5 + summary_h + 2
+
+
+def build_section(pdf, section_key, stories, extras=None, link=None):
+    """Draw one section where the page currently stands: header, table, stories.
 
     `extras` is the section's entry from `section_extras` in analyzed_content.json.
-    Sections that carry no extras pass None and render exactly as before.
+    Sections that carry no extras pass None. `link` is the contents entry's
+    internal link, pointed here. Returns the page the section's header landed on.
+
+    Sections flow on from the one before; the header moves overleaf only when it
+    and the section's first block would not fit under it together, so a header
+    is never left alone at the foot of a page.
     """
     config = SECTION_CONFIG[section_key]
     r, g, b = config["color"]
+    has_table = bool(extras and extras.get("best_for"))
 
-    if pdf.get_y() > 230:
+    y = pdf.get_y()
+    if y > 20:
+        y += 2  # space after the previous section; none at the top of a page
+
+    if has_table:
+        first_h = _best_for_layout(pdf, extras)[2]
+    elif stories:
+        first_h = _story_height(pdf, stories[0])
+    else:
+        first_h = 8
+    # A block taller than a page starts where it is anyway (see below), so it
+    # cannot be the reason to move the header.
+    if y + SECTION_HEAD_H + (first_h if first_h <= 260 else 30) > PAGE_BOTTOM:
         pdf.add_page()
-
-    y = pdf.get_y() + 5
+        y = pdf.get_y()
+    if link is not None:
+        pdf.set_link(link, y=y, page=pdf.page_no())
+    page = pdf.page_no()
 
     # Section header bar
     pdf.set_fill_color(r, g, b)
-    pdf.rect(10, y, 190, 12, "F")
-    pdf.set_font("Helvetica", "B", 13)
+    pdf.rect(10, y, 190, 7, "F")
+    pdf.set_font("Helvetica", "B", 10.5)
     pdf.set_text_color(255, 255, 255)
-    pdf.set_xy(15, y + 1)
-    pdf.cell(180, 10, f"  {config['label'].upper()}")
-    y += 14
+    pdf.set_xy(13, y + 0.5)
+    pdf.cell(184, 6, config["label"].upper())
+    y += 8
 
     # Section description
-    pdf.set_font("Helvetica", "I", 8)
+    pdf.set_font("Helvetica", "I", 7)
     pdf.set_text_color(100, 100, 100)
     pdf.set_xy(12, y)
-    pdf.cell(186, 5, sanitize_text(config["desc"]))
-    y += 7
-
-    # Thin accent line
-    pdf.set_draw_color(r, g, b)
-    pdf.set_line_width(0.5)
-    pdf.line(12, y, 198, y)
-    y += 4
+    pdf.cell(186, 4, sanitize_text(config["desc"]))
+    y += 6
 
     # Standing reference table - the open- and closed-model sections each carry one.
     # Gated on the data rather than the section key, so any section can grow one later.
-    if extras and extras.get("best_for"):
+    if has_table:
         y = build_best_for_box(pdf, y, config["color"], extras,
                                _table_heading(section_key, extras))
 
     if not stories:
-        pdf.set_font("Helvetica", "I", 9)
+        pdf.set_font("Helvetica", "I", 8)
         pdf.set_text_color(150, 150, 150)
-        pdf.set_xy(15, y)
-        pdf.cell(180, 8, "No stories in this section today.")
-        pdf.set_y(y + 12)
-        return
+        pdf.set_xy(14, y)
+        pdf.cell(180, 5, "No stories in this section today.")
+        pdf.set_y(y + 6)
+        return page
 
     for idx, story in enumerate(stories):
         title = sanitize_text(story.get("title", "Untitled"))
-        # Printed whole: summaries run as long as the story needs (2026-10-02).
-        # The 1,200-character clip that stood here is gone, not raised.
         summary = sanitize_text(story.get("summary", ""))
         story_url = story.get("url", "")
         meta_line = _fit_meta_line(pdf, _meta_parts(section_key, story), 178)
-
-        # Measure the block BEFORE drawing so the background box and the page
-        # break both match the real rendered height.
-        pdf.set_font("Helvetica", "", 8)
-        pdf.set_xy(14, y)
-        summary_h = pdf.multi_cell(
-            178, 3.8, summary, dry_run=True, output="HEIGHT"
-        )
-        url_h = 5 if story_url else 0
-        block_h = 11 + summary_h + url_h + 3
+        block_h = _story_height(pdf, story)
 
         # Page break if this story will not fit. A block taller than a whole page
         # cannot fit anywhere, so it starts where it is unless the page is nearly
         # full; multi_cell carries the rest of the summary overleaf.
-        if y + block_h > 278 and (block_h <= 260 or y > 230):
+        if y + block_h > PAGE_BOTTOM and (block_h <= 260 or y > 230):
             pdf.add_page()
-            y = pdf.get_y() + 2
+            y = pdf.get_y()
 
         # Alternating background, sized to the measured block but never drawn past
         # the bottom of the page.
@@ -438,15 +410,14 @@ def build_section(pdf, section_key, stories, extras=None):
             pdf.set_fill_color(245, 247, 250)
             pdf.rect(10, y, 190, min(block_h - 1, 282 - y), "F")
 
-        # Title (clickable) + relevance stars
+        # Title (a link to the story) + relevance stars
         pdf.set_font("Helvetica", "B", 9)
         pdf.set_text_color(25, 75, 200)
         pdf.set_xy(14, y + 1)
-        relevance = story.get("relevance", 3)
         pdf.cell(155, 5, _fit_title(pdf, title, 155), link=story_url)
         pdf.set_font("Helvetica", "", 9)
         pdf.set_text_color(r, g, b)
-        pdf.cell(25, 5, render_stars(relevance), align="R")
+        pdf.cell(25, 5, render_stars(story.get("relevance", 3)), align="R")
 
         # Source / metadata line
         pdf.set_font("Helvetica", "", 7)
@@ -457,20 +428,12 @@ def build_section(pdf, section_key, stories, extras=None):
         # Summary - full sentences, no truncation
         pdf.set_font("Helvetica", "", 8)
         pdf.set_text_color(60, 60, 60)
-        pdf.set_xy(14, y + 11)
-        pdf.multi_cell(178, 3.8, summary)
-
-        y = pdf.get_y() + 1
-        if story_url:
-            pdf.set_font("Helvetica", "U", 7)
-            pdf.set_text_color(25, 75, 200)
-            pdf.set_xy(14, y)
-            # Display text is shortened to fit the column; the link target stays full.
-            pdf.cell(180, 4, _fit_url(pdf, story_url, 178), link=story_url)
-            y += 5
-        y += 3
+        pdf.set_xy(14, y + 10.5)
+        pdf.multi_cell(178, SUMMARY_LH, summary)
+        y = pdf.get_y() + 2
 
     pdf.set_y(y)
+    return page
 
 
 def build_best_for_box(pdf, y, color, extras, heading="BEST MODEL RIGHT NOW"):
@@ -483,36 +446,13 @@ def build_best_for_box(pdf, y, color, extras, heading="BEST MODEL RIGHT NOW"):
     Returns the y to continue drawing from; returns it unchanged if there is nothing
     to draw.
     """
-    entries = [
-        e for e in extras.get("best_for", [])
-        if e.get("use_case") and e.get("model")
-    ]
+    entries, row_heights, box_h = _best_for_layout(pdf, extras)
     if not entries:
         return y
 
     r, g, b = color
-    label_w, why_w = 34.0, 142.0
-    why_x, why_lh = 52.0, 3.4
-
-    # Measure every row before drawing anything, the same way the story blocks do,
-    # so the border ends up matching the content it wraps.
-    row_heights = []
-    for entry in entries:
-        pdf.set_font("Helvetica", "", 7)
-        why = sanitize_text(entry.get("why", ""))
-        pdf.set_xy(why_x, y)
-        why_h = (
-            pdf.multi_cell(why_w, why_lh, why, dry_run=True, output="HEIGHT")
-            if why else 0
-        )
-        # The label wraps inside its own column, so a long use_case grows the row
-        # rather than running into the model line. Measured in the label's own font.
-        pdf.set_font("Helvetica", "B", 8)
-        pdf.set_xy(16, y)
-        label_h = pdf.multi_cell(label_w, 4.6, sanitize_text(entry["use_case"]),
-                                 dry_run=True, output="HEIGHT")
-        row_heights.append(max(4.6 + why_h, label_h) + 1.4)
-    box_h = 8 + sum(row_heights) + 3
+    label_w, why_w = BEST_FOR_LABEL_W, BEST_FOR_WHY_W
+    why_x, why_lh = BEST_FOR_WHY_X, BEST_FOR_WHY_LH
 
     if y + box_h > 275:
         pdf.add_page()
@@ -552,6 +492,40 @@ def build_best_for_box(pdf, y, color, extras, heading="BEST MODEL RIGHT NOW"):
     return y + box_h + 4
 
 
+BEST_FOR_LABEL_W, BEST_FOR_WHY_W = 34.0, 142.0
+BEST_FOR_WHY_X, BEST_FOR_WHY_LH = 52.0, 3.4
+
+
+def _best_for_layout(pdf, extras):
+    """(entries, row heights, box height) for a standing table, without drawing.
+
+    Every row is measured before anything is drawn, the same way the story blocks
+    are, so the border ends up matching the content it wraps - and so a section
+    header can tell whether the table will fit under it.
+    """
+    entries = [
+        e for e in (extras or {}).get("best_for", [])
+        if e.get("use_case") and e.get("model")
+    ]
+    row_heights = []
+    for entry in entries:
+        pdf.set_font("Helvetica", "", 7)
+        why = sanitize_text(entry.get("why", ""))
+        pdf.set_x(BEST_FOR_WHY_X)
+        why_h = (
+            pdf.multi_cell(BEST_FOR_WHY_W, BEST_FOR_WHY_LH, why, dry_run=True, output="HEIGHT")
+            if why else 0
+        )
+        # The label wraps inside its own column, so a long use_case grows the row
+        # rather than running into the model line. Measured in the label's own font.
+        pdf.set_font("Helvetica", "B", 8)
+        pdf.set_x(16)
+        label_h = pdf.multi_cell(BEST_FOR_LABEL_W, 4.6, sanitize_text(entry["use_case"]),
+                                 dry_run=True, output="HEIGHT")
+        row_heights.append(max(4.6 + why_h, label_h) + 1.4)
+    return entries, row_heights, 8 + sum(row_heights) + 3
+
+
 def _table_heading(section_key, extras):
     """The table's heading, with the as_of date it was last revised.
 
@@ -575,20 +549,6 @@ def _model_line(entry):
     tail = ", ".join(part for part in (entry.get("maker", ""), terms) if part)
     model = entry.get("model", "")
     return f"{model} ({tail})" if tail else model
-
-
-def _fit_url(pdf, url, max_w):
-    """Shorten a URL's DISPLAY text so it never runs past the column.
-
-    Google News redirect links are hundreds of characters long; printed raw they
-    overflow the right margin. The link target is unaffected - only the label.
-    """
-    label = sanitize_text(url)
-    if pdf.get_string_width(label) <= max_w:
-        return label
-    while label and pdf.get_string_width(label + "...") > max_w:
-        label = label[:-1]
-    return label + "..."
 
 
 def _fit_title(pdf, title, max_w):
@@ -689,6 +649,34 @@ def _meta_parts(section_key, story):
     return parts
 
 
+def render_edition(data):
+    """Draw the whole edition and return the FPDF object, not yet saved.
+
+    Drawn twice: the first pass finds the page each section starts on, the second
+    prints those pages in the contents list. The list is the same height either
+    way, so both passes lay the pages out identically.
+    """
+    sections_data = data.get("sections") or {}
+    section_extras = data.get("section_extras") or {}
+    # Sections with nothing to show are skipped entirely. Quantum + AI is absent
+    # six days a week by design. A section that carries extras (a model table)
+    # still renders with no stories, because the table is the point.
+    rendered = [k for k in SECTION_ORDER
+                if _section_renders(k, sections_data, section_extras)]
+    pages = None
+    for _ in range(2):
+        pdf = GlobalAINewsPDF()
+        pdf.alias_nb_pages()
+        pdf.set_auto_page_break(auto=True, margin=15)
+        pdf.add_page()
+        links = {k: pdf.add_link() for k in rendered}
+        pdf.set_y(build_masthead(pdf, sections_data, rendered, links, pages))
+        pages = {k: build_section(pdf, k, sections_data.get(k, []),
+                                  section_extras.get(k), links[k])
+                 for k in rendered}
+    return pdf
+
+
 def generate_pdf():
     """Main function: load analyzed content and generate PDF."""
     input_file = os.path.join(TMP_DIR, "analyzed_content.json")
@@ -700,42 +688,21 @@ def generate_pdf():
     with open(input_file, "r", encoding="utf-8") as f:
         data = json.load(f)
 
-    sections_data = data.get("sections", {})
-    section_extras = data.get("section_extras", {})
-
     print("Generating PDF...")
+    pdf = render_edition(data)
 
-    # Create PDF
-    pdf = GlobalAINewsPDF()
-    pdf.alias_nb_pages()
-    pdf.set_auto_page_break(auto=True, margin=15)
-
-    # Cover page
-    pdf.add_page()
-    build_cover_page(pdf, sections_data, section_extras)
-
-    # Section pages. Sections with nothing to show are skipped entirely rather than
-    # spending a page on "No stories in this section today." - Quantum + AI is absent
-    # six days a week by design, so it used to burn a page and a TOC slot on each of
-    # them. A section that carries extras (the open-model reference table) still
-    # renders even with no stories, because the table is the point.
-    for section_key in SECTION_ORDER:
-        stories = sections_data.get(section_key, [])
-        if not _section_renders(section_key, sections_data, section_extras):
-            continue
-        pdf.add_page()
-        build_section(pdf, section_key, stories, section_extras.get(section_key))
-
-    # Save
     os.makedirs(TMP_DIR, exist_ok=True)
     pdf.output(OUTPUT_FILE)
 
     file_size = os.path.getsize(OUTPUT_FILE) / 1024
+    sections_data = data.get("sections", {})
     total_stories = sum(len(sections_data.get(s, [])) for s in SECTION_ORDER)
+    pages = pdf.page_no()
+    over = f" - OVER the {PAGE_LIMIT}-page limit" if pages > PAGE_LIMIT else ""
 
     print(f"\nPDF generated: {OUTPUT_FILE}")
     print(f"  Size: {file_size:.0f} KB")
-    print(f"  Pages: {pdf.page_no()}")
+    print(f"  Pages: {pages}{over}")
     print(f"  Stories: {total_stories}")
 
     return OUTPUT_FILE

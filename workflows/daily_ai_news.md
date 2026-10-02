@@ -9,8 +9,14 @@ news explanations — see the **Plain-Language News Rule**.
 `QUANTUM_WEEKDAY = 3` in `scrape_rss_feeds.py` is authoritative; `prep_run.py` prints which way today
 falls, so it never has to be worked out by hand.
 
-**No page limit.** The edition runs as long as the news needs: no page cap, no story cap beyond the
-3–6 per section, and no layout compression. A 10-page design was proposed and rejected on 2026-10-02.
+**Six pages at most.** Rahul, 2026-10-02: "make it less pages, like 5-6 pages, so I can cover every
+section, understand every section, and read every section." So: **two stories per section** (one when
+only one qualifies), **summaries of 400–550 characters**, and a layout where page 1 opens with a short
+masthead and a contents list (each entry links to its section and names its page) and the sections
+flow on from each other. Story URLs sit behind the titles rather than printed. A Thursday edition at
+those limits is 6 pages, a weekday one 5. `write_analyzed()` prints the page count while the builder
+is open, and `verify_edition.py` blocks the send above `PAGE_LIMIT` (6, in `generate_pdf.py`). This
+replaces the "no page limit" rule of the same morning, which produced a 17-page edition.
 
 ---
 
@@ -109,8 +115,8 @@ Outputs: `.tmp/rss_articles.json`, `.tmp/digest.md`, `.tmp/devpost.txt`, `.tmp/r
    `carry_forward_best_for`, `write_analyzed`). **Its docstring is the format — do not open an old
    builder to copy boilerplate.** Reference source articles **by index** into `rss_articles.json` so
    title/url/source stay faithful to what was scraped; never hand-type a URL. `write_analyzed()`
-   validates section counts, summary lengths, missing URLs and `published_date`, and prints the
-   problems. `rejected=[(name, reason)]` feeds tomorrow's digest so a rejected item is not
+   validates section counts, summary lengths, missing URLs and `published_date`, renders the PDF to
+   count its pages, and prints the problems. `rejected=[(name, reason)]` feeds tomorrow's digest so a rejected item is not
    re-investigated.
 
 ### Step 3 — `python3 tools/verify_edition.py --send`
@@ -125,6 +131,8 @@ The rendered-text checks are the ones that used to be done by eye, and each is n
 - **Missing titles** — every story title must appear in the rendered page. Compared on a squashed
   30-character prefix, because `sanitize_text()` folds curly apostrophes, `multi_cell()` wraps
   titles across lines and `_fit_title()` truncates the longest ones.
+- **Page count** — over `PAGE_LIMIT` (6) stops the run. Cut the lowest-relevance story from a
+  two-story section, or tighten the longest summaries, rebuild, and verify again.
 
 Flags: `--skip-pdf` (already rendered this run), `--skip-tests`, and no `--send` to verify and back
 up without mailing.
@@ -199,14 +207,15 @@ itself got lost.
   defined in the same sentence. This is the most common failure mode and the one that made the
   2026-09-03 first draft unreadable. `check_quality.py` flags ALL-CAPS acronyms it cannot find
   spelled out, and runs inside `verify_edition.py`.
-- **At least four complete sentences and no upper limit** (2026-10-02). Extend the explanation
-  whenever a term, a mechanism or the background would otherwise send the reader to another site. The
-  test: could he explain the story to someone else after reading only that paragraph? Extra length
-  goes on explaining the news, never on advice. The PDF prints every summary whole; no ellipses, no
-  mid-sentence cutoffs. `write_analyzed()` flags only a summary under 600 characters.
-- **There is no page limit.** Never shorten an explanation or drop a story to save space. A section
-  runs short only when nothing else inside its freshness window qualifies. Finish every section; no
-  placeholder stubs in trailing sections.
+- **At least four complete sentences, 400–550 characters** (2026-10-02, the six-page edition). Spend
+  the characters on what happened, the names and terms a newcomer needs, and why it happened; drop
+  background that does not change what the reader understands. The test: could he explain the story
+  to someone else after reading only that paragraph? Never spend characters on advice. The PDF prints
+  every summary whole; no ellipses, no mid-sentence cutoffs. `write_analyzed()` flags a summary
+  outside 400–550 characters.
+- **Six pages is the limit; pick, don't squeeze.** Two stories per section, the two that matter most.
+  A section runs short only when nothing else inside its freshness window qualifies. Finish every
+  section; no placeholder stubs in trailing sections.
 - **Do not invent facts.** Many headlines postdate the model's knowledge. Ground claims in what the
   feed actually says, attribute to the source, and build the explanation around the mechanism rather
   than inventing details.
@@ -260,7 +269,8 @@ instead and the renderer skips dates there.
 ---
 
 ## Section-Specific Rules
-**All sections:** 3–6 stories, sorted by relevance (highest first). Deduplicate across sources — the
+**All sections:** 2 stories (1 when only one qualifies), sorted by relevance (highest first).
+Deduplicate across sources — the
 Google News proxies return the same story from a dozen outlets, so pick the most substantive one.
 
 - **`quantum_ai_research`** — *Thursdays only, and the one section on a **7-day** rule* rather than
@@ -365,7 +375,10 @@ Google News proxies return the same story from a dozen outlets, so pick the most
   `test_summary_length.py` guards it
 - Title cut mid-word → titles go through `_fit_title()`, which measures width and cuts between words;
   cases in `tools/tests/test_fit_title.py`
-- A URL ending in `...` is `_fit_url()` working as intended — the link target stays full
+- No URL under a story → by design since 2026-10-02: the title is the link, and the line it took
+  went to the six-page limit
+- PDF over six pages → `verify_edition.py` stops the run; `write_analyzed()` already printed the count.
+  Cut a story or tighten summaries rather than editing the layout
 - Tests "collect nothing" → they are plain scripts, **not** pytest. `verify_edition.py` runs them;
   `python3 -m pytest tools/tests/` finds nothing because there are no `test_*` functions
 
@@ -499,9 +512,9 @@ names, https, the keyless rule and that every section is fed.
   section is mostly Reddit and nearly got dropped on a misread of those `THIN` flags.
 - **2026-09-21: Monday's Musk/xAI feed is structurally thin, like Sunday's overall.** The "Elon Musk
   on X" proxy returned three items, two of them bodyless X posts ("Cybertruck as Heavy Cav",
-  "Grok @Bot"). The section shipped at 2 stories. `write_analyzed()` prints a 3-6 warning and
+  "Grok @Bot"). The section shipped at 2 stories. `write_analyzed()` prints a story-count warning and
   `check_quality` has no section-count ERROR, so a short section does **not** block the send — run it
-  short rather than padding, and never reuse another section's story to reach three (that fires
+  short rather than padding, and never reuse another section's story to fill one (that fires
   `duplicate_across_sections`, which *is* an ERROR).
 - **2026-09-21: `ycombinator.com/apply` read-times-out for `find_opportunities.py` check.** Not a
   404 and not a closure — the page simply does not answer in time. Carry the deadline verified on the
@@ -520,7 +533,8 @@ names, https, the keyless rule and that every section is fed.
 | Story titles cut mid-word | `test_fit_title.py` |
 | Summaries truncated mid-sentence, then clipped at 1,200 characters | `test_summary_length.py` (no clip at all), unfinished-summary check |
 | Dates missing from every story in the PDF (2026-09-17) | `test_story_dates.py`, `write_analyzed()` |
-| Empty sections spending a page and a TOC slot | `generate_pdf.py` skips them |
+| Empty sections spending a page and a contents slot | `generate_pdf.py` skips them |
+| A 17-page edition too long to read (2026-10-02) | `test_page_limit.py`, `PAGE_LIMIT`, `page_problem()` |
 | Opportunity gate matching ordinary English ("models challenge…") | `test_opportunity_gate.py` |
 | Email body hardcoded and drifting from the edition | `test_email_body.py` |
 | Whole-title PDF comparison flagging 8 good stories | `missing_titles()`, `test_verify_edition.py` |
@@ -541,6 +555,11 @@ names, https, the keyless rule and that every section is fed.
   parallel. The digest follows the sections and caps each group; its real size is measured on the
   first full scrape. New `find_opportunities.py platforms` (lablab.ai, Devpost newest, Devfolio,
   Unstop) and X posts read in full. Tests 192 → 332 in 17 files.
+  Same evening, on Rahul's word that the PDF was too long to read: six pages at most. Two stories a
+  section, summaries of 400–550 characters (the morning's "no upper limit" is withdrawn), a masthead
+  and linked contents list in place of the cover page and its chart, sections flowing on instead of a
+  page each, story URLs behind the titles. The builder prints the page count and the send blocks
+  above six. Tests 332 → 350 in 18 files.
 - **2026-10-01:** Thursday, quantum in. Shipped 63 stories in 13 sections, 0 errors and 0 warnings on
   the first verify (acronyms glossed while the builder was open), oldest story 21.3h on the 24h rule
   and 138h on the 7-day rule; sent 00:22 UTC, 19 minutes after the scrape. Fixed `write_analyzed()`,

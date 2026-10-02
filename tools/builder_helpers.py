@@ -35,6 +35,10 @@ O(...)       an opportunity or story not carried by today's feed, verified on th
              organiser's own page.
 rejected     lands in analyzed_content.json as curation_log, and news_digest.py
              prints it tomorrow, so a rejected item is not re-investigated.
+
+Size: two stories a section (one when only one qualifies), summaries of
+400-550 characters. write_analyzed() prints the PDF's page count; over six
+pages, cut the weakest story from a section or tighten summaries, and rerun.
 """
 
 import glob
@@ -50,8 +54,13 @@ import web_text
 
 OUTPUT_FILE = os.path.join(web_text.TMP_DIR, "analyzed_content.json")
 OPPORTUNITY_KEYS = ("ai_hackathons", "product_showcase_opportunities")
-# A floor and no ceiling: summaries run as long as the story needs (2026-10-02).
-SUMMARY_MIN = 600
+# Two stories a section, 400-550 characters each, is what fits the whole edition
+# in generate_pdf.PAGE_LIMIT pages (rahul, 2026-10-02: "5-6 pages, so I can cover
+# every section"). Measured with both model tables: 550 characters is four or five
+# printed lines, 5 pages on a weekday and 6 on a Thursday, when quantum runs too.
+# 700-character summaries took 7 on a Thursday.
+STORIES_PER_SECTION = (1, 2)
+SUMMARY_MIN, SUMMARY_MAX = 400, 550
 
 _ARTS = None
 _DECODED = None
@@ -230,12 +239,14 @@ def write_analyzed(sections, best_for=None, closed_best_for=None, rejected=None,
         total += len(stories)
         if key == "quantum_ai_research" and not stories:
             continue
-        if not 3 <= len(stories) <= 6:
-            problems.append(f"{key}: {len(stories)} stories (rule: 3-6)")
+        lo, hi = STORIES_PER_SECTION
+        if not lo <= len(stories) <= hi:
+            problems.append(f"{key}: {len(stories)} stories (rule: {lo}-{hi})")
         for s in stories:
             n = len(s["summary"])
-            if n < SUMMARY_MIN:
-                problems.append(f"{key}: summary {n} chars: {s['title'][:60]}")
+            if not SUMMARY_MIN <= n <= SUMMARY_MAX:
+                problems.append(f"{key}: summary {n} chars (rule: {SUMMARY_MIN}-{SUMMARY_MAX}): "
+                                f"{s['title'][:60]}")
             if "automation angle" in s["summary"].lower():
                 problems.append(f"{key}: 'Automation angle' is banned: {s['title'][:60]}")
             if not s.get("url"):
@@ -253,8 +264,19 @@ def write_analyzed(sections, best_for=None, closed_best_for=None, rejected=None,
                 if age is not None and age > limit:
                     problems.append(f"{key}: stale, published {age:.0f}h ago "
                                     f"(rule: {limit}h): {s['title'][:60]}")
+    # The page count, while the curator can still cut: the send blocks above the
+    # limit, and finding out there costs a re-render and a second verify.
+    from generate_pdf import PAGE_LIMIT, render_edition
+    try:
+        pages = render_edition(out).page_no()
+    except Exception as exc:  # noqa: BLE001 - report it; the PDF step will fail loudly
+        pages = None
+        problems.append(f"the PDF did not render: {exc!r}")
+    if pages and pages > PAGE_LIMIT:
+        problems.append(f"PDF is {pages} pages (limit {PAGE_LIMIT}): cut a story or shorten summaries")
+
     counts = " ".join(f"{n}:{len(sections.get(k, []))}" for n, k in enumerate(SECTION_ORDER, 1))
-    print(f"Wrote {out_file}: {total} stories | per section in render order {counts}")
+    print(f"Wrote {out_file}: {total} stories, {pages or '?'} pages | per section in render order {counts}")
     for p in problems:
         print("  !!", p)
     if not problems:

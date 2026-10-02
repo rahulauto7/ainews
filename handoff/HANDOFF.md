@@ -18,12 +18,14 @@ sample edition, which need a machine that can reach the news sites (the cloud se
 4. **Tests are plain scripts, not pytest.** One file: `python3 tools/tests/test_x.py`. Whole suite:
    `python3 -c "import sys; sys.path.insert(0,'tools'); import verify_edition as v; ok, l = v.run_tests(); print('\n'.join(l)); print('ALL PASS' if ok else 'FAILURES')"`
    Baseline before the restructure: 192 cases in 11 files. After tasks 1-8: 332 cases in 17 files.
+   After the six-page limit: 350 cases in 18 files.
 5. **Rahul's plan showed 76% of its weekly limit used on 2 Oct 2026.** Work in few, large steps, give a
    one-line progress note between them, and stay on the task list.
 
 ## Current state
 - On the branch: 16 sections (15 without Quantum), 214 feeds plus 4 non-RSS readers in
-  `tools/feed_sources.py`, summaries printed whole (only the 600-character floor is reported). On `main`
+  `tools/feed_sources.py`, an edition of at most six pages (two stories a section, summaries of 400-550
+  characters printed whole, a linked contents list on page 1, sections flowing on). On `main`
   until the pull request merges: the old 13 sections and 34 feeds.
 - Built differently from the plan, on purpose: a summary block taller than a whole page starts where it
   is instead of forcing a page break (no near-empty page under a section header); YouTube search videos
@@ -34,6 +36,7 @@ sample edition, which need a machine that can reach the news sites (the cloud se
 - The cloud session could not reach any news host (proxy policy denied them), so nothing was scraped
   for real and the digest size on 200+ sources is not yet measured.
 - Memory notes saved on 2 Oct 2026: no page limit, flexible plain-language summaries, keyless sources.
+  The first two were overtaken that evening by the six-page limit (see Decisions).
 - Handoff files, all written 2 Oct 2026 (`sources.txt` and `recipes.md` are now built into `tools/`):
   - `handoff/plan-1.md` — DONE — tasks 1-3: sections, summary length, source registry
   - `handoff/plan-2.md` — DONE — tasks 4-5: scraper, digest
@@ -46,13 +49,14 @@ sample edition, which need a machine that can reach the news sites (the cloud se
 |---|---|---|
 | 2026-10-02 | Add three sections — OpenAI, Google AI, xAI & Grok — so each of the four top AI companies has its own (Anthropic already has one) | DECIDED |
 | 2026-10-02 | Section order, his list: hackathons, grants, RSI, quantum, unaddressed problems, automation in business, business opportunities, India, global, AI companies, open models, closed models, Elon Musk | DECIDED |
-| 2026-10-02 | No page limit. "10 pages" in his first message was not a cap. No story caps and no layout compression | DECIDED |
+| 2026-10-02 | Six pages at most: "make it less pages, like 5-6 pages, so I can cover every section, understand every section, and read every section." Two stories a section, summaries of 400-550 characters, contents list on page 1, sections flowing on, send blocked above six | DECIDED (evening) |
+| 2026-10-02 | No page limit. "10 pages" in his first message was not a cap. No story caps and no layout compression | SUPERSEDED the same evening by the six-page limit |
 | 2026-10-02 | A 10-page cap with about 2 stories per section and a flowing layout | SUPERSEDED 2026-10-02 — he rejected it: "Remove above change" |
 | 2026-10-02 | Hackathons: also search lablab.ai and Devpost for new hackathons, alongside the current sources | DECIDED |
 | 2026-10-02 | The Elon Musk section is Musk's own point of view on AI, gathered from everywhere on the internet (X and beyond). xAI is a separate section of its own | DECIDED |
-| 2026-10-02 | Summaries: layman's terms, as long as the story needs. Five lines is not a limit. He must not need another site to understand a story | DECIDED |
+| 2026-10-02 | Summaries: layman's terms, as long as the story needs. Five lines is not a limit. He must not need another site to understand a story | Layman's terms stand; the length is SUPERSEDED by 400-550 characters (six-page limit) |
 | 2026-10-02 | Every section searches every platform that can be read without an API. A platform that needs an API is skipped | DECIDED |
-| 2026-10-02 | Do not narrow any section: full scope and the full 3-6 stories | DECIDED |
+| 2026-10-02 | Do not narrow any section: full scope and the full 3-6 stories | Full scope stands; the count is SUPERSEDED by two stories a section (six-page limit) |
 | 2026-09-17 | Freshness at send: 24 hours for every news section; Quantum 7 days (Thursdays only); hackathons and grants are dated by deadline (30-day lookback). Applies unchanged to the new sections | DECIDED |
 | 2026-10-02 | Company block order: OpenAI, Google AI, Anthropic & Claude Code, xAI & Grok | PROPOSED — shown in the design; he changed other points and did not object |
 | 2026-10-02 | A story prints once: company news in that company's section, cross-vendor comparisons in Closed Models | PROPOSED — shown in the design, no objection |

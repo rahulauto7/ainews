@@ -37,7 +37,8 @@ ARTICLES = [
      "published": "2026-09-15T06:00:00+00:00"},
 ]
 
-SUMMARY = "A plain-language summary of the story. " * 20
+# 507 characters: inside the builder's 400-600 rule, so only the dates get flagged.
+SUMMARY = "A plain-language summary of the story. " * 13
 
 
 def check(failures, ok, message):
@@ -121,8 +122,8 @@ def main():
     undated["title"] = "Undated"
     opp_story = dict(opp, summary=SUMMARY)
     sections = {
-        "global_ai_news": [dated, dict(dated, title="D2"), undated],
-        "ai_hackathons": [opp_story, dict(opp_story, title="O2"), dict(opp_story, title="O3")],
+        "global_ai_news": [dated, undated],
+        "ai_hackathons": [opp_story, dict(opp_story, title="O2")],
     }
     with tempfile.TemporaryDirectory() as tmp:
         out = os.path.join(tmp, "analyzed_content.json")
