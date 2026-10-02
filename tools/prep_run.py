@@ -86,6 +86,19 @@ def case_count(lines):
     return total
 
 
+def task_line(name, rc, lines):
+    """The brief's line for one opportunity task.
+
+    find_opportunities platforms reports a failed platform as a "!! <platform>:
+    <error>" line and carries on, so its exit code alone cannot say that lablab.ai
+    or Devfolio went unread.
+    """
+    broken = [l[3:].split(":")[0] for l in lines if l.startswith("!! ")]
+    return (f"  {name:10s} {len(lines)} lines -> .tmp/{name}.txt"
+            + ("  !! failed" if rc != 0 else "")
+            + (f"  !! unread: {', '.join(broken)}" if broken else ""))
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -157,8 +170,7 @@ def main():
             if name == "digest":
                 print(f"  digest     {lines[-1] if lines else 'no output'}")
             else:
-                print(f"  {name:10s} {len(lines)} lines -> .tmp/{name}.txt"
-                      + ("  !! failed" if rc != 0 else ""))
+                print(task_line(name, rc, lines))
 
         if tests is not None:
             ok, lines = tests.result()

@@ -555,37 +555,61 @@ def _representative(members):
     return sorted(members, key=rank)[0]
 
 
-def deduplicate_stories(articles):
-    """Collapse same-story duplicates. Returns (kept, removed_count).
+def _title_clustered(article):
+    """False for sources whose titles must not be clustered.
 
-    arXiv is exempt. Syndication is a NEWS phenomenon - the same press release
-    rewritten by many outlets - whereas arXiv papers are never syndicated and
-    papers within one subfield share so much vocabulary that title similarity
-    produces false merges ("Codes for Quantum Secret Sharing with a Helper" vs
-    "Quantum Secret Sharing with a Helper and Programmable Access Structures"
-    are two different papers, 0.8 token overlap).
+    Syndication is a NEWS phenomenon - the same press release rewritten by many
+    outlets. arXiv papers are never syndicated, and papers within one subfield
+    share so much vocabulary that title similarity produces false merges ("Codes
+    for Quantum Secret Sharing with a Helper" vs "Quantum Secret Sharing with a
+    Helper and Programmable Access Structures" are two different papers, 0.8
+    token overlap). Hugging Face items are all titled "New on Hugging Face: <id>",
+    so two models from one org already share three tokens.
     """
-    clusters = []  # [(tokens, [articles])]
-    passthrough = []
+    source = article.get("source", "")
+    return not (source.startswith("arXiv") or source == "Hugging Face new models")
+
+
+def deduplicate_stories(articles):
+    """Collapse duplicates: the same URL, or the same story under other headlines.
+
+    Returns (kept, removed_count). Copies of one URL join one cluster before any
+    copy is dropped, so the group they arrived under still counts: Google News
+    gives an article the same link in every query that finds it, and the copy
+    from the first query in the registry used to win outright, whatever its group.
+    """
+    clusters = []  # [(tokens, [articles])]; tokens None for an unclustered source
+    by_url = {}
     for article in articles:
-        if article.get("source", "").startswith("arXiv"):
-            passthrough.append(article)
+        url = article.get("url")
+        if url and url in by_url:
+            by_url[url].append(article)
             continue
-        tokens = title_tokens(article.get("title", ""))
-        for cluster_tokens, members in clusters:
-            if _same_story(tokens, cluster_tokens):
-                members.append(article)
-                break
+        if not _title_clustered(article):
+            members = [article]
+            clusters.append((None, members))
         else:
-            clusters.append((tokens, [article]))
+            tokens = title_tokens(article.get("title", ""))
+            for cluster_tokens, members in clusters:
+                if cluster_tokens is not None and _same_story(tokens, cluster_tokens):
+                    members.append(article)
+                    break
+            else:
+                members = [article]
+                clusters.append((tokens, members))
+        if url:
+            by_url[url] = members
 
     kept = []
     for _, members in clusters:
-        best = _representative(members)
-        # The kept copy takes the most specific group any copy arrived under. A copy from an
-        # opportunity feed counts only if it passed the gate, or real news would be hidden with it.
-        cats = {m.get("category", "general") for m in members
-                if m.get("category") != "opportunity" or m.get("is_opportunity")}
+        # A copy from an opportunity feed counts only if it passed the gate, or real
+        # news would be hidden with it. Such a copy is not kept either while another
+        # exists: it can be 30 days old and would carry its date into a 24h group.
+        counted = [m for m in members
+                   if m.get("category") != "opportunity" or m.get("is_opportunity")]
+        best = _representative(counted or members)
+        # The kept copy takes the most specific group any counted copy arrived under.
+        cats = {m.get("category", "general") for m in counted}
         specific = [c for c in CATEGORY_PRIORITY if c in cats]
         if specific:
             best["category"] = specific[0]
@@ -593,14 +617,14 @@ def deduplicate_stories(articles):
                 best["is_opportunity"] = True
             if len(specific) > 1:
                 best["also_in"] = specific[1:]
-        others = [m for m in members if m is not best]
+        # Corroboration is a useful relevance signal, so keep the trail. A second
+        # search that found the same link is not a second outlet, so it counts once.
+        others = [m for m in members if m.get("url") != best.get("url")]
         if others:
-            # Corroboration is a useful relevance signal, so keep the trail.
             best["also_reported_by"] = sorted({m["source"] for m in others})
-            best["duplicate_count"] = len(members)
+            best["duplicate_count"] = len({m.get("url") for m in members})
         kept.append(best)
 
-    kept.extend(passthrough)
     return kept, len(articles) - len(kept)
 
 
@@ -666,17 +690,11 @@ def scrape_all_feeds():
     print(f"\nSources: {len(results)} read, {len(results) - len(empty)} returned articles")
     print(f"  none from: {', '.join(empty) if empty else '-'}")
 
-    # Deduplicate by URL
-    seen_urls = set()
-    unique_articles = []
-    for article in all_articles:
-        if article["url"] and article["url"] not in seen_urls:
-            seen_urls.add(article["url"])
-            unique_articles.append(article)
-
-    # Collapse the same story reported by multiple outlets
+    # Collapse the same URL, and the same story reported by multiple outlets.
+    # An article with no link cannot be printed or fetched.
+    unique_articles = [a for a in all_articles if a["url"]]
     unique_articles, dup_removed = deduplicate_stories(unique_articles)
-    print(f"Same-story dedupe: removed {dup_removed} duplicate reports")
+    print(f"Dedupe: removed {dup_removed} duplicate reports (same link or same story)")
 
     # Sort by date (newest first)
     unique_articles.sort(

@@ -224,6 +224,60 @@ def scraper_cases(failures):
     check(failures, kept and kept[0]["category"] != "opportunity",
           f"a copy that failed the opportunity gate must not pull news into it: {kept and kept[0]['category']}")
 
+    # One Google News link found by two searches: the opportunity search sits first in
+    # the registry and its copy fails the gate. The OpenAI group must still get it,
+    # and a second search finding the same link is not a second outlet.
+    link = "https://news.google.com/rss/articles/CBMiSAME"
+    first = {"title": "OpenAI commits $50 million AI fund to nonprofits - Reuters", "url": link,
+             "source": "AI Grants (via Google News)", "category": "opportunity",
+             "is_opportunity": False, "summary": ""}
+    # Its headline differs too, so only the link can join the two.
+    second = dict(first, title="Nonprofits get a new fund - Reuters",
+                  source="OpenAI (via Google News)", category="openai")
+    kept, removed = sc.deduplicate_stories([first, second])
+    cases += 3
+    check(failures, len(kept) == 1 and removed == 1, f"one link twice: kept {len(kept)}")
+    check(failures, kept and kept[0]["category"] == "openai",
+          f"a shared link must reach the OpenAI group: {kept and kept[0]['category']}")
+    check(failures, kept and "duplicate_count" not in kept[0],
+          f"one link found twice is not corroboration: {kept and kept[0].get('duplicate_count')}")
+
+    # The same arXiv paper cross-listed in two feeds: one copy, in the quantum group.
+    paper = {"title": "Learned noise models for quantum error correction",
+             "url": "https://arxiv.org/abs/2610.01234", "source": "arXiv cs.LG",
+             "category": "ai_research", "summary": "Abstract."}
+    kept, _ = sc.deduplicate_stories([paper, dict(paper, source="arXiv quant-ph", category="quantum")])
+    cases += 1
+    check(failures, len(kept) == 1 and kept[0]["category"] == "quantum",
+          f"a cross-listed paper must print once, as quantum: {[k['category'] for k in kept]}")
+
+    # A stale opportunity copy that failed the gate must not stand in for today's news.
+    stale = {"title": "IndiaAI Mission invites applications from AI startups for compute subsidy scheme",
+             "url": "https://news.google.com/rss/articles/old", "source": "AI Grants (via Google News)",
+             "category": "opportunity", "is_opportunity": False, "summary": "",
+             "published": "2026-09-12T08:00:00+00:00"}
+    fresh = {"title": "IndiaAI Mission extends deadline for startup applications",
+             "url": "https://news.google.com/rss/articles/new", "source": "India AI (via Google News)",
+             "category": "indian", "summary": "", "published": "2026-10-02T06:00:00+00:00"}
+    kept, _ = sc.deduplicate_stories([stale, fresh])
+    cases += 1
+    check(failures, len(kept) == 1 and kept[0]["published"] == fresh["published"],
+          f"the kept copy must be today's: {[k.get('published') for k in kept]}")
+
+    # Hugging Face items share "hugging face" in every title; models are never merged.
+    created = (now - timedelta(hours=3)).isoformat().replace("+00:00", "Z")
+    ids = ["meta-llama/Llama-4.1-8B-Instruct", "Qwen/Qwen3.5-7B-Instruct",
+           "unsloth/Qwen3.5-7B-Instruct-GGUF", "deepseek-ai/DeepSeek-V4-Base",
+           "mistralai/Ministral-3-8B-Base", "nvidia/Nemotron-Nano-9B-v2", "nvidia/parakeet-tdt-0.6b-v3"]
+    models = sc.parse_hf_models([{"id": i, "createdAt": created} for i in ids],
+                                "Hugging Face new models", now - timedelta(hours=24))
+    funding = {"title": "Hugging Face raises $400M led by Nvidia", "url": "https://example.com/hf",
+               "source": "TechCrunch AI", "category": "business", "summary": "Funding. " * 20}
+    kept, removed = sc.deduplicate_stories(models + [funding])
+    cases += 1
+    check(failures, removed == 0 and len(kept) == len(ids) + 1,
+          f"{removed} Hugging Face items merged away: {[k['title'] for k in kept]}")
+
     # ── The PDF names a Bing item's outlet, not "via Bing News" ──────────────
     import builder_helpers
     saved, builder_helpers._ARTS = builder_helpers._ARTS, [{

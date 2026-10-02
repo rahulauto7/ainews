@@ -130,6 +130,16 @@ def decode_google_news(url, cache=None):
 TWEET_API = "https://cdn.syndication.twimg.com/tweet-result"
 
 
+def is_x_url(url):
+    """True for a link on X itself. Matched on the host: a substring test sent
+    vox.com, spacex.com and netflix.com articles to the post reader."""
+    host = urllib.parse.urlparse(url or "").netloc.lower().split(":")[0]
+    for prefix in ("www.", "mobile."):
+        if host.startswith(prefix):
+            host = host[len(prefix):]
+    return host in ("x.com", "twitter.com")
+
+
 def tweet_id(url):
     """The post id in an x.com or twitter.com status URL, or None."""
     m = re.search(r"/status(?:es)?/(\d+)", url or "")
@@ -165,7 +175,14 @@ def fetch_tweet(url, timeout=20):
 
 
 def tweet_record(js):
-    """Title, text and the post's own timestamp, from the embed JSON."""
+    """Title, text and the post's own timestamp, from the embed JSON.
+
+    Raises ValueError when the answer holds no post: a deleted, withheld or
+    protected post comes back 200 as a TweetTombstone, and an empty record would
+    read as a successful fetch with no text and no date.
+    """
+    if js.get("__typename") == "TweetTombstone" or not js.get("text") or not js.get("created_at"):
+        raise ValueError(f"no post in the embed answer ({js.get('__typename') or 'empty'})")
     created = js.get("created_at") or ""
     text = js.get("text") or ""
     quoted = (js.get("quoted_tweet") or {}).get("text")

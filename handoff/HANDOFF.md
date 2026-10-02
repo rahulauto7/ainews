@@ -18,7 +18,7 @@ sample edition, which need a machine that can reach the news sites (the cloud se
 4. **Tests are plain scripts, not pytest.** One file: `python3 tools/tests/test_x.py`. Whole suite:
    `python3 -c "import sys; sys.path.insert(0,'tools'); import verify_edition as v; ok, l = v.run_tests(); print('\n'.join(l)); print('ALL PASS' if ok else 'FAILURES')"`
    Baseline before the restructure: 192 cases in 11 files. After tasks 1-8: 332 cases in 17 files.
-   After the 15-page limit: 350 cases in 18 files.
+   After the 15-page limit and the review fixes: 370 cases in 18 files.
 5. **Rahul's plan showed 76% of its weekly limit used on 2 Oct 2026.** Work in few, large steps, give a
    one-line progress note between them, and stay on the task list.
 

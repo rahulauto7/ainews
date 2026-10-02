@@ -62,7 +62,7 @@ def fetch_one(url, decoded_cache):
     rec = {"feed_url": url, "url": url, "error": None}
     try:
         rec["url"] = web_text.decode_google_news(url, decoded_cache)
-        if "x.com/" in rec["url"] or "twitter.com/" in rec["url"]:
+        if web_text.is_x_url(rec["url"]):
             # Read through the keyless embed endpoint. A failed read keeps the old
             # behaviour - the feed title stands in - and never aborts the batch.
             try:
@@ -78,8 +78,10 @@ def fetch_one(url, decoded_cache):
     except Exception as e:  # report, don't abort the batch
         rec["error"] = f"FAILED: {type(e).__name__}: {str(e)[:90]}"
     rec["fetched_at"] = datetime.now().isoformat(timespec="seconds")
-    # Transient failures are not cached, so a re-run retries them.
-    if not rec["error"] or rec["error"] == "X POST":
+    # Failures are not cached, so a re-run retries them. That includes a failed X
+    # read: the embed endpoint answers 429 under load, and a cached failure would
+    # keep the post's own timestamp from the 24h rule for the rest of the run.
+    if not rec["error"]:
         os.makedirs(CACHE_DIR, exist_ok=True)
         with open(path, "w", encoding="utf-8") as f:
             json.dump(rec, f, ensure_ascii=False)

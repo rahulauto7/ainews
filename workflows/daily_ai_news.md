@@ -106,7 +106,8 @@ Outputs: `.tmp/rss_articles.json`, `.tmp/digest.md`, `.tmp/devpost.txt`, `.tmp/r
    **X posts are read in full** through the keyless embed endpoint: the whole post, any quoted post,
    the reply line, and the post's own timestamp on the head line. Pass that timestamp to
    `S(..., published_at=...)` so the 24h rule measures the post, not the day Google indexed it. The
-   `X POST` flag now means the read failed and the feed headline is all there is.
+   `X POST` flag now means the read failed and the feed headline is all there is. It is not cached, so
+   running the index again retries it.
 3. **`.tmp/devpost.txt`, `.tmp/hackathons.txt` and `.tmp/recheck.txt`** are already on disk from
    step 1, for sections 1–2.
    `python3 tools/find_opportunities.py check URL...` is the only one that runs on demand, for an
@@ -560,8 +561,12 @@ names, https, the keyless rule and that every section is fed.
   pages", after a 5–6 page version he withdrew). 3–5 stories a section, summaries of 400–800
   characters (the morning's "no upper limit" is withdrawn), a masthead and linked contents list in
   place of the cover page and its chart, sections flowing on instead of a page each, story URLs behind
-  the titles. The builder prints the page count and the send blocks above 15. Tests 332 → 350 in 18
-  files.
+  the titles. The builder prints the page count and the send blocks above 15. A review of the
+  restructure fixed the scraper's de-duplication (one Google News link found by two searches now keeps
+  the more specific group instead of the first search's; Hugging Face models are never merged into
+  each other; a stale opportunity copy no longer stands in for today's news) and the X post reader
+  (only links on X itself, deleted posts count as failed, failures are retried rather than cached).
+  The prep brief names a hackathon platform that went unread. Tests 332 → 370 in 18 files.
 - **2026-10-01:** Thursday, quantum in. Shipped 63 stories in 13 sections, 0 errors and 0 warnings on
   the first verify (acronyms glossed while the builder was open), oldest story 21.3h on the 24h rule
   and 138h on the 7-day rule; sent 00:22 UTC, 19 minutes after the scrape. Fixed `write_analyzed()`,

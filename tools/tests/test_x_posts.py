@@ -102,6 +102,61 @@ def main():
     check(failures, story["published_date"] == "2026-10-01",
           f"the printed date must follow the post, not Google: {story['published_date']!r}")
 
+    # ── 7. Only a link on X itself goes to the post reader ───────────────────
+    for url, want in (("https://x.com/elonmusk/status/1", True),
+                      ("https://www.x.com/elonmusk/status/1", True),
+                      ("https://mobile.twitter.com/sama/status/2", True),
+                      ("https://www.vox.com/future-perfect/2026/10/1/ai-agents", False),
+                      ("https://www.spacex.com/updates/", False),
+                      ("https://about.netflix.com/en/news/ai", False),
+                      ("https://dropbox.com/x.com/file", False)):
+        cases += 1
+        check(failures, web_text.is_x_url(url) is want, f"is_x_url({url!r}) should be {want}")
+
+    # ── 8. An answer with no post in it is a failed read, not an empty one ────
+    for body in ({"__typename": "TweetTombstone", "tombstone": {"text": {"text": "Age-restricted"}}},
+                 {}):
+        cases += 1
+        try:
+            web_text.tweet_record(body)
+            check(failures, False, f"tweet_record accepted a body with no post: {body}")
+        except ValueError:
+            pass
+
+    # ── 9. A failed read is retried on the next call, not cached ─────────────
+    import tempfile
+    real_fetch, real_html, real_dir = web_text.fetch_tweet, web_text.fetch_html, fetch_articles.CACHE_DIR
+
+    def refuse(url, timeout=20):
+        raise ConnectionError("429 Too Many Requests")
+
+    def no_tweet(url, timeout=20):
+        raise AssertionError(f"the post reader was called for {url}")
+
+    try:
+        with tempfile.TemporaryDirectory() as tmp:
+            fetch_articles.CACHE_DIR = tmp
+            url = "https://x.com/elonmusk/status/2105929186556998055"
+            web_text.fetch_tweet = refuse
+            first = fetch_articles.fetch_one(url, {})
+            web_text.fetch_tweet = lambda u, timeout=20: POST
+            second = fetch_articles.fetch_one(url, {})
+            cases += 2
+            check(failures, first["error"] == "X POST", f"a refused read: {first['error']!r}")
+            check(failures, second.get("x_post") and second.get("published_at") == POST["created_at"],
+                  f"the retry must read the post, got {second.get('error')!r}")
+
+            # A vox.com article is read as a page, never as a post.
+            web_text.fetch_tweet = no_tweet
+            web_text.fetch_html = lambda u: ("<html><body><p>Agents.</p></body></html>", u)
+            vox = fetch_articles.fetch_one("https://www.vox.com/future-perfect/2026/10/1/ai-agents", {})
+            cases += 1
+            check(failures, vox["error"] is None and not vox.get("x_post"),
+                  f"a vox.com article went to the post reader: {vox['error']!r}")
+    finally:
+        web_text.fetch_tweet, web_text.fetch_html = real_fetch, real_html
+        fetch_articles.CACHE_DIR = real_dir
+
     for f in failures:
         print("FAIL:", f)
     print(f"{cases}/{cases} passed" if not failures else f"{len(failures)} failure(s) of {cases}")
