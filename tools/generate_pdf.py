@@ -13,7 +13,6 @@ Features:
 
 import json
 import os
-import re
 import sys
 import unicodedata
 import io
@@ -57,10 +56,10 @@ SECTION_CONFIG = {
         "desc": "Recursive self-improvement, AGI progress, alignment research",
     },
     "elon_musk_ai_vision": {
-        "label": "Elon Musk's AI Vision",
+        "label": "Elon Musk on AI",
         "icon": "\u2604",
         "color": (50, 50, 50),    # Dark gray
-        "desc": "xAI & Grok news, Elon Musk's AI views, statements & predictions",
+        "desc": "Elon Musk's own point of view on AI - his X posts, interviews, talks and statements, from across the web",
     },
     "indian_ai_industry": {
         "label": "Indian AI Industry",
@@ -112,23 +111,47 @@ SECTION_CONFIG = {
         "color": (46, 204, 113),  # Green
         "desc": "Emerging business opportunities in AI - India & world",
     },
+    # One section per top AI company (2026-10-02). Anthropic already had one above.
+    "openai_news": {
+        "label": "OpenAI",
+        "icon": "\u25CB",
+        "color": (16, 163, 127),  # OpenAI green
+        "desc": "OpenAI & ChatGPT - models, products, research, deals, people and policy",
+    },
+    "google_ai_news": {
+        "label": "Google AI",
+        "icon": "\u25B2",
+        "color": (66, 133, 244),  # Google blue
+        "desc": "Google, Gemini & DeepMind - models, products, research and company moves",
+    },
+    "xai_grok_news": {
+        "label": "xAI & Grok",
+        "icon": "\u2716",
+        "color": (96, 125, 139),  # Blue grey
+        "desc": "xAI the company and its Grok models - releases, features, funding, deals and disputes",
+    },
 }
 
-# Rendering order = the order the sections were specified in.
+# Rendering order: Rahul's list of 2026-10-02, with the four company sections
+# (OpenAI, Google AI, Anthropic & Claude Code, xAI & Grok) between Global AI News
+# and the two model tables. Changing it is his decision, not a refactor.
 SECTION_ORDER = [
-    "ai_hackathons",
-    "product_showcase_opportunities",
-    "quantum_ai_research",
-    "ai_self_improvement_rsi",
-    "elon_musk_ai_vision",
-    "indian_ai_industry",
-    "anthropic_claude_news",
-    "open_model_landscape",
-    "closed_model_landscape",
-    "ai_business_automation",
-    "global_ai_news",
-    "unaddressed_ai_problems",
-    "ai_business_opportunities",
+    "ai_hackathons",                   # 1  AI Hackathons
+    "product_showcase_opportunities",  # 2  AI Grants, Fellowships & Programs
+    "ai_self_improvement_rsi",         # 3  AI Self-Improvement (RSI)
+    "quantum_ai_research",             # 4  Quantum + AI (Thursdays only)
+    "unaddressed_ai_problems",         # 5  Unaddressed AI Problems
+    "ai_business_automation",          # 6  AI Automation & Business
+    "ai_business_opportunities",       # 7  AI Business Opportunities
+    "indian_ai_industry",              # 8  Indian AI Industry
+    "global_ai_news",                  # 9  Global AI News
+    "openai_news",                     # 10 OpenAI
+    "google_ai_news",                  # 11 Google AI
+    "anthropic_claude_news",           # 12 Anthropic & Claude Code
+    "xai_grok_news",                   # 13 xAI & Grok
+    "open_model_landscape",            # 14 Open Models & Open Weights
+    "closed_model_landscape",          # 15 Closed Models & Frontier APIs
+    "elon_musk_ai_vision",             # 16 Elon Musk on AI
 ]
 
 
@@ -244,29 +267,6 @@ def _fold_to_latin1(char):
     """Base letter of an accented character, or the character itself if none."""
     base = "".join(c for c in unicodedata.normalize("NFKD", char) if not unicodedata.combining(c))
     return base if base and all(ord(c) <= 0xFF for c in base) else char
-
-
-def clip_to_sentence(text, max_chars=1200):
-    """Trim text to a whole number of sentences - never mid-sentence.
-
-    The old code did summary[:250], which sliced whatever character it landed on
-    and left summaries dangling mid-word. This only ever cuts at a sentence end.
-    If even the first sentence is longer than max_chars, it is kept intact rather
-    than being chopped.
-    """
-    text = (text or "").strip()
-    if len(text) <= max_chars:
-        return text
-
-    # Split on sentence terminators, keeping the terminator attached.
-    parts = re.findall(r"[^.!?]*[.!?]+[\s]*|[^.!?]+$", text)
-    out = ""
-    for part in parts:
-        if out and len(out) + len(part) > max_chars:
-            break
-        out += part
-    out = out.strip()
-    return out if out else text.strip()
 
 
 def render_stars(relevance):
@@ -409,7 +409,9 @@ def build_section(pdf, section_key, stories, extras=None):
 
     for idx, story in enumerate(stories):
         title = sanitize_text(story.get("title", "Untitled"))
-        summary = clip_to_sentence(sanitize_text(story.get("summary", "")))
+        # Printed whole: summaries run as long as the story needs (2026-10-02).
+        # The 1,200-character clip that stood here is gone, not raised.
+        summary = sanitize_text(story.get("summary", ""))
         story_url = story.get("url", "")
         meta_line = _fit_meta_line(pdf, _meta_parts(section_key, story), 178)
 
@@ -423,15 +425,18 @@ def build_section(pdf, section_key, stories, extras=None):
         url_h = 5 if story_url else 0
         block_h = 11 + summary_h + url_h + 3
 
-        # Page break if this story will not fit
-        if y + block_h > 278:
+        # Page break if this story will not fit. A block taller than a whole page
+        # cannot fit anywhere, so it starts where it is unless the page is nearly
+        # full; multi_cell carries the rest of the summary overleaf.
+        if y + block_h > 278 and (block_h <= 260 or y > 230):
             pdf.add_page()
             y = pdf.get_y() + 2
 
-        # Alternating background, sized to the measured block
+        # Alternating background, sized to the measured block but never drawn past
+        # the bottom of the page.
         if idx % 2 == 0:
             pdf.set_fill_color(245, 247, 250)
-            pdf.rect(10, y, 190, block_h - 1, "F")
+            pdf.rect(10, y, 190, min(block_h - 1, 282 - y), "F")
 
         # Title (clickable) + relevance stars
         pdf.set_font("Helvetica", "B", 9)

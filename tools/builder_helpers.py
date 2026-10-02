@@ -50,7 +50,8 @@ import web_text
 
 OUTPUT_FILE = os.path.join(web_text.TMP_DIR, "analyzed_content.json")
 OPPORTUNITY_KEYS = ("ai_hackathons", "product_showcase_opportunities")
-SUMMARY_MIN, SUMMARY_MAX = 600, 1150
+# A floor and no ceiling: summaries run as long as the story needs (2026-10-02).
+SUMMARY_MIN = 600
 
 _ARTS = None
 _DECODED = None
@@ -227,7 +228,7 @@ def write_analyzed(sections, best_for=None, closed_best_for=None, rejected=None,
             problems.append(f"{key}: {len(stories)} stories (rule: 3-6)")
         for s in stories:
             n = len(s["summary"])
-            if not SUMMARY_MIN <= n <= SUMMARY_MAX:
+            if n < SUMMARY_MIN:
                 problems.append(f"{key}: summary {n} chars: {s['title'][:60]}")
             if "automation angle" in s["summary"].lower():
                 problems.append(f"{key}: 'Automation angle' is banned: {s['title'][:60]}")

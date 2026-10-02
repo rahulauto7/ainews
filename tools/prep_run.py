@@ -9,7 +9,7 @@ This runs the slow parts to completion - nothing is detached, so nothing needs
 polling - and prints one compact brief:
 
   - today, the weekday, and whether Quantum + AI is in (Thursdays only)
-  - the 12 section keys in render order, so they are never guessed
+  - the section keys in render order, so they are never guessed
   - the last three editions on disk, for the duplicate-across-days check
   - the test suite result as one line
   - the scrape, then the digest, then Devpost and the carry-forward recheck,
@@ -101,7 +101,7 @@ def main():
     quantum = now.weekday() == QUANTUM_WEEKDAY
     print(f"RUN {today} ({now.strftime('%A')})  |  "
           f"Quantum + AI: {'IN (Thursday)' if quantum else 'OUT (not Thursday)'}  |  "
-          f"{12 if quantum else 11} sections")
+          f"{len(SECTION_ORDER) - (0 if quantum else 1)} sections")
 
     print("\nSection keys, in render order:")
     for i, key in enumerate(SECTION_ORDER, 1):
