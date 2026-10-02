@@ -1,0 +1,234 @@
+# New sources for the scraper. Written Fri 2 Oct 2026. Not wired in yet (plan-1.md, Task 3).
+# One source per line:   category | name | url | flags | status
+#   category  the digest group; it names the PDF section the source mainly feeds (map in plan-2.md, Task 5)
+#   flags     ai       general-interest feed: keep only entries that mention AI
+#             musk     keep only entries where Musk talks about AI or autonomy
+#             browser  the site refuses the bot User-Agent: send the browser one
+#             -        none
+#   status    OK         fresh entries when tested on 2 Oct 2026
+#             live       works, but posts less than daily
+#             new-query  this exact query text has not been run yet: fix or drop it if the first scrape returns nothing
+# The 32 existing feeds that stay are listed in plan-1.md, Task 3. Every source here is keyless.
+# X has no keyless feed: the "on X" rows are Google News searches of the posts Google has indexed.
+
+# --- opportunity (30-day lookback) -> AI Hackathons / AI Grants, Fellowships & Programs
+opportunity | AI Grants (via Google News) | https://news.google.com/rss/search?q=(%22AI+grant%22+OR+%22AI+grants%22+OR+%22AI+fund%22)+(apply+OR+applications+OR+deadline)+when:30d&hl=en-US&gl=US&ceid=US:en | - | OK
+opportunity | AI Hackathons (via Bing News) | https://www.bing.com/news/search?q=AI+hackathon&format=rss | browser | OK
+
+# --- rsi -> AI Self-Improvement (RSI)
+rsi | AI Self-Improvement (via Google News) | https://news.google.com/rss/search?q=(%22recursive+self-improvement%22+OR+%22self-improving+AI%22+OR+%22AI+alignment%22+OR+superintelligence+OR+AGI)+when:1d&hl=en-US&gl=US&ceid=US:en | - | OK
+rsi | Alignment Forum | https://www.alignmentforum.org/feed.xml | - | OK
+rsi | LessWrong | https://www.lesswrong.com/feed.xml?view=frontpage-rss&karmaThreshold=75 | ai | OK
+rsi | METR | https://metr.org/feed.xml | - | live
+rsi | Redwood Research | https://blog.redwoodresearch.org/feed | - | live
+rsi | AI Safety Newsletter | https://newsletter.safe.ai/feed | - | live
+rsi | Epoch AI Gradient Updates | https://epochai.substack.com/feed | - | live
+rsi | 80,000 Hours | https://80000hours.org/feed/ | ai | OK
+rsi | Future of Life Institute | https://futureoflife.org/feed/ | ai | live
+rsi | Zvi Mowshowitz | https://thezvi.substack.com/feed | - | OK
+rsi | Transformer News | https://www.transformernews.ai/feed | - | OK
+rsi | AI as Normal Technology | https://www.normaltech.ai/feed | - | OK
+
+# --- ai_research -> AI Self-Improvement (RSI) and leads for other sections. Names starting "arXiv" keep the 15-per-feed cap.
+ai_research | arXiv Computation and Language | https://rss.arxiv.org/rss/cs.CL | - | OK
+ai_research | arXiv Multiagent Systems | https://rss.arxiv.org/rss/cs.MA | - | OK
+ai_research | Apple Machine Learning Research | https://machinelearning.apple.com/rss.xml | - | OK
+ai_research | Microsoft Research | https://www.microsoft.com/en-us/research/feed/ | ai | live
+ai_research | Amazon Science | https://www.amazon.science/index.rss | ai | live
+ai_research | Nature Machine Intelligence | https://www.nature.com/natmachintell.rss | - | live
+ai_research | MIT News AI | https://news.mit.edu/rss/topic/artificial-intelligence2 | - | OK
+ai_research | TechXplore AI | https://techxplore.com/rss-feed/machine-learning-ai-news/ | - | OK
+ai_research | phys.org AI | https://phys.org/rss-feed/technology-news/machine-learning-ai/ | - | OK
+ai_research | ScienceDaily AI | https://www.sciencedaily.com/rss/computers_math/artificial_intelligence.xml | - | live
+ai_research | Quanta Magazine | https://www.quantamagazine.org/feed/ | ai | OK
+
+# --- quantum (7-day rule, Thursdays only) -> Quantum + AI
+quantum | The Quantum Insider | https://thequantuminsider.com/feed/ | ai | OK
+quantum | Quantum Computing Report | https://quantumcomputingreport.com/feed/ | ai | OK
+quantum | Quantum Zeitgeist | https://quantumzeitgeist.com/feed/ | ai | OK
+quantum | phys.org Quantum | https://phys.org/rss-feed/physics-news/quantum-physics/ | ai | OK
+
+# --- problems -> Unaddressed AI Problems
+problems | AI Problems (via Google News) | https://news.google.com/rss/search?q=AI+(fails+OR+failure+OR+flaw+OR+%22struggles+with%22+OR+limitation+OR+hallucination+OR+unsolved+OR+%22no+solution%22)+when:1d&hl=en-US&gl=US&ceid=US:en | - | OK
+problems | AI Incident Database | https://incidentdatabase.ai/rss.xml | - | live
+problems | 404 Media | https://www.404media.co/rss/ | ai | OK
+problems | Marcus on AI | https://garymarcus.substack.com/feed | - | live
+
+# --- automation -> AI Automation & Business
+automation | AI Automation (via Google News) | https://news.google.com/rss/search?q=(%22AI+automation%22+OR+%22AI+agents%22+OR+%22agentic+AI%22+OR+%22workflow+automation%22)+when:1d&hl=en-US&gl=US&ceid=US:en | - | OK
+automation | Zapier Blog | https://zapier.com/blog/feeds/latest/ | ai | OK
+automation | n8n Blog | https://blog.n8n.io/rss/ | - | live
+automation | UiPath Blog | https://www.uipath.com/blog/rss.xml | ai | live
+automation | Salesforce News | https://www.salesforce.com/news/feed/ | ai | OK
+automation | Databricks Blog | https://www.databricks.com/feed | ai | OK
+automation | Cloudflare Blog | https://blog.cloudflare.com/rss/ | ai | OK
+automation | GitHub Blog AI | https://github.blog/ai-and-ml/feed/ | - | OK
+automation | Stack Overflow Blog | https://stackoverflow.blog/feed/ | ai | OK
+automation | AWS Machine Learning Blog | https://aws.amazon.com/blogs/machine-learning/feed/ | - | OK
+automation | The New Stack | https://thenewstack.io/feed/ | ai | OK
+automation | InfoWorld AI | https://www.infoworld.com/artificial-intelligence/feed/ | - | OK
+automation | CIO AI | https://www.cio.com/artificial-intelligence/feed/ | - | OK
+automation | Computerworld AI | https://www.computerworld.com/artificial-intelligence/feed/ | - | OK
+automation | AI Business | https://aibusiness.com/rss.xml | - | OK
+automation | KDnuggets | https://www.kdnuggets.com/feed | ai | OK
+automation | Analytics Vidhya | https://www.analyticsvidhya.com/feed/ | ai | live
+
+# --- business -> AI Business Opportunities
+business | AI Funding (via Google News) | https://news.google.com/rss/search?q=AI+startup+(raises+OR+funding+OR+valuation+OR+%22Series+A%22+OR+%22seed+round%22)+when:1d&hl=en-US&gl=US&ceid=US:en | - | OK
+business | Crunchbase News | https://news.crunchbase.com/feed/ | ai | OK
+business | TechCrunch Startups | https://techcrunch.com/category/startups/feed/ | ai | OK
+business | TechCrunch Venture | https://techcrunch.com/category/venture/feed/ | ai | OK
+business | AlleyWatch | https://www.alleywatch.com/feed/ | ai | OK
+business | Sifted | https://sifted.eu/feed | ai | OK
+business | Tech.eu | https://tech.eu/feed/ | ai | OK
+
+# --- indian -> Indian AI Industry
+indian | India AI (via Google News) | https://news.google.com/rss/search?q=(AI+OR+%22artificial+intelligence%22)+(India+OR+Indian)+when:1d&hl=en-IN&gl=IN&ceid=IN:en | - | OK
+indian | Mint AI | https://www.livemint.com/rss/AI | - | OK
+indian | Mint Technology | https://www.livemint.com/rss/technology | ai | OK
+indian | Business Standard Technology | https://www.business-standard.com/rss/technology-108.rss | ai | OK
+indian | The Hindu Technology | https://www.thehindu.com/sci-tech/technology/feeder/default.rss | ai | OK
+indian | Indian Express AI | https://indianexpress.com/section/technology/artificial-intelligence/feed/ | - | OK
+indian | Hindustan Times Tech | https://www.hindustantimes.com/feeds/rss/technology/rssfeed.xml | ai | OK
+indian | MediaNama | https://www.medianama.com/feed/ | ai | live
+indian | Entrackr | https://entrackr.com/rss | ai | live
+indian | The Ken | https://the-ken.com/feed/ | ai | OK
+
+# --- world -> Global AI News (regional coverage)
+world | China AI (via Google News) | https://news.google.com/rss/search?q=China+(AI+OR+%22artificial+intelligence%22)+when:1d&hl=en-US&gl=US&ceid=US:en | - | OK
+world | Europe AI (via Google News) | https://news.google.com/rss/search?q=(Europe+OR+EU+OR+%22European+Union%22)+(%22AI+Act%22+OR+AI+OR+%22artificial+intelligence%22)+when:1d&hl=en-GB&gl=GB&ceid=GB:en | - | OK
+world | Japan Korea Taiwan AI (via Google News) | https://news.google.com/rss/search?q=(Japan+OR+Korea+OR+Taiwan)+(AI+OR+%22artificial+intelligence%22)+when:1d&hl=en-US&gl=US&ceid=US:en | - | OK
+world | Middle East AI (via Google News) | https://news.google.com/rss/search?q=(UAE+OR+%22Saudi+Arabia%22+OR+Qatar+OR+%22Middle+East%22)+(AI+OR+%22artificial+intelligence%22)+when:1d&hl=en-US&gl=US&ceid=US:en | - | OK
+world | SCMP Tech | https://www.scmp.com/rss/36/feed | ai | OK
+world | Pandaily | https://pandaily.com/feed/ | ai | OK
+world | TechNode Global | https://technode.global/feed/ | ai | OK
+world | Tech in Asia | https://www.techinasia.com/feed | ai browser | OK
+world | e27 | https://e27.co/index_wp.php/feed/ | ai | OK
+world | Korea Herald Business | https://www.koreaherald.com/rss/kh_Business | ai | OK
+world | Japan Times | https://www.japantimes.co.jp/feed/ | ai | OK
+world | The National Technology | https://www.thenationalnews.com/arc/outboundfeeds/rss/category/future/technology/?outputType=xml | ai | OK
+world | Al Jazeera | https://www.aljazeera.com/xml/rss/all.xml | ai | OK
+world | TechCabal | https://techcabal.com/feed/ | ai | OK
+world | Disrupt Africa | https://disruptafrica.com/feed/ | ai | OK
+world | Rest of World | https://restofworld.org/feed/latest | ai | OK
+world | Politico Europe Technology | https://www.politico.eu/section/technology/feed/ | ai | live
+world | ChinaTalk | https://www.chinatalk.media/feed | - | OK
+
+# --- general -> Global AI News, and leads for every section
+general | Techmeme | https://www.techmeme.com/feed.xml | ai | OK
+general | Bloomberg Technology | https://feeds.bloomberg.com/technology/news.rss | ai | OK
+general | The Guardian AI | https://www.theguardian.com/technology/artificialintelligenceai/rss | - | OK
+general | BBC Technology | https://feeds.bbci.co.uk/news/technology/rss.xml | ai | OK
+general | NYT Technology | https://rss.nytimes.com/services/xml/rss/nyt/Technology.xml | ai | OK
+general | CNBC Technology | https://www.cnbc.com/id/19854910/device/rss/rss.html | ai | OK
+general | FT Artificial Intelligence | https://www.ft.com/artificial-intelligence?format=rss | - | OK
+general | Axios | https://api.axios.com/feed/ | ai | OK
+general | Engadget | https://www.engadget.com/rss.xml | ai | OK
+general | Gizmodo AI | https://gizmodo.com/tag/artificial-intelligence/rss | - | OK
+general | The Next Web | https://thenextweb.com/feed | ai | OK
+general | Fast Company Tech | https://www.fastcompany.com/technology/rss | ai | OK
+general | Fortune | https://fortune.com/feed/fortune-feeds/?id=3230629 | ai | OK
+general | Business Insider | https://feeds.businessinsider.com/custom/all | ai | OK
+general | Semafor | https://www.semafor.com/rss.xml | ai | OK
+general | MarkTechPost | https://www.marktechpost.com/feed/ | - | OK
+general | SiliconANGLE AI | https://siliconangle.com/category/ai/feed/ | - | OK
+general | Tom's Hardware | https://www.tomshardware.com/feeds/all | ai | OK
+general | Unite.AI | https://www.unite.ai/feed/ | - | OK
+general | TechRepublic AI | https://www.techrepublic.com/rssfeeds/topic/artificial-intelligence/ | - | live
+general | IEEE Spectrum AI | https://spectrum.ieee.org/feeds/topic/artificial-intelligence.rss | - | live
+general | Latent Space | https://www.latent.space/feed | - | OK
+general | TLDR AI | https://tldr.tech/api/rss/ai | - | OK
+general | The Rundown AI | https://rss.beehiiv.com/feeds/2R3C6Bt5wj.xml | - | OK
+general | Simon Willison | https://simonwillison.net/atom/everything/ | - | live
+general | Import AI | https://importai.substack.com/feed | - | live
+general | Last Week in AI | https://lastweekin.ai/feed | - | live
+general | Ben's Bites | https://www.bensbites.com/feed | - | live
+general | One Useful Thing | https://www.oneusefulthing.org/feed | - | live
+general | Platformer | https://www.platformer.news/rss/ | ai | live
+general | Big Technology | https://www.bigtechnology.com/feed | ai | live
+general | Stratechery | https://stratechery.com/feed/ | ai | live
+general | Exponential View | https://www.exponentialview.co/feed | ai | live
+general | AI Supremacy | https://www.ai-supremacy.com/feed | - | live
+general | The Algorithmic Bridge | https://www.thealgorithmicbridge.com/feed | - | live
+general | Interconnects | https://www.interconnects.ai/feed | - | live
+general | Ahead of AI | https://magazine.sebastianraschka.com/feed | - | live
+general | Understanding AI | https://www.understandingai.org/feed | - | live
+
+# --- company_blog -> Global AI News (AI companies other than the four with their own section)
+company_blog | NVIDIA Blog | https://blogs.nvidia.com/feed/ | ai | OK
+company_blog | NVIDIA Developer Blog | https://developer.nvidia.com/blog/feed | ai | OK
+company_blog | Microsoft Blog | https://blogs.microsoft.com/feed/ | ai | live
+company_blog | Meta Newsroom | https://about.fb.com/news/feed/ | ai | live
+company_blog | Meta Engineering | https://engineering.fb.com/feed/ | ai | live
+
+# --- openai -> OpenAI (the existing "OpenAI Blog" feed moves here)
+openai | OpenAI (via Google News) | https://news.google.com/rss/search?q=OpenAI+OR+ChatGPT+OR+%22Sam+Altman%22+when:1d&hl=en-US&gl=US&ceid=US:en | - | new-query
+openai | OpenAI (via Bing News) | https://www.bing.com/news/search?q=OpenAI&qft=interval%3d%227%22+sortbydate%3d%221%22&form=PTFTNR&format=rss | browser | OK
+openai | Sam Altman on X (via Google News) | https://news.google.com/rss/search?q=site:x.com%2Fsama&hl=en-US&gl=US&ceid=US:en | - | OK
+openai | OpenAI on X (via Google News) | https://news.google.com/rss/search?q=site:x.com%2FOpenAI&hl=en-US&gl=US&ceid=US:en | - | live
+openai | OpenAI Developers on X (via Google News) | https://news.google.com/rss/search?q=site:x.com%2FOpenAIDevs&hl=en-US&gl=US&ceid=US:en | - | OK
+openai | OpenAI YouTube | https://www.youtube.com/feeds/videos.xml?channel_id=UCXZCJLdBC09xxGZ6gcdrc6A | - | OK
+
+# --- google -> Google AI (the existing "Google AI Blog" feed moves here)
+google | Google DeepMind Blog | https://deepmind.google/blog/rss.xml | - | live
+google | Google Research Blog | https://research.google/blog/rss/ | - | OK
+google | Gemini Blog | https://blog.google/products/gemini/rss/ | - | OK
+google | Google Cloud AI Blog | https://cloudblog.withgoogle.com/products/ai-machine-learning/rss/ | - | live
+google | Google AI (via Google News) | https://news.google.com/rss/search?q=(Gemini+OR+DeepMind+OR+%22Google+AI%22)+(Google+OR+AI)+when:1d&hl=en-US&gl=US&ceid=US:en | - | new-query
+google | Google AI (via Bing News) | https://www.bing.com/news/search?q=Google+Gemini+AI&qft=interval%3d%227%22+sortbydate%3d%221%22&form=PTFTNR&format=rss | browser | new-query
+google | Google DeepMind on X (via Google News) | https://news.google.com/rss/search?q=site:x.com%2FGoogleDeepMind&hl=en-US&gl=US&ceid=US:en | - | OK
+google | Google AI on X (via Google News) | https://news.google.com/rss/search?q=site:x.com%2FGoogleAI&hl=en-US&gl=US&ceid=US:en | - | live
+google | Sundar Pichai on X (via Google News) | https://news.google.com/rss/search?q=site:x.com%2Fsundarpichai&hl=en-US&gl=US&ceid=US:en | - | OK
+google | Demis Hassabis on X (via Google News) | https://news.google.com/rss/search?q=site:x.com%2Fdemishassabis&hl=en-US&gl=US&ceid=US:en | - | live
+google | Google DeepMind YouTube | https://www.youtube.com/feeds/videos.xml?channel_id=UCP7jMXSY2xbc3KCAE0MHQ-A | - | OK
+google | Google YouTube | https://www.youtube.com/feeds/videos.xml?channel_id=UCK8sQmJBp8GCxrOtXWBpyEA | ai | live
+
+# --- anthropic_claude -> Anthropic & Claude Code (the two existing Google News searches stay)
+anthropic_claude | Anthropic (via Bing News) | https://www.bing.com/news/search?q=Anthropic+Claude&qft=interval%3d%227%22+sortbydate%3d%221%22&form=PTFTNR&format=rss | browser | new-query
+anthropic_claude | Anthropic on X (via Google News) | https://news.google.com/rss/search?q=site:x.com%2FAnthropicAI&hl=en-US&gl=US&ceid=US:en | - | OK
+anthropic_claude | Claude on X (via Google News) | https://news.google.com/rss/search?q=site:x.com%2Fclaudeai&hl=en-US&gl=US&ceid=US:en | - | OK
+anthropic_claude | Dario Amodei on X (via Google News) | https://news.google.com/rss/search?q=site:x.com%2FDarioAmodei&hl=en-US&gl=US&ceid=US:en | - | live
+anthropic_claude | Anthropic YouTube | https://www.youtube.com/feeds/videos.xml?channel_id=UCrDwWp7EBBv4NwvScIpBDOA | - | live
+anthropic_claude | Claude Code Releases | https://github.com/anthropics/claude-code/releases.atom | - | OK
+
+# --- xai_grok -> xAI & Grok (x.ai has no feed; the company now brands itself SpaceXAI on its own pages)
+xai_grok | xAI & Grok (via Google News) | https://news.google.com/rss/search?q=xAI+OR+Grok+OR+SpaceXAI+when:1d&hl=en-US&gl=US&ceid=US:en | - | new-query
+xai_grok | xAI & Grok (via Bing News) | https://www.bing.com/news/search?q=xAI+Grok&qft=interval%3d%227%22+sortbydate%3d%221%22&form=PTFTNR&format=rss | browser | new-query
+xai_grok | xAI official site (via Google News) | https://news.google.com/rss/search?q=site:x.ai&hl=en-US&gl=US&ceid=US:en | - | new-query
+xai_grok | Tesla YouTube | https://www.youtube.com/feeds/videos.xml?channel_id=UCr7nsg_hE_t06057x51g_Fg | ai | OK
+
+# --- open_model -> Open Models & Open Weights (the five existing feeds stay)
+open_model | Mistral AI News | https://mistral.ai/rss.xml | - | live
+
+# --- closed_model -> Closed Models & Frontier APIs
+closed_model | Closed Models (via Google News) | https://news.google.com/rss/search?q=(GPT+OR+Gemini+OR+%22Claude+Opus%22+OR+Grok)+(benchmark+OR+pricing+OR+leaderboard+OR+%22new+model%22)+when:1d&hl=en-US&gl=US&ceid=US:en | - | OK
+
+# --- elon_musk -> Elon Musk on AI (his own point of view; the existing "Elon Musk on X" search stays)
+elon_musk | Elon Musk all posts on X (via Google News) | https://news.google.com/rss/search?q=site:x.com%2Felonmusk&hl=en-US&gl=US&ceid=US:en | ai | OK
+elon_musk | Elon Musk on AI (via Google News) | https://news.google.com/rss/search?q=%22Elon+Musk%22+(AI+OR+xAI+OR+Grok+OR+AGI+OR+superintelligence+OR+Optimus+OR+robotaxi)+when:1d&hl=en-US&gl=US&ceid=US:en | - | new-query
+elon_musk | Elon Musk on AI (via Bing News) | https://www.bing.com/news/search?q=%22Elon+Musk%22+AI&qft=interval%3d%227%22&format=rss | browser | OK
+elon_musk | Teslarati | https://www.teslarati.com/feed/ | musk | OK
+elon_musk | Electrek | https://electrek.co/feed/ | musk | OK
+
+# --- video -> leads for any section (YouTube channel feeds; no API key)
+video | AI Explained YouTube | https://www.youtube.com/feeds/videos.xml?channel_id=UCNJ1Ymd5yFuUPtn21xtRbbw | - | OK
+video | Matthew Berman YouTube | https://www.youtube.com/feeds/videos.xml?channel_id=UCawZsQWqfGSbCI5yjkdVkTA | - | OK
+video | Wes Roth YouTube | https://www.youtube.com/feeds/videos.xml?channel_id=UCqcbQf6yw5KzRoDDcZ_wBSw | - | live
+video | Two Minute Papers YouTube | https://www.youtube.com/feeds/videos.xml?channel_id=UCbfYPyITQ-7l4upoX8nvctg | - | live
+video | Matt Wolfe YouTube | https://www.youtube.com/feeds/videos.xml?channel_id=UChpleBmo18P08aKCIgti38g | - | OK
+video | AI Engineer YouTube | https://www.youtube.com/feeds/videos.xml?channel_id=UCLKPca3kwwd-B59HNr-_lvA | - | OK
+video | Latent Space Podcast YouTube | https://www.youtube.com/feeds/videos.xml?channel_id=UCxBcwypKK-W3GHd_RZ9FZrQ | - | OK
+video | Greg Isenberg YouTube | https://www.youtube.com/feeds/videos.xml?channel_id=UCPjNBjflYl0-HQtUvOx0Ibw | - | OK
+video | Dwarkesh Patel YouTube | https://www.youtube.com/feeds/videos.xml?channel_id=UCZa18YV7qayTh-MRIrBhDpA | ai | OK
+video | Lex Fridman YouTube | https://www.youtube.com/feeds/videos.xml?channel_id=UCJIfeSCssxSC_Dhc5s7woww | ai | live
+video | Y Combinator YouTube | https://www.youtube.com/feeds/videos.xml?channel_id=UCxIJaCMEptJjxmmQgGFsnCg | ai | OK
+video | All-In Podcast YouTube | https://www.youtube.com/feeds/videos.xml?channel_id=UCESLZhusAkFfsNsApnjF_Cg | ai | OK
+video | NVIDIA YouTube | https://www.youtube.com/feeds/videos.xml?channel_id=UCL-g3eGJi1omSDSz48AML-g | ai | OK
+
+# --- social -> leads for any section
+social | Andrej Karpathy on X (via Google News) | https://news.google.com/rss/search?q=site:x.com%2Fkarpathy&hl=en-US&gl=US&ceid=US:en | - | OK
+social | Yann LeCun on X (via Google News) | https://news.google.com/rss/search?q=site:x.com%2Fylecun&hl=en-US&gl=US&ceid=US:en | - | live
+social | Satya Nadella on X (via Google News) | https://news.google.com/rss/search?q=site:x.com%2Fsatyanadella&hl=en-US&gl=US&ceid=US:en | - | live
+social | NVIDIA on X (via Google News) | https://news.google.com/rss/search?q=site:x.com%2Fnvidia&hl=en-US&gl=US&ceid=US:en | - | OK
+social | Slashdot | https://rss.slashdot.org/Slashdot/slashdotMain | ai | OK
+social | Lobsters AI | https://lobste.rs/t/ai.rss | - | live
