@@ -124,7 +124,9 @@ def S(idx, summary, relevance, tags, **extra):
         if source is None:
             m = re.search(r" - ([^-]+)$", a["title"])
             source = m.group(1).strip() if m else a["source"]
-    return _story(title, summary, source or a["source"], url or a["url"], relevance, tags, extra)
+    # A Bing News item names its outlet in `publisher`, so the PDF never says "via Bing News".
+    source = source or a.get("publisher") or a["source"]
+    return _story(title, summary, source, url or a["url"], relevance, tags, extra)
 
 
 def O(title, summary, source, url, relevance, tags, **extra):

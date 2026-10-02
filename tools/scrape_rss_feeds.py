@@ -24,12 +24,15 @@ import re
 import sys
 import time
 import unicodedata
+import urllib.parse
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 
 import feedparser
 import requests
 
 from feed_sources import EXTRA, RSS
+from web_text import UA as BROWSER_UA
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TMP_DIR = os.path.join(PROJECT_ROOT, ".tmp")
@@ -177,6 +180,52 @@ def qualifies_as_opportunity(title, summary=""):
 
     return bool(_AI_TERMS.search(title) or _AI_TERMS.search(summary or ""))
 
+
+# ── Relevance filters and link clean-up ──────────────────────────────────────
+# Sources flagged "ai" in feed_sources.py are general-interest feeds (BBC, Inc42,
+# Ars Technica): only their AI stories are kept. Sources flagged "musk" (Teslarati,
+# Electrek) keep only stories where Musk talks about AI, autonomy or the hardware
+# behind them; his pay package or Tesla's delivery numbers are not that.
+
+BOT_UA = "GlobalAINews/1.0 (RSS Reader)"
+MAX_PER_FEED = 60
+
+_AI_NEWS = re.compile(
+    r"\b(a\.?i\.?|artificial intelligence|machine learning|deep learning|neural net\w*|generative|"
+    r"genai|llms?|large language models?|chatbots?|agentic|ai agents?|superintelligence|agi|openai|"
+    r"chatgpt|gpt-?\d[\w.]*|anthropic|claude|gemini|deepmind|copilot|llama|mistral|deepseek|qwen|"
+    r"grok|xai|hugging ?face|humanoid|robotaxi|self-driving)\b", re.I)
+_MUSK = re.compile(r"\b(elon|musk)\b", re.I)
+_MUSK_AI = re.compile(
+    r"\b(fsd|full self-driving|autopilot|optimus|dojo|neuralink|autonomy|autonomous|compute|chips?)\b", re.I)
+
+
+def mentions_ai(title, summary=""):
+    """True when a general-interest feed entry is about AI."""
+    return bool(_AI_NEWS.search(title or "") or _AI_NEWS.search(summary or ""))
+
+
+def musk_on_ai(title, summary=""):
+    """True when the entry has Musk talking about AI, autonomy or the hardware behind them."""
+    text = f"{title or ''} {summary or ''}"
+    return bool(_MUSK.search(text) and (_AI_NEWS.search(text) or _MUSK_AI.search(text)))
+
+
+def unwrap_bing(link):
+    """Publisher URL from a Bing News click-tracking link; any other link passes through."""
+    if "bing.com/news/apiclick" not in (link or ""):
+        return link
+    target = urllib.parse.parse_qs(urllib.parse.urlparse(link).query).get("url")
+    return target[0] if target else link
+
+
+def _bing_publisher(entry):
+    """The outlet a Bing News item came from. Bing's RSS carries it as <News:Source>,
+    which feedparser exposes as news_source; not yet seen on a live feed (2026-10-02)."""
+    source = entry.get("news_source") or (entry.get("source") or {}).get("title")
+    return " ".join(str(source).split()) if source else ""
+
+
 SUMMARY_MAX_CHARS = 1500
 
 
@@ -194,69 +243,249 @@ def plain_summary(raw):
     return " ".join(text.split())[:SUMMARY_MAX_CHARS]
 
 
-def fetch_feed(name, url, cutoff_time, timeout=15):
-    """Fetch and parse a single RSS feed. Returns list of articles."""
+def articles_from_feed(name, feed, cutoff_time):
+    """Articles from a parsed feed: dated, inside the window, and past the source's filters.
+
+    Pure, so a test can pass feedparser.parse(xml_text).
+    """
     is_arxiv = name.startswith("arXiv")
+    is_bing = "(via Bing News)" in name
+    cap = ARXIV_MAX_PER_FEED if is_arxiv else MAX_PER_FEED
     articles = []
     undated = 0
-    try:
-        response = requests.get(url, timeout=timeout, headers={
-            "User-Agent": "GlobalAINews/1.0 (RSS Reader)"
-        })
-        response.raise_for_status()
-        feed = feedparser.parse(response.content)
-
-        for entry in feed.entries:
-            # Parse published date
-            published = None
-            for date_field in ("published_parsed", "updated_parsed", "created_parsed"):
-                parsed_time = getattr(entry, date_field, None)
-                if parsed_time:
-                    published = datetime(*parsed_time[:6], tzinfo=timezone.utc)
-                    break
-
-            # Drop anything we cannot date. Previously undated entries were kept
-            # ("better to over-include"), but the digest now promises a strict
-            # window, and an undated article cannot be shown to be inside it.
-            if published is None:
-                undated += 1
-                continue
-            if published < cutoff_time:
-                continue
-
-            article = {
-                "title": getattr(entry, "title", "No title"),
-                "url": getattr(entry, "link", ""),
-                "source": name,
-                "published": published.isoformat(),
-                "published_date": published.strftime("%Y-%m-%d"),
-                "summary": plain_summary(getattr(entry, "summary", getattr(entry, "description", ""))),
-                "category": _categorize_source(name),
-            }
-            # Opportunity feeds are noisy by design (broad queries, wide window),
-            # so every entry carries the gate's verdict and the curation step can
-            # filter on a field rather than re-deriving the rule.
-            if name in OPPORTUNITY_SOURCES:
-                article["is_opportunity"] = qualifies_as_opportunity(
-                    article["title"], article["summary"]
-                )
-            articles.append(article)
-
-            # Cap arXiv to avoid flooding with hundreds of papers
-            if is_arxiv and len(articles) >= ARXIV_MAX_PER_FEED:
+    for entry in feed.entries:
+        # Parse published date
+        published = None
+        for date_field in ("published_parsed", "updated_parsed", "created_parsed"):
+            parsed_time = getattr(entry, date_field, None)
+            if parsed_time:
+                published = datetime(*parsed_time[:6], tzinfo=timezone.utc)
                 break
 
+        # Drop anything we cannot date. Previously undated entries were kept
+        # ("better to over-include"), but the digest now promises a strict
+        # window, and an undated article cannot be shown to be inside it.
+        if published is None:
+            undated += 1
+            continue
+        if published < cutoff_time:
+            continue
+
+        title = getattr(entry, "title", "No title")
+        summary = plain_summary(getattr(entry, "summary", getattr(entry, "description", "")))
+        if name in AI_FILTER_SOURCES and not mentions_ai(title, summary):
+            continue
+        if name in MUSK_FILTER_SOURCES and not musk_on_ai(title, summary):
+            continue
+
+        article = {
+            "title": title,
+            "url": unwrap_bing(getattr(entry, "link", "")),
+            "source": name,
+            "published": published.isoformat(),
+            "published_date": published.strftime("%Y-%m-%d"),
+            "summary": summary,
+            "category": _categorize_source(name),
+        }
+        # The PDF names the outlet, not "via Bing News" (builder_helpers.S()).
+        if is_bing and _bing_publisher(entry):
+            article["publisher"] = _bing_publisher(entry)
+        # Opportunity feeds are noisy by design (broad queries, wide window),
+        # so every entry carries the gate's verdict and the curation step can
+        # filter on a field rather than re-deriving the rule.
+        if name in OPPORTUNITY_SOURCES:
+            article["is_opportunity"] = qualifies_as_opportunity(
+                article["title"], article["summary"]
+            )
+        articles.append(article)
+
+        # Cap every feed; arXiv hardest, since it returns hundreds of papers.
+        if len(articles) >= cap:
+            break
+
+    if undated:
+        print(f"  [DROPPED {undated} undated] {name}")
+    return articles
+
+
+def fetch_feed(name, url, cutoff_time, timeout=20):
+    """Fetch and parse a single RSS feed. Returns list of articles."""
+    ua = BROWSER_UA if name in BROWSER_UA_SOURCES else BOT_UA
+    try:
+        response = requests.get(url, timeout=timeout, headers={"User-Agent": ua})
+        response.raise_for_status()
+        return articles_from_feed(name, feedparser.parse(response.content), cutoff_time)
     except requests.exceptions.Timeout:
         print(f"  [TIMEOUT] {name} ({url})")
     except requests.exceptions.RequestException as e:
         print(f"  [ERROR] {name}: {e}")
     except Exception as e:
         print(f"  [PARSE ERROR] {name}: {e}")
+    return []
 
-    if undated:
-        print(f"  [DROPPED {undated} undated] {name}")
 
-    return articles
+# ── Non-RSS readers (EXTRA in feed_sources.py) ────────────────────────────────
+# Each reader takes (name, arg, cutoff_time) and returns the same article dicts as
+# articles_from_feed. On any error it prints one line and returns [], so one broken
+# page never stops the scrape. Parsing sits in pure functions for offline tests.
+
+_REL = re.compile(r"(\d+)\s*(minutes?|mins?|m|hours?|hrs?|h)\b", re.I)
+
+
+def relative_to_datetime(text, now):
+    """'13h ago' covers 13:00-13:59 ago, so the older bound is used. Days and months return None."""
+    m = _REL.search(text or "")
+    if not m:
+        return None
+    n = int(m.group(1)) + 1
+    return now - (timedelta(minutes=n) if m.group(2).lower().startswith("m") else timedelta(hours=n))
+
+
+def _article(name, title, url, published, summary, source=None):
+    return {
+        "title": title,
+        "url": url,
+        "source": source or name,
+        "published": published.isoformat(),
+        "published_date": published.strftime("%Y-%m-%d"),
+        "summary": summary,
+        "category": _categorize_source(name),
+    }
+
+
+def parse_hn(js, name, cutoff_time):
+    """Hacker News stories (Algolia search JSON) inside the window that are about AI."""
+    out = []
+    for hit in js.get("hits") or []:
+        title = hit.get("title") or ""
+        created = hit.get("created_at_i")
+        if not title or not created or not mentions_ai(title):
+            continue
+        published = datetime.fromtimestamp(int(created), tz=timezone.utc)
+        if published < cutoff_time:
+            continue
+        thread = f"https://news.ycombinator.com/item?id={hit.get('objectID')}"
+        summary = (f"{hit.get('points', 0)} points and {hit.get('num_comments', 0)} comments "
+                   f"on Hacker News. Discussion: {thread}")
+        out.append(_article(name, title, hit.get("url") or thread, published, summary))
+    return out
+
+
+def read_hn(name, _arg, cutoff_time):
+    try:
+        r = requests.get("https://hn.algolia.com/api/v1/search", timeout=20, params={
+            "tags": "story",
+            "numericFilters": f"created_at_i>{int(cutoff_time.timestamp())},points>80",
+            "hitsPerPage": 60,
+        }, headers={"User-Agent": BOT_UA})
+        r.raise_for_status()
+        return parse_hn(r.json(), name, cutoff_time)
+    except Exception as e:  # noqa: BLE001 - one reader must never stop the scrape
+        print(f"  [ERROR] {name}: {e}")
+        return []
+
+
+def parse_hf_models(items, name, cutoff_time):
+    """Hugging Face models created inside the window, from the likes7d listing."""
+    out = []
+    for item in items or []:
+        model_id, created = item.get("id"), item.get("createdAt")
+        if not model_id or not created:
+            continue
+        published = datetime.fromisoformat(created.replace("Z", "+00:00"))
+        if published < cutoff_time:
+            continue
+        summary = (f"{model_id} was published on Hugging Face and drew {item.get('likes', 0)} likes "
+                   f"and {item.get('downloads', 0)} downloads in its first days.")
+        out.append(_article(name, f"New on Hugging Face: {model_id}",
+                            f"https://huggingface.co/{model_id}", published, summary))
+    return out
+
+
+def read_hf_models(name, _arg, cutoff_time):
+    try:
+        r = requests.get("https://huggingface.co/api/models", timeout=20, params={
+            "sort": "likes7d", "direction": -1, "limit": 100,
+        }, headers={"User-Agent": BOT_UA})
+        r.raise_for_status()
+        return parse_hf_models(r.json(), name, cutoff_time)
+    except Exception as e:  # noqa: BLE001
+        print(f"  [ERROR] {name}: {e}")
+        return []
+
+
+def _video_renderers(node):
+    if isinstance(node, dict):
+        if "videoRenderer" in node:
+            yield node["videoRenderer"]
+        for value in node.values():
+            yield from _video_renderers(value)
+    elif isinstance(node, list):
+        for value in node:
+            yield from _video_renderers(value)
+
+
+def parse_yt_search(page, name, cutoff_time, now):
+    """Videos from a YouTube search results page, dated from their relative upload time."""
+    m = re.search(r"var ytInitialData = (\{.*?\});</script>", page or "", re.S)
+    if not m:
+        return []
+    out, seen = [], set()
+    for v in _video_renderers(json.loads(m.group(1))):
+        vid = v.get("videoId")
+        title = "".join(r.get("text", "") for r in (v.get("title") or {}).get("runs", []))
+        published = relative_to_datetime((v.get("publishedTimeText") or {}).get("simpleText"), now)
+        if not vid or vid in seen or not title or published is None or published < cutoff_time:
+            continue
+        seen.add(vid)
+        channel = ((v.get("ownerText") or {}).get("runs") or [{}])[0].get("text", "")
+        out.append(_article(name, title, f"https://www.youtube.com/watch?v={vid}", published,
+                            f"YouTube video by {channel or 'an unknown channel'}.",
+                            source=f"{channel} (YouTube)" if channel else name))
+    return out
+
+
+def read_yt_search(name, query, cutoff_time):
+    try:
+        r = requests.get("https://www.youtube.com/results", timeout=20, params={
+            "search_query": query, "sp": "CAISBAgCEAE=",  # videos, uploaded today, newest first
+        }, headers={"User-Agent": BROWSER_UA, "Accept-Language": "en-US,en;q=0.9"})
+        r.raise_for_status()
+        return parse_yt_search(r.text, name, cutoff_time, datetime.now(timezone.utc))
+    except Exception as e:  # noqa: BLE001
+        print(f"  [ERROR] {name}: {e}")
+        return []
+
+
+EXTRA_READERS = {"hn": read_hn, "hf_models": read_hf_models, "yt_search": read_yt_search}
+
+
+# ── Company routing ───────────────────────────────────────────────────────────
+# A story about OpenAI must reach the OpenAI group of the digest even when the copy
+# that survives de-duplication came from The Verge. Only pooled groups are routed:
+# an Indian outlet's OpenAI story stays Indian.
+
+POOL_CATEGORIES = {"general", "company_blog", "video", "social", "showcase"}
+CATEGORY_PRIORITY = ["opportunity", "quantum", "elon_musk", "xai_grok", "openai", "anthropic_claude",
+                     "google", "open_model", "closed_model", "indian", "rsi", "problems",
+                     "automation", "business", "world"]
+_ROUTES = [  # first match wins; Google is last because its name appears in other companies' stories
+    ("elon_musk", re.compile(r"\b(elon|musk)\b", re.I)),
+    ("xai_grok", re.compile(r"\b(xai|grok|spacexai)\b", re.I)),
+    ("openai", re.compile(r"\b(openai|chatgpt|altman|gpt-?\d[\w.]*|sora|codex)\b", re.I)),
+    ("anthropic_claude", re.compile(r"\b(anthropic|claude|amodei)\b", re.I)),
+    ("google", re.compile(r"\b(google|gemini|deepmind|alphabet|pichai|hassabis)\b", re.I)),
+]
+
+
+def route_by_title(article):
+    """Move a pooled article into a company's group when its headline names that company."""
+    if article.get("category") in POOL_CATEGORIES:
+        for category, pattern in _ROUTES:
+            if pattern.search(article.get("title", "")):
+                article["category"] = category
+                break
+    return article
 
 
 # ── Same-story Deduplication ──────────────────────────────────────────────────
@@ -316,11 +545,12 @@ def _same_story(a_tokens, b_tokens, threshold=0.5):
 def _representative(members):
     """Pick which copy of a story to keep.
 
-    Prefers a real publisher feed over a Google News proxy, then the entry with
-    the most summary text, since proxy entries carry only the headline.
+    Prefers a real publisher feed over a Google News or Bing News proxy, then the
+    entry with the most summary text, since proxy entries carry only the headline.
     """
     def rank(a):
-        is_proxy = "Google News" in a.get("source", "")
+        source = a.get("source", "")
+        is_proxy = "via Google News" in source or "via Bing News" in source
         return (is_proxy, -len(a.get("summary") or ""))
     return sorted(members, key=rank)[0]
 
@@ -352,6 +582,17 @@ def deduplicate_stories(articles):
     kept = []
     for _, members in clusters:
         best = _representative(members)
+        # The kept copy takes the most specific group any copy arrived under. A copy from an
+        # opportunity feed counts only if it passed the gate, or real news would be hidden with it.
+        cats = {m.get("category", "general") for m in members
+                if m.get("category") != "opportunity" or m.get("is_opportunity")}
+        specific = [c for c in CATEGORY_PRIORITY if c in cats]
+        if specific:
+            best["category"] = specific[0]
+            if specific[0] == "opportunity":
+                best["is_opportunity"] = True
+            if len(specific) > 1:
+                best["also_in"] = specific[1:]
         others = [m for m in members if m is not best]
         if others:
             # Corroboration is a useful relevance signal, so keep the trail.
@@ -368,8 +609,17 @@ def _categorize_source(source_name):
     return CATEGORY.get(source_name, "general")
 
 
+def _fetch_host(jobs, now):
+    """One host's feeds, in turn and politely. Returns [(name, articles)]."""
+    out = []
+    for name, url in jobs:
+        out.append((name, fetch_feed(name, url, now - timedelta(hours=window_hours_for(name)))))
+        time.sleep(0.6)
+    return out
+
+
 def scrape_all_feeds():
-    """Scrape all RSS feeds and save to JSON."""
+    """Scrape every registered source and save to JSON."""
     os.makedirs(TMP_DIR, exist_ok=True)
 
     now = datetime.now(timezone.utc)
@@ -381,22 +631,40 @@ def scrape_all_feeds():
     print(f"  quantum window : last {QUANTUM_WINDOW_HOURS}h "
           f"({'INCLUDED - quantum day' if is_quantum_day else 'SKIPPED - not Thursday'})")
 
+    # Hosts in parallel, the feeds of one host in turn and politely. The Google
+    # News searches share one host, so they run one after another.
+    hosts = {}
     for name, url in FEEDS.items():
-        is_quantum = name in QUANTUM_SOURCES
-        if is_quantum and not is_quantum_day:
+        if name in QUANTUM_SOURCES and not is_quantum_day:
+            continue
+        hosts.setdefault(urllib.parse.urlparse(url).netloc, []).append((name, url))
+    results = {}
+    with ThreadPoolExecutor(max_workers=8) as ex:
+        readers = {name: ex.submit(EXTRA_READERS[kind], name, arg,
+                                   now - timedelta(hours=window_hours_for(name)))
+                   for name, _category, kind, arg in EXTRA}
+        for batch in ex.map(lambda jobs: _fetch_host(jobs, now), hosts.values()):
+            results.update(batch)
+        for name, future in readers.items():
+            results[name] = future.result()
+
+    # One line per source, in registry order.
+    for name in list(FEEDS) + [e[0] for e in EXTRA]:
+        if name not in results:
             print(f"  [ skipped   ] {name} (quantum runs Thursdays)")
             continue
-
-        cutoff_time = now - timedelta(hours=window_hours_for(name))
-        articles = fetch_feed(name, url, cutoff_time)
+        articles = results[name]
         w = window_hours_for(name)
         tag = f"{w // 24}d" if w >= 48 else f"{w}h"
         if name in OPPORTUNITY_SOURCES:
             kept = sum(1 for a in articles if a.get("is_opportunity"))
             tag += f", {kept}/{len(articles)} pass gate"
         print(f"  [{len(articles):>3} articles] {name}  ({tag})")
-        all_articles.extend(articles)
-        time.sleep(0.5)  # polite delay
+        all_articles.extend(route_by_title(a) for a in articles)
+
+    empty = [name for name, articles in results.items() if not articles]
+    print(f"\nSources: {len(results)} read, {len(results) - len(empty)} returned articles")
+    print(f"  none from: {', '.join(empty) if empty else '-'}")
 
     # Deduplicate by URL
     seen_urls = set()
@@ -408,7 +676,7 @@ def scrape_all_feeds():
 
     # Collapse the same story reported by multiple outlets
     unique_articles, dup_removed = deduplicate_stories(unique_articles)
-    print(f"\nSame-story dedupe: removed {dup_removed} duplicate reports")
+    print(f"Same-story dedupe: removed {dup_removed} duplicate reports")
 
     # Sort by date (newest first)
     unique_articles.sort(
@@ -432,7 +700,7 @@ def scrape_all_feeds():
             "quantum_day": is_quantum_day,
             "total_articles": len(unique_articles),
             "duplicates_removed": dup_removed,
-            "sources_scraped": len(FEEDS),
+            "sources_scraped": len(results),
             "articles": unique_articles,
         }, f, indent=2, ensure_ascii=False)
 

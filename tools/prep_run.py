@@ -54,7 +54,7 @@ def _run(name, args, out_file=None):
 def scrape_is_fresh(max_age_hours=6):
     """True when .tmp/rss_articles.json was written recently enough to reuse.
 
-    A re-run inside the same morning should not re-hit 34 feeds; a run the next
+    A re-run inside the same morning should not re-hit 200+ sources; a run the next
     day must. Six hours splits those without a flag.
     """
     try:
@@ -121,7 +121,8 @@ def main():
         why = "--no-scrape" if args.no_scrape else f"fresh, scraped {when} UTC"
         print(f"\nScrape: reusing {n_arts} articles on disk ({why})")
     else:
-        print("\nScrape: running 34 feeds to completion...")
+        from feed_sources import EXTRA, RSS
+        print(f"\nScrape: running {len(RSS) + len(EXTRA)} sources to completion...")
         name, rc, text = _run("scrape", [os.path.join(TOOLS_DIR, "scrape_rss_feeds.py")],
                               os.path.join(web_text.TMP_DIR, "rss_scrape.log"))
         tail = [l for l in text.strip().splitlines() if l.strip()][-2:]
