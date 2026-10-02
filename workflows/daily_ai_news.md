@@ -545,6 +545,8 @@ names, https, the keyless rule and that every section is fed.
 | Quality-test fixtures ageing into a `stale_story` failure overnight | pinned `now=NOW`, `test_check_quality.py` |
 | Acronym check flagging filenames (`AGENTS.md`, `CLAUDE.md`) and the "video memory, or VRAM," gloss | `ACRONYM_RE` lookahead + `_PRE_GLOSS_RE`, `test_check_quality.py` |
 | Accented letters outside latin-1 printing as `?` ("Anadolu Ajans?", 2026-09-24) | `_fold_to_latin1()` in `sanitize_text()`, `test_sanitize_text.py` |
+| Emoji in post and video titles printing as `?` and blocking the send | `_SYMBOL_CATEGORIES` in `sanitize_text()`, `test_sanitize_text.py` |
+| A summary ending `.”` (curly quote) flagged as truncated | `_is_truncated()`, `test_verify_edition.py` |
 | `write_analyzed()` flagging valid quantum stories as stale against a flat 24h, though the send gate allows 7 days (2026-10-01) | `stale_hours_for(key)` in `builder_helpers.py`, `test_freshness_gate.py` |
 
 ### History
@@ -566,7 +568,9 @@ names, https, the keyless rule and that every section is fed.
   the more specific group instead of the first search's; Hugging Face models are never merged into
   each other; a stale opportunity copy no longer stands in for today's news) and the X post reader
   (only links on X itself, deleted posts count as failed, failures are retried rather than cached).
-  The prep brief names a hackathon platform that went unread. Tests 332 → 370 in 18 files.
+  The prep brief names a hackathon platform that went unread. Emoji in X and YouTube titles are
+  dropped instead of printing as `?`, and a summary ending on a curly closing quote no longer reads
+  as cut off. Tests 332 → 378 in 18 files.
 - **2026-10-01:** Thursday, quantum in. Shipped 63 stories in 13 sections, 0 errors and 0 warnings on
   the first verify (acronyms glossed while the builder was open), oldest story 21.3h on the 24h rule
   and 138h on the 7-day rule; sent 00:22 UTC, 19 minutes after the scrape. Fixed `write_analyzed()`,

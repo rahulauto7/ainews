@@ -73,9 +73,15 @@ def main():
         {"title": "Fine", "summary": "A complete thought. And another one."},
         {"title": "Cut", "summary": "The company said it would"},
         {"title": "Ellipsis", "summary": "The company said it would..."},
+        # Ends on a quoted sentence with curly quotes: complete, and it prints
+        # complete because sanitize_text() straightens the quote.
+        {"title": "Quoted", "summary": "Musk wrote: \u201cIt will be the smartest AI on Earth.\u201d"},
+        {"title": "OpenQuote", "summary": "Musk wrote: \u201cIt will be the smartest"},
     ]}}
     names = [t for t, _ in unfinished_summaries(bad)]
-    cases += 3
+    cases += 5
+    check(failures, "Quoted" not in names, f"a summary ending on a curly quote was flagged: {names}")
+    check(failures, "OpenQuote" in names, f"an unfinished quoted summary was missed: {names}")
     check(failures, "Cut" in names, f"mid-sentence summary missed: {names}")
     check(failures, "Ellipsis" in names, f"trailing ellipsis missed: {names}")
     check(failures, "Fine" not in names, f"complete summary flagged: {names}")

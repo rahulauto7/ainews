@@ -229,8 +229,18 @@ def sanitize_text(text):
     # to their base letter rather than "?". Latin-1 letters are left as they are.
     if any(ord(c) > 0xFF for c in text):
         text = "".join(c if ord(c) <= 0xFF else _fold_to_latin1(c) for c in text)
+    # Drop emoji and the marks that build them (variation selectors, skin tones,
+    # the keycap): they carry no words, and "?" in their place trips the stray-'?'
+    # check. Post and video titles from X and YouTube keep their emoji.
+    if any(ord(c) > 0xFF for c in text):
+        text = "".join(c for c in text
+                       if ord(c) <= 0xFF or unicodedata.category(c) not in _SYMBOL_CATEGORIES)
     # Strip any remaining non-latin-1 characters
     return text.encode("latin-1", errors="replace").decode("latin-1")
+
+
+# Other symbol, modifier symbol, enclosing mark, non-spacing mark.
+_SYMBOL_CATEGORIES = {"So", "Sk", "Me", "Mn"}
 
 
 def _fold_to_latin1(char):
@@ -454,7 +464,9 @@ def build_best_for_box(pdf, y, color, extras, heading="BEST MODEL RIGHT NOW"):
     label_w, why_w = BEST_FOR_LABEL_W, BEST_FOR_WHY_W
     why_x, why_lh = BEST_FOR_WHY_X, BEST_FOR_WHY_LH
 
-    if y + box_h > 275:
+    # The same bottom build_section measures against, or a header it kept on
+    # this page could lose its table overleaf.
+    if y + box_h > PAGE_BOTTOM:
         pdf.add_page()
         y = pdf.get_y() + 2
 

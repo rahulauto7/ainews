@@ -126,6 +126,27 @@ def main():
     cases += 1
     check(failures, not orphans, f"headers parted from their first block: {orphans}")
 
+    # A table section whose header and table only just fit keeps them together:
+    # the header's test and the table's own page break measure the same bottom.
+    from generate_pdf import GlobalAINewsPDF, PAGE_BOTTOM, SECTION_HEAD_H, _best_for_layout, build_section
+    table = full["section_extras"]["open_model_landscape"]
+    probe = GlobalAINewsPDF()
+    probe.add_page()
+    box_h = _best_for_layout(probe, table)[2]
+    split = []
+    for slack in (0.5, 1.5, 2.5):
+        pdf = GlobalAINewsPDF()
+        pdf.set_auto_page_break(auto=True, margin=15)
+        pdf.add_page()
+        pdf.add_page()
+        pdf.set_y(PAGE_BOTTOM - SECTION_HEAD_H - box_h - 2 - slack)  # build_section adds 2
+        head_page = build_section(pdf, "open_model_landscape", [], table)
+        texts = [pg.extract_text() for pg in read(pdf).pages]
+        if "BEST OPEN" not in texts[head_page - 1]:
+            split.append(slack)
+    cases += 1
+    check(failures, not split, f"header and table parted at {split}mm of slack")
+
     # ── 5. Each contents entry links to the page it names ────────────────────
     index = {pg.indirect_reference.idnum: n + 1 for n, pg in enumerate(reader.pages)}
     dests = []

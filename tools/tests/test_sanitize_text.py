@@ -35,6 +35,12 @@ CASES = [
     ("Łukasz from Łódź", "Lukasz from Lódz"),
     # latin-1 characters must pass through untouched
     ("a £10,000 stipend", "a £10,000 stipend"),
+    # Emoji carry no words and are dropped, with the marks that build them:
+    # variation selector, skin tone, keycap. X and YouTube titles keep theirs.
+    ("Grok 5 training starts next month \U0001F680", "Grok 5 training starts next month "),
+    ("Shipped \u2764\ufe0f today", "Shipped  today"),
+    ("Thanks \U0001F44D\U0001F3FD team", "Thanks  team"),
+    ("Top 1\ufe0f\u20e3 pick", "Top 1 pick"),
 ]
 
 

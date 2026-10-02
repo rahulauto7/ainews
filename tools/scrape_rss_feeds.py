@@ -31,8 +31,12 @@ from datetime import datetime, timedelta, timezone
 import feedparser
 import requests
 
-from feed_sources import EXTRA, RSS
-from web_text import UA as BROWSER_UA
+# Siblings import by bare name, so run_daily_pipeline.py's "tools.scrape_rss_feeds"
+# needs this directory on the path, as running the file directly provides.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+from feed_sources import EXTRA, RSS  # noqa: E402
+from web_text import UA as BROWSER_UA  # noqa: E402
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TMP_DIR = os.path.join(PROJECT_ROOT, ".tmp")

@@ -66,6 +66,17 @@ def check(failures, cond, msg):
 
 def main():
     failures, cases = [], 0
+
+    # run_daily_pipeline.py imports the scraper as tools.scrape_rss_feeds, from the
+    # project root, where its bare sibling imports (feed_sources, web_text) need
+    # the module to put its own directory on the path.
+    import subprocess
+    root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    r = subprocess.run([sys.executable, "-c", "import tools.scrape_rss_feeds"], cwd=root,
+                       capture_output=True, text=True)
+    cases += 1
+    check(failures, r.returncode == 0,
+          f"tools.scrape_rss_feeds does not import from the root: {r.stderr.strip()[-200:]}")
     rss, extra = feed_sources.RSS, feed_sources.EXTRA
 
     # ── 1. Names unique, URLs https ──────────────────────────────────────────
