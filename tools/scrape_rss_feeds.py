@@ -1,5 +1,5 @@
 """
-Scrape RSS feeds from 25+ AI news sources.
+Scrape every source in feed_sources.py: RSS and Atom feeds, plus the non-RSS readers in EXTRA.
 
 Time windows (see WINDOW_HOURS / QUANTUM_SOURCES below):
   - Every news source uses a strict LAST 24 HOURS window. The scrape cuts at
@@ -29,96 +29,21 @@ from datetime import datetime, timedelta, timezone
 import feedparser
 import requests
 
+from feed_sources import EXTRA, RSS
+
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TMP_DIR = os.path.join(PROJECT_ROOT, ".tmp")
 OUTPUT_FILE = os.path.join(TMP_DIR, "rss_articles.json")
 
-# ── RSS Feed Sources ──────────────────────────────────────────────────────────
-# Organized by category for easy maintenance
-FEEDS = {
-    # General AI News
-    "The Verge AI": "https://www.theverge.com/rss/ai-artificial-intelligence/index.xml",
-    "TechCrunch AI": "https://techcrunch.com/category/artificial-intelligence/feed/",
-    "Ars Technica AI": "https://feeds.arstechnica.com/arstechnica/technology-lab",
-    "MIT Technology Review": "https://www.technologyreview.com/feed/",
-    "VentureBeat AI": "https://venturebeat.com/category/ai/feed/",
-    "The Decoder": "https://the-decoder.com/feed/",
-    "AI News": "https://www.artificialintelligence-news.com/feed/",
-    "Wired AI": "https://www.wired.com/feed/tag/ai/latest/rss",
-    "ZDNet AI": "https://www.zdnet.com/topic/artificial-intelligence/rss.xml",
-    "The Register AI": "https://www.theregister.com/software/ai_ml/headlines.atom",
-
-    # Company Blogs
-    "OpenAI Blog": "https://openai.com/blog/rss.xml",
-    "Google AI Blog": "https://blog.google/technology/ai/rss/",
-    "Hugging Face Blog": "https://huggingface.co/blog/feed.xml",
-
-    # Indian AI Sources
-    "Inc42": "https://inc42.com/feed/",
-    "YourStory": "https://yourstory.com/feed",
-    "Economic Times Tech": "https://economictimes.indiatimes.com/tech/rssfeeds/13357270.cms",
-
-    # Quantum Computing + AI  (7-day window, Thursdays only - see QUANTUM_SOURCES)
-    # The arXiv RSS feed only ever carries a SINGLE day of papers (verified
-    # 2026-09-03: all 143 entries shared one date), so widening the cutoff on it
-    # retrieves nothing older. Real 7-day coverage comes from the Google News
-    # proxy below, using the same when:Nd trick already proven on the Musk and
-    # Anthropic feeds. The arXiv API (export.arxiv.org) was tried first and is
-    # not usable here - it returned HTTP 429 on every attempt.
-    "arXiv Quantum Physics": "https://rss.arxiv.org/rss/quant-ph",
-    "Quantum + AI (via Google News)": "https://news.google.com/rss/search?q=(quantum+computing+OR+quantum+machine+learning)+(AI+OR+%22machine+learning%22+OR+%22neural+network%22)+when:7d&hl=en-US&gl=US&ceid=US:en",
-    "arXiv AI": "https://rss.arxiv.org/rss/cs.AI",
-    "arXiv Machine Learning": "https://rss.arxiv.org/rss/cs.LG",
-
-    # Anthropic / Claude / Claude Code
-    # anthropic.com/rss.xml returns 404 - proxy via Google News (same trick as the
-    # Musk feed below). Two queries: company/model news, and Claude Code specifically.
-    "Anthropic News (via Google News)": "https://news.google.com/rss/search?q=Anthropic+OR+%22Claude+Opus%22+OR+%22Claude+Sonnet%22+when:2d&hl=en-US&gl=US&ceid=US:en",
-    "Claude Code (via Google News)": "https://news.google.com/rss/search?q=%22Claude+Code%22+OR+%22Claude+Agent+SDK%22+OR+%22Claude+Skills%22+when:3d&hl=en-US&gl=US&ceid=US:en",
-
-    # xAI / Elon Musk AI
-    "xAI Blog": "https://x.ai/blog/rss.xml",
-    # Elon Musk posts on x.com — direct scraping requires auth (402), so we
-    # proxy via Google News RSS filtered to site:x.com/elonmusk
-    "Elon Musk on X (via Google News)": "https://news.google.com/rss/search?q=%22elon+musk%22+(xAI+OR+Grok+OR+AI)+site:x.com%2Felonmusk&hl=en-US&gl=US&ceid=US:en",
-
-    # Open Models / Open Weights
-    # Open-weight releases usually break on Hugging Face, Reddit and vendor blogs
-    # a day or two before the general AI outlets pick them up, so this section gets
-    # its own sources rather than living off the general feeds.
-    # Probed 2026-09-07 — four candidates were rejected and are NOT worth retrying:
-    #   mistral.ai/news/feed.xml, ai.meta.com/blog/rss/, lmstudio.ai/blog/rss.xml → 404
-    #   qwenlm.github.io/blog/index.xml → 200 but abandoned (newest post 2025-09-22)
-    #   papers.takara.ai/api/feed → 200 but lags ~4 days; arXiv AI/ML already covers papers
-    "Open Models (via Google News)": "https://news.google.com/rss/search?q=(%22open+weights%22+OR+%22open-weight+model%22+OR+%22open+source+model%22)+(Llama+OR+Qwen+OR+DeepSeek+OR+Mistral+OR+Gemma+OR+Kimi+OR+GLM+OR+OLMo+OR+Falcon)+when:2d&hl=en-US&gl=US&ceid=US:en",
-    "Open Model Benchmarks (via Google News)": "https://news.google.com/rss/search?q=(%22open+model%22+OR+%22open-weight%22+OR+%22open+source+LLM%22)+(benchmark+OR+leaderboard+OR+outperforms+OR+release)+when:3d&hl=en-US&gl=US&ceid=US:en",
-    # Highest-yield open-model source by a wide margin (20 of 25 entries inside 24h
-    # when probed). Community posts, so weight the *linked* release over the commentary.
-    "r/LocalLLaMA": "https://www.reddit.com/r/LocalLLaMA/.rss",
-    # Live but infrequent (roughly fortnightly) — carries local-model release notes.
-    "Ollama Blog": "https://ollama.com/blog/rss.xml",
-
-    # Hackathons, Contests & Opportunities  (30-day window - see OPPORTUNITY_SOURCES)
-    # These are things a reader can ENTER or APPLY TO, not news about them, so the
-    # feed has to reach back much further than a day: a hackathon closing in three
-    # weeks was announced last month. Probed 2026-09-07 - four dedicated platforms
-    # were rejected and are NOT worth retrying:
-    #   devpost.com/hackathons.rss     → HTTP 406 on both a bot UA and a browser UA
-    #   mlh.io/seasons/2026/events.rss → HTTP 200 but zero entries (no longer RSS)
-    #   hackerearth.com/challenges/feed/, indiaai.gov.in/rss and /feed → 404
-    #   opportunitydesk.org/feed/ → live, but general opportunities (water prizes,
-    #     film fellowships); the AI hit rate was too low to justify the noise
-    # Google News search queries cover the same ground and were the only sources
-    # that actually returned entrants: 57 / 17 / 6 / 74 entries when probed.
-    "AI Hackathons (via Google News)": "https://news.google.com/rss/search?q=%22AI+hackathon%22+OR+%22hackathon%22+(AI+OR+%22artificial+intelligence%22+OR+%22machine+learning%22)+when:30d&hl=en-US&gl=US&ceid=US:en",
-    "AI Competitions (via Google News)": "https://news.google.com/rss/search?q=(%22AI+challenge%22+OR+%22AI+competition%22+OR+%22AI+contest%22)+(prize+OR+submissions+OR+registration+OR+deadline)+when:30d&hl=en-US&gl=US&ceid=US:en",
-    "AI Programs (via Google News)": "https://news.google.com/rss/search?q=(%22AI+accelerator+program%22+OR+%22AI+incubator%22+OR+%22AI+fellowship%22+OR+%22AI+residency%22)+(applications+OR+cohort+OR+apply)+when:30d&hl=en-US&gl=US&ceid=US:en",
-    "AI Applications Open (via Google News)": "https://news.google.com/rss/search?q=(%22applications+open%22+OR+%22apply+now%22+OR+%22call+for+applications%22)+(AI+OR+%22artificial+intelligence%22)+(program+OR+cohort+OR+accelerator+OR+grant+OR+hackathon)+when:30d&hl=en-US&gl=US&ceid=US:en",
-
-    # AI Tools & Business
-    "Product Hunt AI": "https://www.producthunt.com/feed?category=artificial-intelligence",
-    "Futurism": "https://futurism.com/feed",
-}
+# ── Sources ───────────────────────────────────────────────────────────────────
+# Every source, its digest group and its flags live in feed_sources.py, which also
+# lists the sources tested and rejected. The sets below are derived from it.
+FEEDS = {name: url for name, url, _category, _flags in RSS}
+CATEGORY = {name: category for name, _url, category, _flags in RSS}
+CATEGORY.update({name: category for name, category, _kind, _arg in EXTRA})
+AI_FILTER_SOURCES = {name for name, _u, _c, flags in RSS if "ai" in flags.split()}
+MUSK_FILTER_SOURCES = {name for name, _u, _c, flags in RSS if "musk" in flags.split()}
+BROWSER_UA_SOURCES = {name for name, _u, _c, flags in RSS if "browser" in flags.split()}
 
 
 # arXiv feeds return hundreds of papers — limit to most relevant
@@ -155,17 +80,8 @@ QUANTUM_WINDOW_HOURS = QUANTUM_RULE_HOURS - BUILD_ALLOWANCE_HOURS
 # day while the entry windows were still open.
 OPPORTUNITY_WINDOW_HOURS = 24 * 30
 
-QUANTUM_SOURCES = {
-    "arXiv Quantum Physics",
-    "Quantum + AI (via Google News)",
-}
-
-OPPORTUNITY_SOURCES = {
-    "AI Hackathons (via Google News)",
-    "AI Competitions (via Google News)",
-    "AI Programs (via Google News)",
-    "AI Applications Open (via Google News)",
-}
+QUANTUM_SOURCES = {name for name, category in CATEGORY.items() if category == "quantum"}
+OPPORTUNITY_SOURCES = {name for name, category in CATEGORY.items() if category == "opportunity"}
 
 # Monday=0 ... Thursday=3. Quantum sources are only scraped on this weekday.
 # Opportunity sources have no such restriction - they run every day.
@@ -448,32 +364,8 @@ def deduplicate_stories(articles):
 
 
 def _categorize_source(source_name):
-    """Map source to broad category for initial sorting."""
-    categories = {
-        "indian": ["Inc42", "YourStory", "Economic Times Tech"],
-        "quantum": ["arXiv Quantum Physics"],
-        "ai_research": ["arXiv AI", "arXiv Machine Learning"],
-        "showcase": ["Product Hunt AI"],
-        "opportunity": [
-            "AI Hackathons (via Google News)",
-            "AI Competitions (via Google News)",
-            "AI Programs (via Google News)",
-            "AI Applications Open (via Google News)",
-        ],
-        "company_blog": ["OpenAI Blog", "Google AI Blog", "Hugging Face Blog"],
-        "anthropic_claude": ["Anthropic News (via Google News)", "Claude Code (via Google News)"],
-        "elon_xai": ["xAI Blog", "Elon Musk on X (via Google News)"],
-        "open_model": [
-            "Open Models (via Google News)",
-            "Open Model Benchmarks (via Google News)",
-            "r/LocalLLaMA",
-            "Ollama Blog",
-        ],
-    }
-    for cat, sources in categories.items():
-        if source_name in sources:
-            return cat
-    return "general"
+    """The digest group a source feeds, from the registry."""
+    return CATEGORY.get(source_name, "general")
 
 
 def scrape_all_feeds():
