@@ -115,7 +115,9 @@ def _is_truncated(summary):
         return True
     if s.endswith("..") or s.endswith("…"):
         return True
-    return not re.search(r"[.!?][\"')\]]?$", s)
+    # Curly closing quotes count: a summary ending on a quoted sentence ("...on
+    # Earth.”) prints complete, because sanitize_text() straightens the quote.
+    return not re.search(r"[.!?][\"'”’)\]]{0,2}$", s)
 
 
 # Words an expansion may contain without contributing an initial. "Society of

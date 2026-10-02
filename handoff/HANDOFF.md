@@ -18,15 +18,15 @@ sample edition, which need a machine that can reach the news sites (the cloud se
 4. **Tests are plain scripts, not pytest.** One file: `python3 tools/tests/test_x.py`. Whole suite:
    `python3 -c "import sys; sys.path.insert(0,'tools'); import verify_edition as v; ok, l = v.run_tests(); print('\n'.join(l)); print('ALL PASS' if ok else 'FAILURES')"`
    Baseline before the restructure: 192 cases in 11 files. After tasks 1-8: 332 cases in 17 files.
-   After the 15-page limit and the review fixes: 370 cases in 18 files.
+   After the 15-page limit and the review fixes: 378 cases in 18 files.
 5. **Rahul's plan showed 76% of its weekly limit used on 2 Oct 2026.** Work in few, large steps, give a
    one-line progress note between them, and stay on the task list.
 
 ## Current state
-- On the branch: 16 sections (15 without Quantum), 214 feeds plus 4 non-RSS readers in
+- On `main`: 16 sections (15 without Quantum), 214 feeds plus 4 non-RSS readers in
   `tools/feed_sources.py`, an edition of at most 15 pages (3-5 stories a section, summaries of 400-800
-  characters printed whole, a linked contents list on page 1, sections flowing on). On `main`
-  until the pull request merges: the old 13 sections and 34 feeds.
+  characters printed whole, a linked contents list on page 1, sections flowing on). Merged to `main`
+  on 2 Oct 2026 (PR #1).
 - Built differently from the plan, on purpose: a summary block taller than a whole page starts where it
   is instead of forcing a page break (no near-empty page under a section header); YouTube search videos
   carry the source `<channel> (YouTube)` so the digest marks them `YT-`; an explicit
