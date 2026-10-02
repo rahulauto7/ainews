@@ -1,13 +1,16 @@
 # Daily AI News Pipeline — Master Workflow
 
 ## Objective
-Generate and deliver a daily AI news PDF covering **12 sections** to Gmail by 7:00 AM IST.
+Generate and deliver a daily AI news PDF covering **16 sections** to Gmail by 7:00 AM IST.
 Channel focus is **AI automation**, but the summaries themselves are written as plain, self-contained
 news explanations — see the **Plain-Language News Rule**.
 
-**Quantum + AI is weekly (Thursdays only).** On Fri–Wed the pipeline runs 11 sections.
+**Quantum + AI is weekly (Thursdays only).** On Fri–Wed the pipeline runs 15 sections.
 `QUANTUM_WEEKDAY = 3` in `scrape_rss_feeds.py` is authoritative; `prep_run.py` prints which way today
 falls, so it never has to be worked out by hand.
+
+**No page limit.** The edition runs as long as the news needs: no page cap, no story cap beyond the
+3–6 per section, and no layout compression. A 10-page design was proposed and rejected on 2026-10-02.
 
 ---
 
@@ -67,25 +70,39 @@ python3 tools/verify_edition.py --send    # ~10s — every check, the backup, th
 
 ### Step 1 — `python3 tools/prep_run.py`
 Runs the scrape to completion (nothing is detached, so nothing needs polling), then the digest,
-Devpost and the carry-forward recheck **in parallel with the test suite**, and prints one brief:
-today's date and whether Quantum is in, the 12 section keys in render order, the last three editions
-on disk for the duplicate check, and the test result as one line.
+Devpost, the carry-forward recheck and the other hackathon platforms **in parallel with the test
+suite**, and prints one brief: today's date and whether Quantum is in, the 16 section keys in render
+order, the last three editions on disk for the duplicate check, and the test result as one line.
 
-Outputs: `.tmp/rss_articles.json`, `.tmp/digest.md`, `.tmp/devpost.txt`, `.tmp/recheck.txt`.
+The scrape reads every source in the registry, `tools/feed_sources.py`: 214 RSS and Atom feeds plus
+four non-RSS readers (Hacker News, Hugging Face new models, two YouTube searches), all keyless. Hosts
+are fetched in parallel; the 41 Google News searches share one host and run in turn, about a minute.
+`.tmp/rss_scrape.log` ends with `Sources: N read, M returned articles` and a `none from:` line.
+
+Outputs: `.tmp/rss_articles.json`, `.tmp/digest.md`, `.tmp/devpost.txt`, `.tmp/recheck.txt`,
+`.tmp/hackathons.txt`.
 
 - `--no-scrape` reuses the scrape on disk. A scrape under 6 hours old is reused automatically, so a
-  second run the same morning does not re-hit 34 feeds; the next day's run always re-scrapes.
-- If the scrape fails, it stops there — RSS is the only input source.
+  second run the same morning does not re-hit 200+ sources; the next day's run always re-scrapes.
+- If the scrape fails, it stops there — the scrape is the only input source.
 
 ### Step 2 — Curate (agent-driven; the only step that needs a session)
-1. **Read `.tmp/digest.md`.** One line per article grouped by feed category, biggest story first,
-   `PRINTED mm-dd` on anything from the last three editions, gate-passing opportunities, and
-   yesterday's opportunities, `best_for` table and rejection log. ~17k tokens in place of the
-   ~100k `rss_articles.json`.
+1. **Read `.tmp/digest.md`.** One line per article, grouped in the order of the 16 sections (each
+   group's heading names its section after `->`), biggest story first and direct feeds before search
+   proxies, `PRINTED mm-dd` on anything from the last three editions, `{also: ...}` on a story that
+   fits more than one group, gate-passing opportunities, and yesterday's opportunities, `best_for`
+   table and rejection log. **Each group is capped** (40; general 60; research, video and social 25)
+   and ends `(+K more in rss_articles.json, not shown)`: the cap limits what you read, never how many
+   stories a section prints. Aim to keep the file under ~35k tokens; `prep_run.py` prints its size.
 2. **`python3 tools/fetch_articles.py IDX IDX ...`** for the shortlist. Decodes Google News proxy
    links, fetches publisher pages in parallel, caches under `.tmp/articles/`, flags
    `OLD` / `THIN` / `FAILED` / `X POST`. **Batch it** — one call with 20 indices is one turn.
-3. **`.tmp/devpost.txt` and `.tmp/recheck.txt`** are already on disk from step 1, for sections 1–2.
+   **X posts are read in full** through the keyless embed endpoint: the whole post, any quoted post,
+   the reply line, and the post's own timestamp on the head line. Pass that timestamp to
+   `S(..., published_at=...)` so the 24h rule measures the post, not the day Google indexed it. The
+   `X POST` flag now means the read failed and the feed headline is all there is.
+3. **`.tmp/devpost.txt`, `.tmp/hackathons.txt` and `.tmp/recheck.txt`** are already on disk from
+   step 1, for sections 1–2.
    `python3 tools/find_opportunities.py check URL...` is the only one that runs on demand, for an
    opportunity neither file covers.
 4. **Write `.tmp/build_analyzed_<DATE>.py`** against `tools/builder_helpers.py` (`S`, `O`,
@@ -124,24 +141,36 @@ needs a browser.
 
 ---
 
-## The 12 PDF Sections
-In render order. `prep_run.py` prints the keys, so they are never guessed:
+## The 16 PDF Sections
+In render order, Rahul's list of 2026-10-02. `prep_run.py` prints the keys, so they are never guessed:
 
 1. **AI Hackathons** — high-prize AI hackathons and competitions with entry deadlines, globally
    scoped, open to professionals and founders
 2. **AI Grants, Fellowships & Programs** — grants, fellowships, accelerators, incubators,
    residencies and cohort programmes
-3. **Quantum + AI** — *weekly, Thursdays only* — quantum breakthroughs where AI is genuinely involved
-4. **AI Self-Improvement (RSI)** — recursive self-improvement, AGI progress, alignment research
-5. **Elon Musk's AI Vision** — xAI, Grok, Musk's statements & posts
-6. **Indian AI Industry** — India-specific AI news, policy, startups, government
-7. **Anthropic & Claude Code** — Claude models, Claude Code, Agent SDK, Anthropic company & safety news
-8. **Open Models & Open Weights** — open-weight releases, licences & benchmarks, plus a standing
-   "best open model for what" table
-9. **AI Automation & Business** — AI automation news, agentic tooling, market demand
-10. **Global AI News** — worldwide AI: US, EU, China, Japan, Korea, Middle East
-11. **Unaddressed AI Problems** — real pain points nobody is solving — market gaps
-12. **AI Business Opportunities** — emerging opportunities — India & world
+3. **AI Self-Improvement (RSI)** — recursive self-improvement, AGI progress, alignment research
+4. **Quantum + AI** — *weekly, Thursdays only* — quantum breakthroughs where AI is genuinely involved
+5. **Unaddressed AI Problems** — real pain points nobody is solving — market gaps
+6. **AI Automation & Business** — AI automation news, agentic tooling, market demand
+7. **AI Business Opportunities** — emerging opportunities — India & world
+8. **Indian AI Industry** — India-specific AI news, policy, startups, government
+9. **Global AI News** — worldwide AI: US, EU, China, Japan, Korea, Middle East
+10. **OpenAI** — OpenAI and ChatGPT: models, products, research, deals, people and policy
+11. **Google AI** — Google, Gemini and DeepMind: models, products, research and company moves
+12. **Anthropic & Claude Code** — Claude models, Claude Code, Agent SDK, Anthropic company & safety news
+13. **xAI & Grok** — xAI the company and its Grok models: releases, features, funding, deals, disputes
+14. **Open Models & Open Weights** — open-weight releases, licences & benchmarks, plus a standing
+    "best open model for what" table
+15. **Closed Models & Frontier APIs** — proprietary frontier models: releases, pricing & benchmarks,
+    plus a standing "best closed model for what" table
+16. **Elon Musk on AI** — Musk's own point of view on AI, from his posts and from across the web
+
+**Routing rule: a story prints once.** Company news goes to that company's section (10–13). A
+cross-vendor comparison, benchmark or price table goes to Closed Models; an open-weight release goes
+to Open Models whoever made it. What Musk himself says goes to Elon Musk on AI; xAI company and
+product news goes to xAI & Grok. Global AI News takes the rest: governments, Meta, Microsoft, NVIDIA,
+Apple, Chinese labs. The scraper pre-sorts the digest the same way (a pooled headline naming OpenAI,
+Google, Anthropic, xAI or Musk moves into that group), but the curator decides.
 
 ---
 
@@ -170,9 +199,13 @@ itself got lost.
   defined in the same sentence. This is the most common failure mode and the one that made the
   2026-09-03 first draft unreadable. `check_quality.py` flags ALL-CAPS acronyms it cannot find
   spelled out, and runs inside `verify_edition.py`.
-- **4–7 complete sentences**, roughly 650–1,000 characters. `clip_to_sentence()` cuts at 1,200, so
-  staying under that means nothing is ever dropped. No ellipses, no mid-sentence cutoffs.
-- If time is short, cut story *count* per section — never sentence length. Finish every section; no
+- **At least four complete sentences and no upper limit** (2026-10-02). Extend the explanation
+  whenever a term, a mechanism or the background would otherwise send the reader to another site. The
+  test: could he explain the story to someone else after reading only that paragraph? Extra length
+  goes on explaining the news, never on advice. The PDF prints every summary whole; no ellipses, no
+  mid-sentence cutoffs. `write_analyzed()` flags only a summary under 600 characters.
+- **There is no page limit.** Never shorten an explanation or drop a story to save space. A section
+  runs short only when nothing else inside its freshness window qualifies. Finish every section; no
   placeholder stubs in trailing sections.
 - **Do not invent facts.** Many headlines postdate the model's knowledge. Ground claims in what the
   feed actually says, attribute to the source, and build the explanation around the mechanism rather
@@ -246,6 +279,13 @@ Google News proxies return the same story from a dozen outlets, so pick the most
     reward totals ("$1M in prizes") that dwarf the actual cash prize ($3k first place). GatewayHacks
     2026 was rejected on 2026-09-12 for exactly this; `.tmp/devpost.txt` prints cash counts, but the
     `/rules` page is what settles it.
+  - **`.tmp/hackathons.txt`** (`find_opportunities.py platforms`) lists new hackathons from four more
+    places: lablab.ai's open events, soonest end first, each followed by the prize, eligibility and
+    deadline lines of its own page; Devpost's newest "AI" events outside the theme listing; Devfolio;
+    and Unstop. Lines carry `printed mm-dd` / `rejected mm-dd: reason` as in `devpost.txt`. lablab
+    prize lines often mix cash and credits ("$5k cash + $5k credits"), so the event page decides. The
+    Devfolio and Unstop blocks print their first record's keys, because their fields were not fully
+    known when the reader was written. The eligibility rules and the cash-prize check are unchanged.
 
 - **`product_showcase_opportunities`** — longer-form commitments: accelerators, incubators,
   fellowships, residencies, grants, cohort programmes. Global, ranked on merit, not region.
@@ -289,20 +329,40 @@ Google News proxies return the same story from a dozen outlets, so pick the most
 - **`ai_business_opportunities`** — the market-thesis section: emerging business openings, not things
   to apply to. Anything with an entry deadline belongs in section 2. Be specific about India.
 
-- **`elon_musk_ai_vision`** — use the Google News RSS proxy for x.com/elonmusk posts (direct scraping
-  blocked). Preserve tweet URLs when available.
+- **`openai_news`** — OpenAI and ChatGPT: models, products, research, deals, people and policy.
+  Sources: OpenAI's blog and YouTube, Google News and Bing News searches, and the X searches for
+  @sama, @OpenAI and @OpenAIDevs. A cross-vendor benchmark or price comparison goes to Closed Models.
+
+- **`google_ai_news`** — Google, Gemini and DeepMind: models, products, research and company moves.
+  Sources: the Google AI, DeepMind, Research, Gemini and Cloud AI blogs, two YouTube channels, news
+  searches, and the X searches for @GoogleDeepMind, @GoogleAI, @sundarpichai and @demishassabis.
+  An open-weight Gemma release goes to Open Models.
+
+- **`xai_grok_news`** — xAI the company and its Grok models: releases, features, funding, deals and
+  disputes. x.ai has no feed and @xai/@grok are not usable on X (see Known Feed Issues), so the
+  section runs on news searches and Tesla's YouTube channel. What Musk himself says about AI goes to
+  the Musk section instead.
+
+- **`elon_musk_ai_vision`** (label "Elon Musk on AI") — **Musk's own point of view on AI**: his X
+  posts, interviews, podcasts, talks, and statements the press reports. Say what he actually said and
+  the context it was said in. **Read each post in full** with `fetch_articles.py` and date it by the
+  post's own timestamp (`S(..., published_at=...)`), not by the day Google indexed it. Sources: the
+  X searches of x.com/elonmusk, Musk-on-AI news searches, Teslarati and Electrek (Musk-on-AI stories
+  only), and a YouTube search. Preserve post URLs.
 
 ---
 
 ## Troubleshooting
 - Gmail OAuth failed → the token refreshes itself; only if that fails, delete `token.json` and rerun
   for a browser prompt
-- RSS feed returns 0 articles → feed URL changed, update in `scrape_rss_feeds.py`
+- A source returns 0 articles → it is on the `none from:` line of `.tmp/rss_scrape.log`; fix or remove
+  its row in `tools/feed_sources.py` (a source marked `# live` posts less than daily, so leave it)
 - `analyzed_content.json` missing → curation (step 2) has not run
 - `?` in the PDF where a symbol should be → the character is outside latin-1; add it to
   `sanitize_text()` and `tools/tests/test_sanitize_text.py`
-- Summary looks cut off → `clip_to_sentence()` is the only place summaries may be shortened; do not
-  reintroduce character slicing (`summary[:250]`)
+- Summary looks cut off → the renderer no longer shortens summaries at all (since 2026-10-02); a cut
+  summary is in the JSON itself. Do not reintroduce a clip or character slicing (`summary[:250]`).
+  `test_summary_length.py` guards it
 - Title cut mid-word → titles go through `_fit_title()`, which measures width and cuts between words;
   cases in `tools/tests/test_fit_title.py`
 - A URL ending in `...` is `_fit_url()` working as intended — the link target stays full
@@ -310,7 +370,15 @@ Google News proxies return the same story from a dozen outlets, so pick the most
   `python3 -m pytest tools/tests/` finds nothing because there are no `test_*` functions
 
 ## Adding Sources
-Add RSS feeds to `FEEDS` in `scrape_rss_feeds.py` and map them in `_categorize_source()`.
+Add a row to `RSS` in `tools/feed_sources.py`: `(name, url, category, flags)`. The category is the
+digest group, and `news_digest.CATEGORY_ORDER` names the section each group feeds. Flags, space
+separated: `ai` keeps only entries that mention AI (for general-interest feeds), `musk` keeps only
+Musk on AI or autonomy, `browser` sends the browser User-Agent to sites that refuse the bot one. A
+non-RSS source goes in `EXTRA` with a reader in `scrape_rss_feeds.EXTRA_READERS`; keep its parsing in a
+pure function and test it offline. **Keyless only:** a source that needs an API key is skipped, even
+when the key sits in `.env` (X API, YouTube Data API, NewsAPI). Every source tested and rejected is
+listed at the end of `feed_sources.py`; check there before probing one again. `test_sources.py` checks
+names, https, the keyless rule and that every section is fed.
 
 ---
 
@@ -450,7 +518,7 @@ Add RSS feeds to `FEEDS` in `scrape_rss_feeds.py` and map them in `_categorize_s
 |---|---|
 | Rupee sign and invisible characters printing as `?` | `test_sanitize_text.py`, stray-`?` check |
 | Story titles cut mid-word | `test_fit_title.py` |
-| Summaries truncated mid-sentence | `clip_to_sentence()`, unfinished-summary check |
+| Summaries truncated mid-sentence, then clipped at 1,200 characters | `test_summary_length.py` (no clip at all), unfinished-summary check |
 | Dates missing from every story in the PDF (2026-09-17) | `test_story_dates.py`, `write_analyzed()` |
 | Empty sections spending a page and a TOC slot | `generate_pdf.py` skips them |
 | Opportunity gate matching ordinary English ("models challenge…") | `test_opportunity_gate.py` |
@@ -464,6 +532,15 @@ Add RSS feeds to `FEEDS` in `scrape_rss_feeds.py` and map them in `_categorize_s
 | `write_analyzed()` flagging valid quantum stories as stale against a flat 24h, though the send gate allows 7 days (2026-10-01) | `stale_hours_for(key)` in `builder_helpers.py`, `test_freshness_gate.py` |
 
 ### History
+- **2026-10-02:** Built the approved 16-section restructure (`handoff/`). Three new sections (OpenAI,
+  Google AI, xAI & Grok); the Musk section is now "Elon Musk on AI", his own point of view; all
+  sixteen in Rahul's order. Summaries are printed whole: the 1,200-character clip and the 1,150
+  ceiling are gone. Sources moved to a registry, `tools/feed_sources.py`: 214 feeds (32 kept, 182 new,
+  ZDNet AI and xAI Blog dropped) and 4 non-RSS readers, every one keyless. The scraper filters
+  general-interest feeds to AI, routes company headlines to their groups and fetches hosts in
+  parallel. The digest follows the sections and caps each group; its real size is measured on the
+  first full scrape. New `find_opportunities.py platforms` (lablab.ai, Devpost newest, Devfolio,
+  Unstop) and X posts read in full. Tests 192 → 332 in 17 files.
 - **2026-10-01:** Thursday, quantum in. Shipped 63 stories in 13 sections, 0 errors and 0 warnings on
   the first verify (acronyms glossed while the builder was open), oldest story 21.3h on the 24h rule
   and 138h on the 7-day rule; sent 00:22 UTC, 19 minutes after the scrape. Fixed `write_analyzed()`,
@@ -532,8 +609,16 @@ Add RSS feeds to `FEEDS` in `scrape_rss_feeds.py` and map them in `_categorize_s
 ## Known Feed Issues
 - **r/LocalLLaMA RSS stops on 13 November 2026**: Reddit is ending RSS support, announced 2026-09-30
   (TechCrunch). Replace this source before that date (see Lessons, 2026-10-01).
-- ZDNet AI (404) and xAI Blog (404) return nothing; xAI is covered by the Musk proxy, so it is not
-  urgent. VentureBeat AI intermittently returns 0 articles.
+- **X has no keyless feed.** Coverage is the posts Google News has indexed (`site:x.com/<handle>`
+  searches), which was accepted on 2026-10-02. Profile timelines answer 429, Nitter mirrors and
+  RSSHub are dead, `@xai` has posted nothing since May 2026 and `@grok` is automatic replies, so
+  neither is added. One post can still be read in full once found (see Step 2).
+- **Bing News rows** need the browser User-Agent and wrap every link in a tracking URL, which the
+  scraper unwraps. The outlet's name is read from `<News:Source>` (`news_source`); that field had not
+  been seen on a live feed when it was written, so if Bing stories print as "via Bing News", check it.
+- **r/LocalLLaMA's replacement is in place:** "Hugging Face new models" in `EXTRA` lists models
+  created inside the window, ranked by likes this week.
+- VentureBeat AI intermittently returns 0 articles.
 - **Opportunity/hackathon platforms probed 2026-09-07 and rejected — do not retry:**
   `devpost.com/hackathons.rss` (HTTP 406 to bot *and* browser UA), `mlh.io/seasons/2026/events.rss`
   (200 with zero entries), `hackerearth.com/challenges/feed/`, `indiaai.gov.in/rss`,
