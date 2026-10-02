@@ -1,6 +1,6 @@
 # Plan part 3 — hackathon platforms, X posts, workflow doc, proof on real data
 
-CURRENT · written Fri 2 Oct 2026 · nothing below is implemented yet · follows `plan-2.md`.
+CURRENT · written Fri 2 Oct 2026 · tasks 6-8 built and tested 2 Oct 2026; Task 9 is open · follows `plan-2.md`.
 
 ## Task 6 — hackathons: lablab.ai, newest on Devpost, Devfolio, Unstop
 **Files:** `tools/find_opportunities.py` (new `platforms` subcommand beside `devpost`, `check`, `recheck`),

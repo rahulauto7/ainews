@@ -1,6 +1,6 @@
 # Plan part 1 — sections, summary length, source registry
 
-CURRENT · written Fri 2 Oct 2026 · nothing below is implemented yet · continues in `plan-2.md`, `plan-3.md`.
+DONE · written Fri 2 Oct 2026 · tasks 1-3 built and tested 2 Oct 2026 · continues in `plan-2.md`, `plan-3.md`.
 
 Do the tasks in order. For each one: write its test first, run it and see it fail for the stated reason,
 make the change, then run the whole suite (command in `HANDOFF.md`, Read first #4).

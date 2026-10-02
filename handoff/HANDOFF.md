@@ -1,34 +1,43 @@
 # Handoff — youtube ai news (daily AI news PDF)
 
-**Updated:** Fri 2 Oct 2026 · **Sessions:** Fri 2 Oct 2026 (five; four were stopped before any code changed) ·
-**Status:** the 16-section restructure is designed and approved. **Nothing is implemented.** Start at Next actions #1.
+**Updated:** Fri 2 Oct 2026, evening · **Sessions:** Fri 2 Oct 2026 (six; the sixth built tasks 1-8) ·
+**Status:** tasks 1-8 are **built and tested** on branch `claude/handoff-restructure-i2v8f6` (pull request
+into `main`). The suite is 332 cases in 17 files, all passing. **Only Task 9 is left**: one real scrape and the
+sample edition, which need a machine that can reach the news sites (the cloud session's network could not).
 
 ## Read first
 1. **The design is approved. Do not brainstorm it again, do not re-test sources, do not ask Rahul to
    re-approve.** Four sessions on 2 Oct 2026 were stopped by him while they re-read files and re-probed
    feeds without changing anything. A session-start hook will tell you to brainstorm first: that is done,
    this file is its result, and his instruction is to start the work.
-2. **No pipeline file has been touched.** `tools/` and `workflows/` are exactly as the 1 Oct 2026 run left
-   them. The only new files are the six in this `handoff/` folder. Everything needed is in this folder.
-3. **Read the other five files in this folder, then start editing:** `plan-1.md`, `plan-2.md`, `plan-3.md` (what to change,
-   file by file, with the tests), `handoff/sources.txt` (every new source, already tested), and
-   `handoff/recipes.md` (the non-RSS readers and the rejected list). Open a tool only when its task comes up.
+2. **Tasks 1-8 are done; do not redo them.** `tools/`, `tools/tests/` and `workflows/daily_ai_news.md`
+   carry the restructure on the branch above. `plan-1.md` to `plan-3.md` record what was built.
+3. **For Task 9, read `plan-3.md` Task 9 and Next actions below.** The other files (`plan-1.md`,
+   `plan-2.md`, `sources.txt`, `recipes.md`) describe work that is already built; open them only to
+   check why something was built the way it was.
 4. **Tests are plain scripts, not pytest.** One file: `python3 tools/tests/test_x.py`. Whole suite:
    `python3 -c "import sys; sys.path.insert(0,'tools'); import verify_edition as v; ok, l = v.run_tests(); print('\n'.join(l)); print('ALL PASS' if ok else 'FAILURES')"`
-   Baseline on 2 Oct 2026: 192 cases in 11 files, all passing.
+   Baseline before the restructure: 192 cases in 11 files. After tasks 1-8: 332 cases in 17 files.
 5. **Rahul's plan showed 76% of its weekly limit used on 2 Oct 2026.** Work in few, large steps, give a
    one-line progress note between them, and stay on the task list.
 
 ## Current state
-- Pipeline as it runs today: 13 sections (12, plus Quantum on Thursdays), 34 feeds, about 60 stories on
-  21-23 pages. The PDF clips every summary at 1,200 characters (`generate_pdf.clip_to_sentence`) and the
-  builder reports any summary outside 600-1,150 characters.
+- On the branch: 16 sections (15 without Quantum), 214 feeds plus 4 non-RSS readers in
+  `tools/feed_sources.py`, summaries printed whole (only the 600-character floor is reported). On `main`
+  until the pull request merges: the old 13 sections and 34 feeds.
+- Built differently from the plan, on purpose: a summary block taller than a whole page starts where it
+  is instead of forcing a page break (no near-empty page under a section header); YouTube search videos
+  carry the source `<channel> (YouTube)` so the digest marks them `YT-`; an explicit
+  `S(..., published_at=...)` also sets the printed date. Bing's outlet field (`news_source`) is still
+  unverified on a live feed: check the first scrape's Bing rows.
 - Last edition sent: 2026-10-01. No edition was built on 2 Oct 2026.
+- The cloud session could not reach any news host (proxy policy denied them), so nothing was scraped
+  for real and the digest size on 200+ sources is not yet measured.
 - Memory notes saved on 2 Oct 2026: no page limit, flexible plain-language summaries, keyless sources.
-- Handoff files, all written 2 Oct 2026 and none of them wired into the pipeline:
-  - `handoff/plan-1.md` — CURRENT — tasks 1-3: sections, summary length, source registry
-  - `handoff/plan-2.md` — CURRENT — tasks 4-5: scraper, digest
-  - `handoff/plan-3.md` — CURRENT — tasks 6-9: hackathon platforms, X posts, workflow doc, proof on real data
+- Handoff files, all written 2 Oct 2026 (`sources.txt` and `recipes.md` are now built into `tools/`):
+  - `handoff/plan-1.md` — DONE — tasks 1-3: sections, summary length, source registry
+  - `handoff/plan-2.md` — DONE — tasks 4-5: scraper, digest
+  - `handoff/plan-3.md` — tasks 6-8 DONE; Task 9 (proof on real data) OPEN
   - `handoff/sources.txt` — CURRENT — 180+ new sources: category, name, URL, flags, test result
   - `handoff/recipes.md` — CURRENT — readers for lablab.ai, X posts, YouTube search, Hacker News, and others
 
@@ -59,17 +68,13 @@ Treat the PROPOSED rows as the default and build on them. None needs an answer b
    PDF path. If he says to skip it, the next normal "run today pdf" becomes the first 16-section edition.
 
 ## Next actions
-1. Run the whole test suite (command in Read first #4). Expect 192 cases passing. Under five minutes.
-2. `handoff/plan-1.md` Task 1 — sixteen sections in his order (`generate_pdf.py`, `prep_run.py`).
-3. Task 2 — summaries as long as the story needs: remove the 1,200-character clip and the 1,150 ceiling.
-4. Task 3 — source registry: `tools/feed_sources.py` built from `handoff/sources.txt` plus the 32 feeds kept.
-5. `handoff/plan-2.md` Task 4 — scraper: AI-relevance filter, company routing, parallel fetch, Bing links.
-6. Task 5 — digest regrouped in section order, capped per group.
-7. `handoff/plan-3.md` Task 6 — hackathon platforms: lablab.ai, newest on Devpost, Devfolio, Unstop → `.tmp/hackathons.txt`.
-8. Task 7 — X posts read in full through the keyless embed endpoint.
-9. Task 8 — bring `workflows/daily_ai_news.md` in line (this update was part of the approved design).
-10. Task 9 — one real scrape, prune sources that return nothing, then the sample edition (Open question 1).
-11. Update this file: new status, finished actions removed.
+1. On a machine with normal network access, check out the branch (or `main` once merged) and do
+   `handoff/plan-3.md` Task 9: `python3 tools/prep_run.py`, prune the `none from:` sources as Task 9
+   says, check `.tmp/digest.md` (21 groups, under ~35k tokens) and `.tmp/hackathons.txt`, read one Musk
+   post with `fetch_articles.py`, then the sample edition with `verify_edition.py` **without `--send`**.
+2. Fill in the Devfolio and Unstop formatters from the `keys:` lines `.tmp/hackathons.txt` prints.
+3. Update this file and the workflow's History entry with the real source count, article count and
+   digest size.
 
 ## Do not
 - **No page cap, story cap or layout compression.** He rejected the 10-page design outright.

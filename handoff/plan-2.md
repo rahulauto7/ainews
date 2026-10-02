@@ -1,6 +1,6 @@
 # Plan part 2 — scraper and digest
 
-CURRENT · written Fri 2 Oct 2026 · nothing below is implemented yet · follows `plan-1.md`.
+DONE · written Fri 2 Oct 2026 · tasks 4-5 built and tested 2 Oct 2026 · follows `plan-1.md`.
 
 ## Task 4 — scraper: relevance filter, company routing, parallel fetch
 **Files:** `tools/scrape_rss_feeds.py`, `tools/builder_helpers.py` (`S()`, line 97), `tools/prep_run.py`
