@@ -12,11 +12,11 @@ polling - and prints one compact brief:
   - the section keys in render order, so they are never guessed
   - the last three editions on disk, for the duplicate-across-days check
   - the test suite result as one line
-  - the scrape, then the digest, then Devpost and the carry-forward recheck,
-    the last two in parallel with the scrape because they hit different hosts
+  - the scrape, then the digest, Devpost, the carry-forward recheck and the
+    other hackathon platforms (lablab.ai, Devfolio, Unstop), in parallel
 
 Outputs land where they always do: .tmp/rss_articles.json, .tmp/digest.md,
-.tmp/devpost.txt, .tmp/recheck.txt.
+.tmp/devpost.txt, .tmp/recheck.txt, and now .tmp/hackathons.txt.
 
 Usage:
   python3 tools/prep_run.py               # full prep
@@ -131,9 +131,10 @@ def main():
             print("  !! scrape failed - RSS is the only input source, so stop here")
             return 1
 
-    # Devpost and the carry-forward recheck hit different hosts than each other,
-    # the digest only needs the scrape already on disk, and the test suite is
-    # pure CPU. All four run at once instead of four polled turns.
+    # Devpost, the carry-forward recheck and the other hackathon platforms hit
+    # different hosts than each other, the digest only needs the scrape already on
+    # disk, and the test suite is pure CPU. All five run at once instead of five
+    # polled turns.
     print("\nDigest + opportunity checks + tests, in parallel...")
     tasks = [
         ("digest", [os.path.join(TOOLS_DIR, "news_digest.py")], None),
@@ -141,21 +142,22 @@ def main():
          os.path.join(web_text.TMP_DIR, "devpost.txt")),
         ("recheck", [os.path.join(TOOLS_DIR, "find_opportunities.py"), "recheck"],
          os.path.join(web_text.TMP_DIR, "recheck.txt")),
+        ("hackathons", [os.path.join(TOOLS_DIR, "find_opportunities.py"), "platforms"],
+         os.path.join(web_text.TMP_DIR, "hackathons.txt")),
     ]
 
     from verify_edition import run_tests
 
-    with ThreadPoolExecutor(max_workers=4) as ex:
+    with ThreadPoolExecutor(max_workers=5) as ex:
         tests = None if args.skip_tests else ex.submit(run_tests)
         results = list(ex.map(lambda t: _run(t[0], t[1], t[2]), tasks))
 
         for name, rc, text in results:
             lines = [l for l in text.strip().splitlines() if l.strip()]
             if name == "digest":
-                print(f"  digest   {lines[-1] if lines else 'no output'}")
+                print(f"  digest     {lines[-1] if lines else 'no output'}")
             else:
-                out = ".tmp/devpost.txt" if name == "devpost" else ".tmp/recheck.txt"
-                print(f"  {name:8s} {len(lines)} lines -> {out}"
+                print(f"  {name:10s} {len(lines)} lines -> .tmp/{name}.txt"
                       + ("  !! failed" if rc != 0 else ""))
 
         if tests is not None:
