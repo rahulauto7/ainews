@@ -107,6 +107,10 @@ def S(idx, summary, relevance, tags, **extra):
     # never left the scraped article. An explicit keyword still wins: a Google
     # News proxy item is dated by the publisher page, not by the day Google
     # resurfaced it.
+    # An explicit published_at (an X post's own timestamp, read by fetch_articles)
+    # dates the story on the page as well.
+    if extra.get("published_at") and not extra.get("published_date"):
+        extra["published_date"] = str(extra["published_at"])[:10]
     extra.setdefault("published_date", _published_date(a))
     # The full timestamp as well as the date: check_quality's 24h gate measures
     # the age at SEND, and a date alone cannot tell 01:00 from 23:00 - a 22-hour

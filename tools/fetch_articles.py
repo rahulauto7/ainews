@@ -18,7 +18,11 @@ Flags printed per article:
            a resurfaced story, not today's news (see Lessons 2026-09-11)
   THIN     under 400 characters of body text - paywall or client-rendered page
   FAILED   could not be fetched; confirm by one web search only if the story matters
-  X POST   x.com links are not fetched; the feed title is the post text
+  X POST   the post could not be read (decode or embed failure); the feed title
+           is all there is. A post that IS read prints in full, quoted post
+           and reply line included, with its own timestamp on the head line.
+           Pass that timestamp to S(..., published_at=...) so the 24-hour rule
+           measures the post, not the day Google indexed it.
 """
 
 import argparse
@@ -59,7 +63,13 @@ def fetch_one(url, decoded_cache):
     try:
         rec["url"] = web_text.decode_google_news(url, decoded_cache)
         if "x.com/" in rec["url"] or "twitter.com/" in rec["url"]:
-            rec["error"] = "X POST"
+            # Read through the keyless embed endpoint. A failed read keeps the old
+            # behaviour - the feed title stands in - and never aborts the batch.
+            try:
+                rec.update(web_text.tweet_record(web_text.fetch_tweet(rec["url"])))
+                rec["x_post"] = True
+            except Exception:
+                rec["error"] = "X POST"
         else:
             html, final = web_text.fetch_html(rec["url"])
             rec.update(web_text.extract_article(html))
@@ -85,7 +95,8 @@ def flags_for(rec, scrape_date):
         pub = datetime.strptime(rec["published"], "%Y-%m-%d")
         if pub < scrape_date - timedelta(days=OLD_AFTER_DAYS):
             flags.append(f"OLD: page dated {rec['published']}")
-    if len(rec.get("text") or "") < THIN_BELOW:
+    # A post is short by nature; THIN is for article pages that failed to render.
+    if len(rec.get("text") or "") < THIN_BELOW and not rec.get("x_post"):
         flags.append("THIN")
     return flags
 
@@ -93,7 +104,8 @@ def flags_for(rec, scrape_date):
 def render(label, rec, chars, scrape_date):
     domain = urlparse(rec.get("url") or "").netloc.replace("www.", "")
     flags = flags_for(rec, scrape_date)
-    head = f"[{label}] {domain} | published {rec.get('published') or '?'} | {len(rec.get('text') or ''):,} chars"
+    published = rec.get("published_at") if rec.get("x_post") else rec.get("published")
+    head = f"[{label}] {domain} | published {published or '?'} | {len(rec.get('text') or ''):,} chars"
     if flags:
         head += " | " + " | ".join(flags)
     lines = [head]
