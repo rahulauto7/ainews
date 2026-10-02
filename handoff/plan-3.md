@@ -1,6 +1,6 @@
 # Plan part 3 — hackathon platforms, X posts, workflow doc, proof on real data
 
-CURRENT · written Fri 2 Oct 2026 · nothing below is implemented yet · follows `plan-2.md`.
+CURRENT · written Fri 2 Oct 2026 · tasks 6-8 built and tested 2 Oct 2026; Task 9 is open · follows `plan-2.md`.
 
 ## Task 6 — hackathons: lablab.ai, newest on Devpost, Devfolio, Unstop
 **Files:** `tools/find_opportunities.py` (new `platforms` subcommand beside `devpost`, `check`, `recheck`),
@@ -111,9 +111,9 @@ Updating this file was part of the approved design. Edit in place; do not rewrit
 5. Pick one "Elon Musk ... on X" item from the digest and run `python3 tools/fetch_articles.py IDX`: the
    whole post and its timestamp must print.
 6. **Sample edition** (Open question 1 in `HANDOFF.md`; default is to build it). Curate a real edition the
-   normal way: all 16 sections (15 if it is not Thursday), 3-6 stories each, explanations at the new
-   length. Then `python3 tools/verify_edition.py` WITHOUT `--send`. Give Rahul the PDF path and the page
-   count. Do not email it.
+   normal way: all 16 sections (15 if it is not Thursday), 3-5 stories each with summaries of 400-800
+   characters (the 15-page limit, 2 Oct 2026 evening). Then `python3 tools/verify_edition.py` WITHOUT
+   `--send`. Give Rahul the PDF path and the page count, which must be 15 or fewer. Do not email it.
 7. Update `handoff/HANDOFF.md` (status, finished actions removed) and delete the memory note
    `news-restructure-plan-pending` once everything above is done.
 

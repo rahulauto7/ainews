@@ -12,6 +12,7 @@ Used by fetch_articles.py, find_opportunities.py and builder_helpers.py.
 """
 
 import json
+import math
 import os
 import re
 import urllib.parse
@@ -119,6 +120,78 @@ def decode_google_news(url, cache=None):
     if own_cache:
         save_decoded_cache(cache)
     return target
+
+
+# ── X posts ───────────────────────────────────────────────────────────────────
+# X has no keyless feed, but one post can be read in full through the embed
+# endpoint the publishers' widgets use. It needs a token derived from the post id;
+# without it the endpoint answers 404. Found and tested 2026-10-02.
+
+TWEET_API = "https://cdn.syndication.twimg.com/tweet-result"
+
+
+def is_x_url(url):
+    """True for a link on X itself. Matched on the host: a substring test sent
+    vox.com, spacex.com and netflix.com articles to the post reader."""
+    host = urllib.parse.urlparse(url or "").netloc.lower().split(":")[0]
+    for prefix in ("www.", "mobile."):
+        if host.startswith(prefix):
+            host = host[len(prefix):]
+    return host in ("x.com", "twitter.com")
+
+
+def tweet_id(url):
+    """The post id in an x.com or twitter.com status URL, or None."""
+    m = re.search(r"/status(?:es)?/(\d+)", url or "")
+    return m.group(1) if m else None
+
+
+def _tweet_token(tweet_id):
+    x = (int(tweet_id) / 1e15) * math.pi
+    digits = "0123456789abcdefghijklmnopqrstuvwxyz"
+    ip, fp = int(x), x - int(x)
+    s = ""
+    while ip:
+        s = digits[ip % 36] + s
+        ip //= 36
+    f = ""
+    for _ in range(11):
+        fp *= 36
+        d = int(fp)
+        f += digits[d]
+        fp -= d
+    return re.sub(r"(0+|\.)", "", s + "." + f)
+
+
+def fetch_tweet(url, timeout=20):
+    """The embed JSON for one post. Raises on a URL with no post id or a non-200."""
+    tid = tweet_id(url)
+    if not tid:
+        raise ValueError(f"no post id in {url}")
+    r = requests.get(TWEET_API, params={"id": tid, "token": _tweet_token(tid), "lang": "en"},
+                     headers=HEADERS, timeout=timeout)
+    r.raise_for_status()
+    return r.json()
+
+
+def tweet_record(js):
+    """Title, text and the post's own timestamp, from the embed JSON.
+
+    Raises ValueError when the answer holds no post: a deleted, withheld or
+    protected post comes back 200 as a TweetTombstone, and an empty record would
+    read as a successful fetch with no text and no date.
+    """
+    if js.get("__typename") == "TweetTombstone" or not js.get("text") or not js.get("created_at"):
+        raise ValueError(f"no post in the embed answer ({js.get('__typename') or 'empty'})")
+    created = js.get("created_at") or ""
+    text = js.get("text") or ""
+    quoted = (js.get("quoted_tweet") or {}).get("text")
+    if quoted:
+        text += f"\nQuoted post: {quoted}"
+    if js.get("in_reply_to_screen_name"):
+        text += f"\nIn reply to @{js['in_reply_to_screen_name']}"
+    return {"title": f"@{(js.get('user') or {}).get('screen_name', '?')} on X", "text": text,
+            "published": created[:10], "published_at": created}
 
 
 # ── Text extraction ───────────────────────────────────────────────────────────

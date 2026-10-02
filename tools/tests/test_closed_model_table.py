@@ -1,7 +1,7 @@
 """Cases for the closed-model section and its standing benchmark table.
 
 Section 9, `closed_model_landscape`, carries the same shape as the open-model
-section that precedes it: 3-6 news stories plus one standing "best model at
+section that precedes it: its news stories plus one standing "best model at
 what" table in `section_extras`. Everything that was written once for the open
 table - the renderer, the carry-forward, the staleness warning, the rendered-text
 comparison - had the key `open_model_landscape` hardcoded, so the cases below

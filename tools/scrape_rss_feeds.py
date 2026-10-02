@@ -1,5 +1,5 @@
 """
-Scrape RSS feeds from 25+ AI news sources.
+Scrape every source in feed_sources.py: RSS and Atom feeds, plus the non-RSS readers in EXTRA.
 
 Time windows (see WINDOW_HOURS / QUANTUM_SOURCES below):
   - Every news source uses a strict LAST 24 HOURS window. The scrape cuts at
@@ -24,101 +24,29 @@ import re
 import sys
 import time
 import unicodedata
+import urllib.parse
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 
 import feedparser
 import requests
 
+from feed_sources import EXTRA, RSS
+from web_text import UA as BROWSER_UA
+
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TMP_DIR = os.path.join(PROJECT_ROOT, ".tmp")
 OUTPUT_FILE = os.path.join(TMP_DIR, "rss_articles.json")
 
-# ── RSS Feed Sources ──────────────────────────────────────────────────────────
-# Organized by category for easy maintenance
-FEEDS = {
-    # General AI News
-    "The Verge AI": "https://www.theverge.com/rss/ai-artificial-intelligence/index.xml",
-    "TechCrunch AI": "https://techcrunch.com/category/artificial-intelligence/feed/",
-    "Ars Technica AI": "https://feeds.arstechnica.com/arstechnica/technology-lab",
-    "MIT Technology Review": "https://www.technologyreview.com/feed/",
-    "VentureBeat AI": "https://venturebeat.com/category/ai/feed/",
-    "The Decoder": "https://the-decoder.com/feed/",
-    "AI News": "https://www.artificialintelligence-news.com/feed/",
-    "Wired AI": "https://www.wired.com/feed/tag/ai/latest/rss",
-    "ZDNet AI": "https://www.zdnet.com/topic/artificial-intelligence/rss.xml",
-    "The Register AI": "https://www.theregister.com/software/ai_ml/headlines.atom",
-
-    # Company Blogs
-    "OpenAI Blog": "https://openai.com/blog/rss.xml",
-    "Google AI Blog": "https://blog.google/technology/ai/rss/",
-    "Hugging Face Blog": "https://huggingface.co/blog/feed.xml",
-
-    # Indian AI Sources
-    "Inc42": "https://inc42.com/feed/",
-    "YourStory": "https://yourstory.com/feed",
-    "Economic Times Tech": "https://economictimes.indiatimes.com/tech/rssfeeds/13357270.cms",
-
-    # Quantum Computing + AI  (7-day window, Thursdays only - see QUANTUM_SOURCES)
-    # The arXiv RSS feed only ever carries a SINGLE day of papers (verified
-    # 2026-09-03: all 143 entries shared one date), so widening the cutoff on it
-    # retrieves nothing older. Real 7-day coverage comes from the Google News
-    # proxy below, using the same when:Nd trick already proven on the Musk and
-    # Anthropic feeds. The arXiv API (export.arxiv.org) was tried first and is
-    # not usable here - it returned HTTP 429 on every attempt.
-    "arXiv Quantum Physics": "https://rss.arxiv.org/rss/quant-ph",
-    "Quantum + AI (via Google News)": "https://news.google.com/rss/search?q=(quantum+computing+OR+quantum+machine+learning)+(AI+OR+%22machine+learning%22+OR+%22neural+network%22)+when:7d&hl=en-US&gl=US&ceid=US:en",
-    "arXiv AI": "https://rss.arxiv.org/rss/cs.AI",
-    "arXiv Machine Learning": "https://rss.arxiv.org/rss/cs.LG",
-
-    # Anthropic / Claude / Claude Code
-    # anthropic.com/rss.xml returns 404 - proxy via Google News (same trick as the
-    # Musk feed below). Two queries: company/model news, and Claude Code specifically.
-    "Anthropic News (via Google News)": "https://news.google.com/rss/search?q=Anthropic+OR+%22Claude+Opus%22+OR+%22Claude+Sonnet%22+when:2d&hl=en-US&gl=US&ceid=US:en",
-    "Claude Code (via Google News)": "https://news.google.com/rss/search?q=%22Claude+Code%22+OR+%22Claude+Agent+SDK%22+OR+%22Claude+Skills%22+when:3d&hl=en-US&gl=US&ceid=US:en",
-
-    # xAI / Elon Musk AI
-    "xAI Blog": "https://x.ai/blog/rss.xml",
-    # Elon Musk posts on x.com — direct scraping requires auth (402), so we
-    # proxy via Google News RSS filtered to site:x.com/elonmusk
-    "Elon Musk on X (via Google News)": "https://news.google.com/rss/search?q=%22elon+musk%22+(xAI+OR+Grok+OR+AI)+site:x.com%2Felonmusk&hl=en-US&gl=US&ceid=US:en",
-
-    # Open Models / Open Weights
-    # Open-weight releases usually break on Hugging Face, Reddit and vendor blogs
-    # a day or two before the general AI outlets pick them up, so this section gets
-    # its own sources rather than living off the general feeds.
-    # Probed 2026-09-07 — four candidates were rejected and are NOT worth retrying:
-    #   mistral.ai/news/feed.xml, ai.meta.com/blog/rss/, lmstudio.ai/blog/rss.xml → 404
-    #   qwenlm.github.io/blog/index.xml → 200 but abandoned (newest post 2025-09-22)
-    #   papers.takara.ai/api/feed → 200 but lags ~4 days; arXiv AI/ML already covers papers
-    "Open Models (via Google News)": "https://news.google.com/rss/search?q=(%22open+weights%22+OR+%22open-weight+model%22+OR+%22open+source+model%22)+(Llama+OR+Qwen+OR+DeepSeek+OR+Mistral+OR+Gemma+OR+Kimi+OR+GLM+OR+OLMo+OR+Falcon)+when:2d&hl=en-US&gl=US&ceid=US:en",
-    "Open Model Benchmarks (via Google News)": "https://news.google.com/rss/search?q=(%22open+model%22+OR+%22open-weight%22+OR+%22open+source+LLM%22)+(benchmark+OR+leaderboard+OR+outperforms+OR+release)+when:3d&hl=en-US&gl=US&ceid=US:en",
-    # Highest-yield open-model source by a wide margin (20 of 25 entries inside 24h
-    # when probed). Community posts, so weight the *linked* release over the commentary.
-    "r/LocalLLaMA": "https://www.reddit.com/r/LocalLLaMA/.rss",
-    # Live but infrequent (roughly fortnightly) — carries local-model release notes.
-    "Ollama Blog": "https://ollama.com/blog/rss.xml",
-
-    # Hackathons, Contests & Opportunities  (30-day window - see OPPORTUNITY_SOURCES)
-    # These are things a reader can ENTER or APPLY TO, not news about them, so the
-    # feed has to reach back much further than a day: a hackathon closing in three
-    # weeks was announced last month. Probed 2026-09-07 - four dedicated platforms
-    # were rejected and are NOT worth retrying:
-    #   devpost.com/hackathons.rss     → HTTP 406 on both a bot UA and a browser UA
-    #   mlh.io/seasons/2026/events.rss → HTTP 200 but zero entries (no longer RSS)
-    #   hackerearth.com/challenges/feed/, indiaai.gov.in/rss and /feed → 404
-    #   opportunitydesk.org/feed/ → live, but general opportunities (water prizes,
-    #     film fellowships); the AI hit rate was too low to justify the noise
-    # Google News search queries cover the same ground and were the only sources
-    # that actually returned entrants: 57 / 17 / 6 / 74 entries when probed.
-    "AI Hackathons (via Google News)": "https://news.google.com/rss/search?q=%22AI+hackathon%22+OR+%22hackathon%22+(AI+OR+%22artificial+intelligence%22+OR+%22machine+learning%22)+when:30d&hl=en-US&gl=US&ceid=US:en",
-    "AI Competitions (via Google News)": "https://news.google.com/rss/search?q=(%22AI+challenge%22+OR+%22AI+competition%22+OR+%22AI+contest%22)+(prize+OR+submissions+OR+registration+OR+deadline)+when:30d&hl=en-US&gl=US&ceid=US:en",
-    "AI Programs (via Google News)": "https://news.google.com/rss/search?q=(%22AI+accelerator+program%22+OR+%22AI+incubator%22+OR+%22AI+fellowship%22+OR+%22AI+residency%22)+(applications+OR+cohort+OR+apply)+when:30d&hl=en-US&gl=US&ceid=US:en",
-    "AI Applications Open (via Google News)": "https://news.google.com/rss/search?q=(%22applications+open%22+OR+%22apply+now%22+OR+%22call+for+applications%22)+(AI+OR+%22artificial+intelligence%22)+(program+OR+cohort+OR+accelerator+OR+grant+OR+hackathon)+when:30d&hl=en-US&gl=US&ceid=US:en",
-
-    # AI Tools & Business
-    "Product Hunt AI": "https://www.producthunt.com/feed?category=artificial-intelligence",
-    "Futurism": "https://futurism.com/feed",
-}
+# ── Sources ───────────────────────────────────────────────────────────────────
+# Every source, its digest group and its flags live in feed_sources.py, which also
+# lists the sources tested and rejected. The sets below are derived from it.
+FEEDS = {name: url for name, url, _category, _flags in RSS}
+CATEGORY = {name: category for name, _url, category, _flags in RSS}
+CATEGORY.update({name: category for name, category, _kind, _arg in EXTRA})
+AI_FILTER_SOURCES = {name for name, _u, _c, flags in RSS if "ai" in flags.split()}
+MUSK_FILTER_SOURCES = {name for name, _u, _c, flags in RSS if "musk" in flags.split()}
+BROWSER_UA_SOURCES = {name for name, _u, _c, flags in RSS if "browser" in flags.split()}
 
 
 # arXiv feeds return hundreds of papers — limit to most relevant
@@ -155,17 +83,8 @@ QUANTUM_WINDOW_HOURS = QUANTUM_RULE_HOURS - BUILD_ALLOWANCE_HOURS
 # day while the entry windows were still open.
 OPPORTUNITY_WINDOW_HOURS = 24 * 30
 
-QUANTUM_SOURCES = {
-    "arXiv Quantum Physics",
-    "Quantum + AI (via Google News)",
-}
-
-OPPORTUNITY_SOURCES = {
-    "AI Hackathons (via Google News)",
-    "AI Competitions (via Google News)",
-    "AI Programs (via Google News)",
-    "AI Applications Open (via Google News)",
-}
+QUANTUM_SOURCES = {name for name, category in CATEGORY.items() if category == "quantum"}
+OPPORTUNITY_SOURCES = {name for name, category in CATEGORY.items() if category == "opportunity"}
 
 # Monday=0 ... Thursday=3. Quantum sources are only scraped on this weekday.
 # Opportunity sources have no such restriction - they run every day.
@@ -261,6 +180,52 @@ def qualifies_as_opportunity(title, summary=""):
 
     return bool(_AI_TERMS.search(title) or _AI_TERMS.search(summary or ""))
 
+
+# ── Relevance filters and link clean-up ──────────────────────────────────────
+# Sources flagged "ai" in feed_sources.py are general-interest feeds (BBC, Inc42,
+# Ars Technica): only their AI stories are kept. Sources flagged "musk" (Teslarati,
+# Electrek) keep only stories where Musk talks about AI, autonomy or the hardware
+# behind them; his pay package or Tesla's delivery numbers are not that.
+
+BOT_UA = "GlobalAINews/1.0 (RSS Reader)"
+MAX_PER_FEED = 60
+
+_AI_NEWS = re.compile(
+    r"\b(a\.?i\.?|artificial intelligence|machine learning|deep learning|neural net\w*|generative|"
+    r"genai|llms?|large language models?|chatbots?|agentic|ai agents?|superintelligence|agi|openai|"
+    r"chatgpt|gpt-?\d[\w.]*|anthropic|claude|gemini|deepmind|copilot|llama|mistral|deepseek|qwen|"
+    r"grok|xai|hugging ?face|humanoid|robotaxi|self-driving)\b", re.I)
+_MUSK = re.compile(r"\b(elon|musk)\b", re.I)
+_MUSK_AI = re.compile(
+    r"\b(fsd|full self-driving|autopilot|optimus|dojo|neuralink|autonomy|autonomous|compute|chips?)\b", re.I)
+
+
+def mentions_ai(title, summary=""):
+    """True when a general-interest feed entry is about AI."""
+    return bool(_AI_NEWS.search(title or "") or _AI_NEWS.search(summary or ""))
+
+
+def musk_on_ai(title, summary=""):
+    """True when the entry has Musk talking about AI, autonomy or the hardware behind them."""
+    text = f"{title or ''} {summary or ''}"
+    return bool(_MUSK.search(text) and (_AI_NEWS.search(text) or _MUSK_AI.search(text)))
+
+
+def unwrap_bing(link):
+    """Publisher URL from a Bing News click-tracking link; any other link passes through."""
+    if "bing.com/news/apiclick" not in (link or ""):
+        return link
+    target = urllib.parse.parse_qs(urllib.parse.urlparse(link).query).get("url")
+    return target[0] if target else link
+
+
+def _bing_publisher(entry):
+    """The outlet a Bing News item came from. Bing's RSS carries it as <News:Source>,
+    which feedparser exposes as news_source; not yet seen on a live feed (2026-10-02)."""
+    source = entry.get("news_source") or (entry.get("source") or {}).get("title")
+    return " ".join(str(source).split()) if source else ""
+
+
 SUMMARY_MAX_CHARS = 1500
 
 
@@ -278,69 +243,249 @@ def plain_summary(raw):
     return " ".join(text.split())[:SUMMARY_MAX_CHARS]
 
 
-def fetch_feed(name, url, cutoff_time, timeout=15):
-    """Fetch and parse a single RSS feed. Returns list of articles."""
+def articles_from_feed(name, feed, cutoff_time):
+    """Articles from a parsed feed: dated, inside the window, and past the source's filters.
+
+    Pure, so a test can pass feedparser.parse(xml_text).
+    """
     is_arxiv = name.startswith("arXiv")
+    is_bing = "(via Bing News)" in name
+    cap = ARXIV_MAX_PER_FEED if is_arxiv else MAX_PER_FEED
     articles = []
     undated = 0
-    try:
-        response = requests.get(url, timeout=timeout, headers={
-            "User-Agent": "GlobalAINews/1.0 (RSS Reader)"
-        })
-        response.raise_for_status()
-        feed = feedparser.parse(response.content)
-
-        for entry in feed.entries:
-            # Parse published date
-            published = None
-            for date_field in ("published_parsed", "updated_parsed", "created_parsed"):
-                parsed_time = getattr(entry, date_field, None)
-                if parsed_time:
-                    published = datetime(*parsed_time[:6], tzinfo=timezone.utc)
-                    break
-
-            # Drop anything we cannot date. Previously undated entries were kept
-            # ("better to over-include"), but the digest now promises a strict
-            # window, and an undated article cannot be shown to be inside it.
-            if published is None:
-                undated += 1
-                continue
-            if published < cutoff_time:
-                continue
-
-            article = {
-                "title": getattr(entry, "title", "No title"),
-                "url": getattr(entry, "link", ""),
-                "source": name,
-                "published": published.isoformat(),
-                "published_date": published.strftime("%Y-%m-%d"),
-                "summary": plain_summary(getattr(entry, "summary", getattr(entry, "description", ""))),
-                "category": _categorize_source(name),
-            }
-            # Opportunity feeds are noisy by design (broad queries, wide window),
-            # so every entry carries the gate's verdict and the curation step can
-            # filter on a field rather than re-deriving the rule.
-            if name in OPPORTUNITY_SOURCES:
-                article["is_opportunity"] = qualifies_as_opportunity(
-                    article["title"], article["summary"]
-                )
-            articles.append(article)
-
-            # Cap arXiv to avoid flooding with hundreds of papers
-            if is_arxiv and len(articles) >= ARXIV_MAX_PER_FEED:
+    for entry in feed.entries:
+        # Parse published date
+        published = None
+        for date_field in ("published_parsed", "updated_parsed", "created_parsed"):
+            parsed_time = getattr(entry, date_field, None)
+            if parsed_time:
+                published = datetime(*parsed_time[:6], tzinfo=timezone.utc)
                 break
 
+        # Drop anything we cannot date. Previously undated entries were kept
+        # ("better to over-include"), but the digest now promises a strict
+        # window, and an undated article cannot be shown to be inside it.
+        if published is None:
+            undated += 1
+            continue
+        if published < cutoff_time:
+            continue
+
+        title = getattr(entry, "title", "No title")
+        summary = plain_summary(getattr(entry, "summary", getattr(entry, "description", "")))
+        if name in AI_FILTER_SOURCES and not mentions_ai(title, summary):
+            continue
+        if name in MUSK_FILTER_SOURCES and not musk_on_ai(title, summary):
+            continue
+
+        article = {
+            "title": title,
+            "url": unwrap_bing(getattr(entry, "link", "")),
+            "source": name,
+            "published": published.isoformat(),
+            "published_date": published.strftime("%Y-%m-%d"),
+            "summary": summary,
+            "category": _categorize_source(name),
+        }
+        # The PDF names the outlet, not "via Bing News" (builder_helpers.S()).
+        if is_bing and _bing_publisher(entry):
+            article["publisher"] = _bing_publisher(entry)
+        # Opportunity feeds are noisy by design (broad queries, wide window),
+        # so every entry carries the gate's verdict and the curation step can
+        # filter on a field rather than re-deriving the rule.
+        if name in OPPORTUNITY_SOURCES:
+            article["is_opportunity"] = qualifies_as_opportunity(
+                article["title"], article["summary"]
+            )
+        articles.append(article)
+
+        # Cap every feed; arXiv hardest, since it returns hundreds of papers.
+        if len(articles) >= cap:
+            break
+
+    if undated:
+        print(f"  [DROPPED {undated} undated] {name}")
+    return articles
+
+
+def fetch_feed(name, url, cutoff_time, timeout=20):
+    """Fetch and parse a single RSS feed. Returns list of articles."""
+    ua = BROWSER_UA if name in BROWSER_UA_SOURCES else BOT_UA
+    try:
+        response = requests.get(url, timeout=timeout, headers={"User-Agent": ua})
+        response.raise_for_status()
+        return articles_from_feed(name, feedparser.parse(response.content), cutoff_time)
     except requests.exceptions.Timeout:
         print(f"  [TIMEOUT] {name} ({url})")
     except requests.exceptions.RequestException as e:
         print(f"  [ERROR] {name}: {e}")
     except Exception as e:
         print(f"  [PARSE ERROR] {name}: {e}")
+    return []
 
-    if undated:
-        print(f"  [DROPPED {undated} undated] {name}")
 
-    return articles
+# ── Non-RSS readers (EXTRA in feed_sources.py) ────────────────────────────────
+# Each reader takes (name, arg, cutoff_time) and returns the same article dicts as
+# articles_from_feed. On any error it prints one line and returns [], so one broken
+# page never stops the scrape. Parsing sits in pure functions for offline tests.
+
+_REL = re.compile(r"(\d+)\s*(minutes?|mins?|m|hours?|hrs?|h)\b", re.I)
+
+
+def relative_to_datetime(text, now):
+    """'13h ago' covers 13:00-13:59 ago, so the older bound is used. Days and months return None."""
+    m = _REL.search(text or "")
+    if not m:
+        return None
+    n = int(m.group(1)) + 1
+    return now - (timedelta(minutes=n) if m.group(2).lower().startswith("m") else timedelta(hours=n))
+
+
+def _article(name, title, url, published, summary, source=None):
+    return {
+        "title": title,
+        "url": url,
+        "source": source or name,
+        "published": published.isoformat(),
+        "published_date": published.strftime("%Y-%m-%d"),
+        "summary": summary,
+        "category": _categorize_source(name),
+    }
+
+
+def parse_hn(js, name, cutoff_time):
+    """Hacker News stories (Algolia search JSON) inside the window that are about AI."""
+    out = []
+    for hit in js.get("hits") or []:
+        title = hit.get("title") or ""
+        created = hit.get("created_at_i")
+        if not title or not created or not mentions_ai(title):
+            continue
+        published = datetime.fromtimestamp(int(created), tz=timezone.utc)
+        if published < cutoff_time:
+            continue
+        thread = f"https://news.ycombinator.com/item?id={hit.get('objectID')}"
+        summary = (f"{hit.get('points', 0)} points and {hit.get('num_comments', 0)} comments "
+                   f"on Hacker News. Discussion: {thread}")
+        out.append(_article(name, title, hit.get("url") or thread, published, summary))
+    return out
+
+
+def read_hn(name, _arg, cutoff_time):
+    try:
+        r = requests.get("https://hn.algolia.com/api/v1/search", timeout=20, params={
+            "tags": "story",
+            "numericFilters": f"created_at_i>{int(cutoff_time.timestamp())},points>80",
+            "hitsPerPage": 60,
+        }, headers={"User-Agent": BOT_UA})
+        r.raise_for_status()
+        return parse_hn(r.json(), name, cutoff_time)
+    except Exception as e:  # noqa: BLE001 - one reader must never stop the scrape
+        print(f"  [ERROR] {name}: {e}")
+        return []
+
+
+def parse_hf_models(items, name, cutoff_time):
+    """Hugging Face models created inside the window, from the likes7d listing."""
+    out = []
+    for item in items or []:
+        model_id, created = item.get("id"), item.get("createdAt")
+        if not model_id or not created:
+            continue
+        published = datetime.fromisoformat(created.replace("Z", "+00:00"))
+        if published < cutoff_time:
+            continue
+        summary = (f"{model_id} was published on Hugging Face and drew {item.get('likes', 0)} likes "
+                   f"and {item.get('downloads', 0)} downloads in its first days.")
+        out.append(_article(name, f"New on Hugging Face: {model_id}",
+                            f"https://huggingface.co/{model_id}", published, summary))
+    return out
+
+
+def read_hf_models(name, _arg, cutoff_time):
+    try:
+        r = requests.get("https://huggingface.co/api/models", timeout=20, params={
+            "sort": "likes7d", "direction": -1, "limit": 100,
+        }, headers={"User-Agent": BOT_UA})
+        r.raise_for_status()
+        return parse_hf_models(r.json(), name, cutoff_time)
+    except Exception as e:  # noqa: BLE001
+        print(f"  [ERROR] {name}: {e}")
+        return []
+
+
+def _video_renderers(node):
+    if isinstance(node, dict):
+        if "videoRenderer" in node:
+            yield node["videoRenderer"]
+        for value in node.values():
+            yield from _video_renderers(value)
+    elif isinstance(node, list):
+        for value in node:
+            yield from _video_renderers(value)
+
+
+def parse_yt_search(page, name, cutoff_time, now):
+    """Videos from a YouTube search results page, dated from their relative upload time."""
+    m = re.search(r"var ytInitialData = (\{.*?\});</script>", page or "", re.S)
+    if not m:
+        return []
+    out, seen = [], set()
+    for v in _video_renderers(json.loads(m.group(1))):
+        vid = v.get("videoId")
+        title = "".join(r.get("text", "") for r in (v.get("title") or {}).get("runs", []))
+        published = relative_to_datetime((v.get("publishedTimeText") or {}).get("simpleText"), now)
+        if not vid or vid in seen or not title or published is None or published < cutoff_time:
+            continue
+        seen.add(vid)
+        channel = ((v.get("ownerText") or {}).get("runs") or [{}])[0].get("text", "")
+        out.append(_article(name, title, f"https://www.youtube.com/watch?v={vid}", published,
+                            f"YouTube video by {channel or 'an unknown channel'}.",
+                            source=f"{channel} (YouTube)" if channel else name))
+    return out
+
+
+def read_yt_search(name, query, cutoff_time):
+    try:
+        r = requests.get("https://www.youtube.com/results", timeout=20, params={
+            "search_query": query, "sp": "CAISBAgCEAE=",  # videos, uploaded today, newest first
+        }, headers={"User-Agent": BROWSER_UA, "Accept-Language": "en-US,en;q=0.9"})
+        r.raise_for_status()
+        return parse_yt_search(r.text, name, cutoff_time, datetime.now(timezone.utc))
+    except Exception as e:  # noqa: BLE001
+        print(f"  [ERROR] {name}: {e}")
+        return []
+
+
+EXTRA_READERS = {"hn": read_hn, "hf_models": read_hf_models, "yt_search": read_yt_search}
+
+
+# ── Company routing ───────────────────────────────────────────────────────────
+# A story about OpenAI must reach the OpenAI group of the digest even when the copy
+# that survives de-duplication came from The Verge. Only pooled groups are routed:
+# an Indian outlet's OpenAI story stays Indian.
+
+POOL_CATEGORIES = {"general", "company_blog", "video", "social", "showcase"}
+CATEGORY_PRIORITY = ["opportunity", "quantum", "elon_musk", "xai_grok", "openai", "anthropic_claude",
+                     "google", "open_model", "closed_model", "indian", "rsi", "problems",
+                     "automation", "business", "world"]
+_ROUTES = [  # first match wins; Google is last because its name appears in other companies' stories
+    ("elon_musk", re.compile(r"\b(elon|musk)\b", re.I)),
+    ("xai_grok", re.compile(r"\b(xai|grok|spacexai)\b", re.I)),
+    ("openai", re.compile(r"\b(openai|chatgpt|altman|gpt-?\d[\w.]*|sora|codex)\b", re.I)),
+    ("anthropic_claude", re.compile(r"\b(anthropic|claude|amodei)\b", re.I)),
+    ("google", re.compile(r"\b(google|gemini|deepmind|alphabet|pichai|hassabis)\b", re.I)),
+]
+
+
+def route_by_title(article):
+    """Move a pooled article into a company's group when its headline names that company."""
+    if article.get("category") in POOL_CATEGORIES:
+        for category, pattern in _ROUTES:
+            if pattern.search(article.get("title", "")):
+                article["category"] = category
+                break
+    return article
 
 
 # ── Same-story Deduplication ──────────────────────────────────────────────────
@@ -400,84 +545,105 @@ def _same_story(a_tokens, b_tokens, threshold=0.5):
 def _representative(members):
     """Pick which copy of a story to keep.
 
-    Prefers a real publisher feed over a Google News proxy, then the entry with
-    the most summary text, since proxy entries carry only the headline.
+    Prefers a real publisher feed over a Google News or Bing News proxy, then the
+    entry with the most summary text, since proxy entries carry only the headline.
     """
     def rank(a):
-        is_proxy = "Google News" in a.get("source", "")
+        source = a.get("source", "")
+        is_proxy = "via Google News" in source or "via Bing News" in source
         return (is_proxy, -len(a.get("summary") or ""))
     return sorted(members, key=rank)[0]
 
 
-def deduplicate_stories(articles):
-    """Collapse same-story duplicates. Returns (kept, removed_count).
+def _title_clustered(article):
+    """False for sources whose titles must not be clustered.
 
-    arXiv is exempt. Syndication is a NEWS phenomenon - the same press release
-    rewritten by many outlets - whereas arXiv papers are never syndicated and
-    papers within one subfield share so much vocabulary that title similarity
-    produces false merges ("Codes for Quantum Secret Sharing with a Helper" vs
-    "Quantum Secret Sharing with a Helper and Programmable Access Structures"
-    are two different papers, 0.8 token overlap).
+    Syndication is a NEWS phenomenon - the same press release rewritten by many
+    outlets. arXiv papers are never syndicated, and papers within one subfield
+    share so much vocabulary that title similarity produces false merges ("Codes
+    for Quantum Secret Sharing with a Helper" vs "Quantum Secret Sharing with a
+    Helper and Programmable Access Structures" are two different papers, 0.8
+    token overlap). Hugging Face items are all titled "New on Hugging Face: <id>",
+    so two models from one org already share three tokens.
     """
-    clusters = []  # [(tokens, [articles])]
-    passthrough = []
+    source = article.get("source", "")
+    return not (source.startswith("arXiv") or source == "Hugging Face new models")
+
+
+def deduplicate_stories(articles):
+    """Collapse duplicates: the same URL, or the same story under other headlines.
+
+    Returns (kept, removed_count). Copies of one URL join one cluster before any
+    copy is dropped, so the group they arrived under still counts: Google News
+    gives an article the same link in every query that finds it, and the copy
+    from the first query in the registry used to win outright, whatever its group.
+    """
+    clusters = []  # [(tokens, [articles])]; tokens None for an unclustered source
+    by_url = {}
     for article in articles:
-        if article.get("source", "").startswith("arXiv"):
-            passthrough.append(article)
+        url = article.get("url")
+        if url and url in by_url:
+            by_url[url].append(article)
             continue
-        tokens = title_tokens(article.get("title", ""))
-        for cluster_tokens, members in clusters:
-            if _same_story(tokens, cluster_tokens):
-                members.append(article)
-                break
+        if not _title_clustered(article):
+            members = [article]
+            clusters.append((None, members))
         else:
-            clusters.append((tokens, [article]))
+            tokens = title_tokens(article.get("title", ""))
+            for cluster_tokens, members in clusters:
+                if cluster_tokens is not None and _same_story(tokens, cluster_tokens):
+                    members.append(article)
+                    break
+            else:
+                members = [article]
+                clusters.append((tokens, members))
+        if url:
+            by_url[url] = members
 
     kept = []
     for _, members in clusters:
-        best = _representative(members)
-        others = [m for m in members if m is not best]
+        # A copy from an opportunity feed counts only if it passed the gate, or real
+        # news would be hidden with it. Such a copy is not kept either while another
+        # exists: it can be 30 days old and would carry its date into a 24h group.
+        counted = [m for m in members
+                   if m.get("category") != "opportunity" or m.get("is_opportunity")]
+        best = _representative(counted or members)
+        # The kept copy takes the most specific group any counted copy arrived under.
+        cats = {m.get("category", "general") for m in counted}
+        specific = [c for c in CATEGORY_PRIORITY if c in cats]
+        if specific:
+            best["category"] = specific[0]
+            if specific[0] == "opportunity":
+                best["is_opportunity"] = True
+            if len(specific) > 1:
+                best["also_in"] = specific[1:]
+        # Corroboration is a useful relevance signal, so keep the trail. A second
+        # search that found the same link is not a second outlet, so it counts once.
+        others = [m for m in members if m.get("url") != best.get("url")]
         if others:
-            # Corroboration is a useful relevance signal, so keep the trail.
             best["also_reported_by"] = sorted({m["source"] for m in others})
-            best["duplicate_count"] = len(members)
+            best["duplicate_count"] = len({m.get("url") for m in members})
         kept.append(best)
 
-    kept.extend(passthrough)
     return kept, len(articles) - len(kept)
 
 
 def _categorize_source(source_name):
-    """Map source to broad category for initial sorting."""
-    categories = {
-        "indian": ["Inc42", "YourStory", "Economic Times Tech"],
-        "quantum": ["arXiv Quantum Physics"],
-        "ai_research": ["arXiv AI", "arXiv Machine Learning"],
-        "showcase": ["Product Hunt AI"],
-        "opportunity": [
-            "AI Hackathons (via Google News)",
-            "AI Competitions (via Google News)",
-            "AI Programs (via Google News)",
-            "AI Applications Open (via Google News)",
-        ],
-        "company_blog": ["OpenAI Blog", "Google AI Blog", "Hugging Face Blog"],
-        "anthropic_claude": ["Anthropic News (via Google News)", "Claude Code (via Google News)"],
-        "elon_xai": ["xAI Blog", "Elon Musk on X (via Google News)"],
-        "open_model": [
-            "Open Models (via Google News)",
-            "Open Model Benchmarks (via Google News)",
-            "r/LocalLLaMA",
-            "Ollama Blog",
-        ],
-    }
-    for cat, sources in categories.items():
-        if source_name in sources:
-            return cat
-    return "general"
+    """The digest group a source feeds, from the registry."""
+    return CATEGORY.get(source_name, "general")
+
+
+def _fetch_host(jobs, now):
+    """One host's feeds, in turn and politely. Returns [(name, articles)]."""
+    out = []
+    for name, url in jobs:
+        out.append((name, fetch_feed(name, url, now - timedelta(hours=window_hours_for(name)))))
+        time.sleep(0.6)
+    return out
 
 
 def scrape_all_feeds():
-    """Scrape all RSS feeds and save to JSON."""
+    """Scrape every registered source and save to JSON."""
     os.makedirs(TMP_DIR, exist_ok=True)
 
     now = datetime.now(timezone.utc)
@@ -489,34 +655,46 @@ def scrape_all_feeds():
     print(f"  quantum window : last {QUANTUM_WINDOW_HOURS}h "
           f"({'INCLUDED - quantum day' if is_quantum_day else 'SKIPPED - not Thursday'})")
 
+    # Hosts in parallel, the feeds of one host in turn and politely. The Google
+    # News searches share one host, so they run one after another.
+    hosts = {}
     for name, url in FEEDS.items():
-        is_quantum = name in QUANTUM_SOURCES
-        if is_quantum and not is_quantum_day:
+        if name in QUANTUM_SOURCES and not is_quantum_day:
+            continue
+        hosts.setdefault(urllib.parse.urlparse(url).netloc, []).append((name, url))
+    results = {}
+    with ThreadPoolExecutor(max_workers=8) as ex:
+        readers = {name: ex.submit(EXTRA_READERS[kind], name, arg,
+                                   now - timedelta(hours=window_hours_for(name)))
+                   for name, _category, kind, arg in EXTRA}
+        for batch in ex.map(lambda jobs: _fetch_host(jobs, now), hosts.values()):
+            results.update(batch)
+        for name, future in readers.items():
+            results[name] = future.result()
+
+    # One line per source, in registry order.
+    for name in list(FEEDS) + [e[0] for e in EXTRA]:
+        if name not in results:
             print(f"  [ skipped   ] {name} (quantum runs Thursdays)")
             continue
-
-        cutoff_time = now - timedelta(hours=window_hours_for(name))
-        articles = fetch_feed(name, url, cutoff_time)
+        articles = results[name]
         w = window_hours_for(name)
         tag = f"{w // 24}d" if w >= 48 else f"{w}h"
         if name in OPPORTUNITY_SOURCES:
             kept = sum(1 for a in articles if a.get("is_opportunity"))
             tag += f", {kept}/{len(articles)} pass gate"
         print(f"  [{len(articles):>3} articles] {name}  ({tag})")
-        all_articles.extend(articles)
-        time.sleep(0.5)  # polite delay
+        all_articles.extend(route_by_title(a) for a in articles)
 
-    # Deduplicate by URL
-    seen_urls = set()
-    unique_articles = []
-    for article in all_articles:
-        if article["url"] and article["url"] not in seen_urls:
-            seen_urls.add(article["url"])
-            unique_articles.append(article)
+    empty = [name for name, articles in results.items() if not articles]
+    print(f"\nSources: {len(results)} read, {len(results) - len(empty)} returned articles")
+    print(f"  none from: {', '.join(empty) if empty else '-'}")
 
-    # Collapse the same story reported by multiple outlets
+    # Collapse the same URL, and the same story reported by multiple outlets.
+    # An article with no link cannot be printed or fetched.
+    unique_articles = [a for a in all_articles if a["url"]]
     unique_articles, dup_removed = deduplicate_stories(unique_articles)
-    print(f"\nSame-story dedupe: removed {dup_removed} duplicate reports")
+    print(f"Dedupe: removed {dup_removed} duplicate reports (same link or same story)")
 
     # Sort by date (newest first)
     unique_articles.sort(
@@ -540,7 +718,7 @@ def scrape_all_feeds():
             "quantum_day": is_quantum_day,
             "total_articles": len(unique_articles),
             "duplicates_removed": dup_removed,
-            "sources_scraped": len(FEEDS),
+            "sources_scraped": len(results),
             "articles": unique_articles,
         }, f, indent=2, ensure_ascii=False)
 

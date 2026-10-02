@@ -9,7 +9,8 @@ Order, and what stops the run:
 
   1. test suite            tools/tests/test_*.py      FAIL -> stop
   2. generate the PDF      generate_pdf.py            FAIL -> stop
-  3. rendered-text checks  stray '?', cut summaries   FAIL -> stop
+  3. rendered-text checks  stray '?', cut summaries,  FAIL -> stop
+                           over the page limit
   4. quality review        check_quality.py           ERROR -> stop, WARN -> print
      (includes the freshness rule - 24h, quantum 7d - measured at send)
   5. backup                analyzed_content_<DATE>.bak.json
@@ -56,12 +57,16 @@ def _squash(text):
 
 
 def source_text(data):
-    """Every string the PDF renders, so the rendered page can be compared to it."""
+    """Every string the PDF renders, so the rendered page can be compared to it.
+
+    The story URL is left out: since 2026-10-02 it is the title's link target and
+    is not printed, and a query string's '?' counted here would hide a stray one.
+    """
     parts = []
     for stories in (data.get("sections") or {}).values():
         for s in stories or []:
             parts += [str(s.get(k) or "") for k in
-                      ("title", "summary", "source", "url", "deadline", "prize",
+                      ("title", "summary", "source", "deadline", "prize",
                        "eligibility", "opportunity_type", "apply_url", "who_affected")]
     for block in (data.get("section_extras") or {}).values():
         for row in (block or {}).get("best_for") or []:
@@ -109,6 +114,15 @@ def missing_titles(data, pdf_text):
             if _squash(title)[:TITLE_PREFIX] not in page:
                 out.append(title)
     return out
+
+
+def page_problem(pages):
+    """The blocking problem for a PDF over the page limit, or None."""
+    from generate_pdf import PAGE_LIMIT
+    if pages > PAGE_LIMIT:
+        return (f"the PDF is {pages} pages; the limit is {PAGE_LIMIT} - cut a story "
+                "from the longest sections or shorten summaries, then rebuild")
+    return None
 
 
 def run_tests():
@@ -169,6 +183,9 @@ def main():
 
     stray = stray_question_marks(pdf_text, src)
     print(f"    {len(reader.pages)} pages | {len(pdf_text):,} chars extracted")
+    too_long = page_problem(len(reader.pages))
+    if too_long:
+        problems.append(too_long)
     if stray:
         problems.append(f"{stray} stray '?' in the PDF that the source does not have "
                         "- a character outside latin-1 reached sanitize_text()")

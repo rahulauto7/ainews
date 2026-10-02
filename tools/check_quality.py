@@ -14,7 +14,7 @@ a check that fires on good copy gets ignored, and an ignored check is dead.
          duplicate_across_sections one story printed in two sections
          stale_story               news older than 24h (quantum: 7d), at send
   WARN   unexplained_acronym       an acronym never expanded in its summary
-         too_few_sentences         under the 4-7 sentences the rules require
+         too_few_sentences         under the four-sentence floor
          stale_best_for            a standing model table older than 21 days
 
 Usage:
@@ -313,7 +313,7 @@ def check_edition(data, today=None, now=None):
             n = _sentences(summary)
             if n < MIN_SENTENCES:
                 add("WARN", "too_few_sentences", key, title,
-                    f"{n} sentences; the rules ask for 4-7")
+                    f"{n} sentences; the floor is {MIN_SENTENCES}")
 
             # One finding per story, not per term: a story using four unexplained
             # acronyms is one summary to rewrite, not four lines to read.

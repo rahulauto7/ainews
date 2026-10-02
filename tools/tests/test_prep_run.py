@@ -20,7 +20,7 @@ from datetime import datetime, timedelta, timezone
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import web_text
-from prep_run import case_count, scrape_is_fresh
+from prep_run import case_count, scrape_is_fresh, task_line
 
 
 def check(failures, ok, msg):
@@ -96,6 +96,15 @@ def main():
 
     cases += 1
     check(failures, case_count([]) == 0, "an empty report did not count zero")
+
+    # A platform that failed inside a run that exited 0 still shows on the brief.
+    out = ["## lablab.ai", "!! lablab.ai: ProxyError: 403", "## Devpost newest", "AI Agents Hack",
+           "## Devfolio", "!! Devfolio: HTTPError: 500"]
+    line = task_line("hackathons", 0, out)
+    cases += 2
+    check(failures, "!! unread: lablab.ai, Devfolio" in line, f"unread platforms not named: {line!r}")
+    check(failures, "!!" not in task_line("hackathons", 0, ["## lablab.ai", "Hack One"]),
+          "a clean run must carry no warning")
 
     for f in failures:
         print("FAIL:", f)

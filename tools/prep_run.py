@@ -9,14 +9,14 @@ This runs the slow parts to completion - nothing is detached, so nothing needs
 polling - and prints one compact brief:
 
   - today, the weekday, and whether Quantum + AI is in (Thursdays only)
-  - the 12 section keys in render order, so they are never guessed
+  - the section keys in render order, so they are never guessed
   - the last three editions on disk, for the duplicate-across-days check
   - the test suite result as one line
-  - the scrape, then the digest, then Devpost and the carry-forward recheck,
-    the last two in parallel with the scrape because they hit different hosts
+  - the scrape, then the digest, Devpost, the carry-forward recheck and the
+    other hackathon platforms (lablab.ai, Devfolio, Unstop), in parallel
 
 Outputs land where they always do: .tmp/rss_articles.json, .tmp/digest.md,
-.tmp/devpost.txt, .tmp/recheck.txt.
+.tmp/devpost.txt, .tmp/recheck.txt, and now .tmp/hackathons.txt.
 
 Usage:
   python3 tools/prep_run.py               # full prep
@@ -54,7 +54,7 @@ def _run(name, args, out_file=None):
 def scrape_is_fresh(max_age_hours=6):
     """True when .tmp/rss_articles.json was written recently enough to reuse.
 
-    A re-run inside the same morning should not re-hit 34 feeds; a run the next
+    A re-run inside the same morning should not re-hit 200+ sources; a run the next
     day must. Six hours splits those without a flag.
     """
     try:
@@ -86,6 +86,19 @@ def case_count(lines):
     return total
 
 
+def task_line(name, rc, lines):
+    """The brief's line for one opportunity task.
+
+    find_opportunities platforms reports a failed platform as a "!! <platform>:
+    <error>" line and carries on, so its exit code alone cannot say that lablab.ai
+    or Devfolio went unread.
+    """
+    broken = [l[3:].split(":")[0] for l in lines if l.startswith("!! ")]
+    return (f"  {name:10s} {len(lines)} lines -> .tmp/{name}.txt"
+            + ("  !! failed" if rc != 0 else "")
+            + (f"  !! unread: {', '.join(broken)}" if broken else ""))
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -101,7 +114,7 @@ def main():
     quantum = now.weekday() == QUANTUM_WEEKDAY
     print(f"RUN {today} ({now.strftime('%A')})  |  "
           f"Quantum + AI: {'IN (Thursday)' if quantum else 'OUT (not Thursday)'}  |  "
-          f"{12 if quantum else 11} sections")
+          f"{len(SECTION_ORDER) - (0 if quantum else 1)} sections")
 
     print("\nSection keys, in render order:")
     for i, key in enumerate(SECTION_ORDER, 1):
@@ -121,7 +134,8 @@ def main():
         why = "--no-scrape" if args.no_scrape else f"fresh, scraped {when} UTC"
         print(f"\nScrape: reusing {n_arts} articles on disk ({why})")
     else:
-        print("\nScrape: running 34 feeds to completion...")
+        from feed_sources import EXTRA, RSS
+        print(f"\nScrape: running {len(RSS) + len(EXTRA)} sources to completion...")
         name, rc, text = _run("scrape", [os.path.join(TOOLS_DIR, "scrape_rss_feeds.py")],
                               os.path.join(web_text.TMP_DIR, "rss_scrape.log"))
         tail = [l for l in text.strip().splitlines() if l.strip()][-2:]
@@ -130,9 +144,10 @@ def main():
             print("  !! scrape failed - RSS is the only input source, so stop here")
             return 1
 
-    # Devpost and the carry-forward recheck hit different hosts than each other,
-    # the digest only needs the scrape already on disk, and the test suite is
-    # pure CPU. All four run at once instead of four polled turns.
+    # Devpost, the carry-forward recheck and the other hackathon platforms hit
+    # different hosts than each other, the digest only needs the scrape already on
+    # disk, and the test suite is pure CPU. All five run at once instead of five
+    # polled turns.
     print("\nDigest + opportunity checks + tests, in parallel...")
     tasks = [
         ("digest", [os.path.join(TOOLS_DIR, "news_digest.py")], None),
@@ -140,22 +155,22 @@ def main():
          os.path.join(web_text.TMP_DIR, "devpost.txt")),
         ("recheck", [os.path.join(TOOLS_DIR, "find_opportunities.py"), "recheck"],
          os.path.join(web_text.TMP_DIR, "recheck.txt")),
+        ("hackathons", [os.path.join(TOOLS_DIR, "find_opportunities.py"), "platforms"],
+         os.path.join(web_text.TMP_DIR, "hackathons.txt")),
     ]
 
     from verify_edition import run_tests
 
-    with ThreadPoolExecutor(max_workers=4) as ex:
+    with ThreadPoolExecutor(max_workers=5) as ex:
         tests = None if args.skip_tests else ex.submit(run_tests)
         results = list(ex.map(lambda t: _run(t[0], t[1], t[2]), tasks))
 
         for name, rc, text in results:
             lines = [l for l in text.strip().splitlines() if l.strip()]
             if name == "digest":
-                print(f"  digest   {lines[-1] if lines else 'no output'}")
+                print(f"  digest     {lines[-1] if lines else 'no output'}")
             else:
-                out = ".tmp/devpost.txt" if name == "devpost" else ".tmp/recheck.txt"
-                print(f"  {name:8s} {len(lines)} lines -> {out}"
-                      + ("  !! failed" if rc != 0 else ""))
+                print(task_line(name, rc, lines))
 
         if tests is not None:
             ok, lines = tests.result()
