@@ -1,13 +1,14 @@
-"""Cases for summary length: 400-800 characters, printed whole.
+"""Cases for summary length: a full explanation, at least 1,000 characters, no ceiling.
 
 Until 2026-10-02 the PDF cut every summary at 1,200 characters
-(`clip_to_sentence`). That morning the rule became "as long as the story
-needs", and the same evening rahul found the result too long to read: "make it
-max 15 pages". So summaries are 400-800 characters, the size that fits five
-stories a section in 15 pages (see test_page_limit.py), and the builder reports
-any outside that range.
-Nothing shortens a summary on its way to the page: the curator writes it to
-length, and the page prints what was written.
+(`clip_to_sentence`). That evening the rule became 400-800 characters to fit
+15 pages, and on 2026-10-03 rahul found the five-line summaries it produced
+too thin: "I want a clear understanding, in layman's terms, a news summary, no
+matter how long it takes in lines." So a summary is at least 1,000 characters
+and as long as the story needs; the page limit is met by carrying fewer
+stories (test_page_limit.py), never by shortening explanations.
+Nothing shortens a summary on its way to the page: the curator writes it, and
+the page prints what was written, paragraph breaks included.
 
 Run: python3 tools/tests/test_summary_length.py
 """
@@ -85,22 +86,21 @@ def builder_report(stories):
 def main():
     failures, cases = [], 0
 
-    # ── 1. The range itself ──────────────────────────────────────────────────
-    cases += 1
-    check(failures, (builder_helpers.SUMMARY_MIN, builder_helpers.SUMMARY_MAX) == (400, 800),
-          f"summary rule is {builder_helpers.SUMMARY_MIN}-{builder_helpers.SUMMARY_MAX}, "
-          "expected 400-800")
+    # ── 1. The rule itself: a floor and no ceiling ───────────────────────────
+    cases += 2
+    check(failures, builder_helpers.SUMMARY_MIN == 1000,
+          f"summary floor is {builder_helpers.SUMMARY_MIN}, expected 1000")
+    check(failures, builder_helpers.SUMMARY_MAX is None,
+          f"summaries must have no ceiling, found {builder_helpers.SUMMARY_MAX}")
 
-    # ── 2. A summary at the ceiling reaches the page whole ───────────────────
-    s800 = long_summary(800)
-    _, text = render([story(s800)])
+    # ── 2. A long explanation reaches the page whole ─────────────────────────
+    s2500 = long_summary(2500)
+    _, text = render([story(s2500)])
     cases += 1
     check(failures, squash(SENTINEL) in text,
-          f"a {len(s800)}-character summary lost its last sentence on the page")
+          f"a {len(s2500)}-character summary lost its last sentence on the page")
 
-    # ── 3. An over-long summary still prints whole, overleaf if it must ──────
-    # The builder reports it; the page never clips it, so nothing the curator
-    # wrote goes missing silently.
+    # ── 3. A very long summary still prints whole, overleaf if it must ───────
     s12k = long_summary(12000)
     try:
         pages, text = render([story(s12k)])
@@ -113,29 +113,48 @@ def main():
     check(failures, squash(SENTINEL) in text,
           "the 12,000-character summary lost its last sentence")
 
-    # ── 4. The builder reports a summary outside 400-800, both ways ──────────
+    # ── 4. The builder reports a summary under the floor, and nothing above ──
     now = datetime.now(timezone.utc).isoformat()
     lines = builder_report([
-        story(long_summary(1200), title="LongStoryHere", published_at=now),
-        story(long_summary(300), title="ShortStoryHere", published_at=now),
+        story(long_summary(5000), title="LongStoryHere", published_at=now),
+        story(long_summary(700), title="ShortStoryHere", published_at=now),
     ])
     cases += 2
-    check(failures, [l for l in lines if "LongStoryHere" in l and "400-800" in l],
-          f"a 1,200-character summary must be reported as too long: {lines!r}")
-    check(failures, [l for l in lines if "ShortStoryHere" in l],
-          f"a 300-character summary must be reported as too short: {lines!r}")
+    check(failures, not [l for l in lines if "LongStoryHere" in l],
+          f"a 5,000-character summary is inside the rule: {lines!r}")
+    check(failures, [l for l in lines if "ShortStoryHere" in l and "at least 1000" in l],
+          f"a 700-character summary must be reported as too short: {lines!r}")
 
     def exact(n):
         return "a" * (n - 1) + "."
 
-    lines = builder_report([
-        story(exact(400), title="AtTheFloor", published_at=now),
-        story(exact(800), title="AtTheCeiling", published_at=now),
-    ])
+    lines = builder_report([story(exact(1000), title="AtTheFloor", published_at=now)])
     cases += 1
-    check(failures, not lines, f"400 and 800 characters are inside the rule: {lines!r}")
+    check(failures, not lines, f"1,000 characters is inside the rule: {lines!r}")
 
-    # ── 5. The sentence check names a floor, not a 4-7 range ──────────────────
+    # ── 4b. Paragraphs survive the builder and reach the page ────────────────
+    para = ("First paragraph says what happened.  It has two sentences.\n\n\n"
+            "   Second paragraph explains why. ")
+    tidy = builder_helpers.tidy_summary(para)
+    cases += 2
+    check(failures, tidy == ("First paragraph says what happened. It has two sentences.\n\n"
+                             "Second paragraph explains why."),
+          f"tidy_summary must keep one blank line between paragraphs: {tidy!r}")
+    two = builder_helpers.O("T", para, "Src", "https://example.com/p", 3, [])["summary"]
+    check(failures, two == tidy, f"O() must keep paragraphs: {two!r}")
+
+    from generate_pdf import GlobalAINewsPDF as _PDF, _summary_lines
+    probe = _PDF()
+    probe.add_page()
+    one_block = long_summary(1500)
+    split_text = one_block.replace(". ", ".\n\n", 1)
+    cases += 2
+    check(failures, _summary_lines(probe, story(split_text)) > _summary_lines(probe, story(one_block)),
+          "a paragraph break must take a line on the page")
+    _, text = render([story(split_text)])
+    check(failures, squash(SENTINEL) in text, "a summary in two paragraphs lost its end")
+
+    # ── 5. The sentence check names a floor, not a range ─────────────────────
     pinned = datetime(2026, 10, 2, 12, 0, tzinfo=timezone.utc)
     three = story("OpenAI shipped a model. It reads code. It costs less.",
                   published_at=(pinned - timedelta(hours=2)).isoformat())

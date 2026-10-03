@@ -51,10 +51,14 @@ CATEGORY.update({name: category for name, category, _kind, _arg in EXTRA})
 AI_FILTER_SOURCES = {name for name, _u, _c, flags in RSS if "ai" in flags.split()}
 MUSK_FILTER_SOURCES = {name for name, _u, _c, flags in RSS if "musk" in flags.split()}
 BROWSER_UA_SOURCES = {name for name, _u, _c, flags in RSS if "browser" in flags.split()}
+TOP_SOURCES = {name for name, _u, _c, flags in RSS if "top" in flags.split()}
 
 
 # arXiv feeds return hundreds of papers — limit to most relevant
 ARXIV_MAX_PER_FEED = 15
+# Sources flagged "top" (the regional Google News editions, 100 results each)
+# keep only their first entries, which Google ranks as the most prominent.
+TOP_PER_FEED = 20
 
 # ── Time Windows ──────────────────────────────────────────────────────────────
 # Strict last 24 hours for every news source, quantum included.
@@ -247,6 +251,17 @@ def plain_summary(raw):
     return " ".join(text.split())[:SUMMARY_MAX_CHARS]
 
 
+def title_from_text(text, limit=110):
+    """A headline for an untitled post: its first sentence, cut between words."""
+    text = " ".join((text or "").split())
+    if not text:
+        return ""
+    first = re.split(r"(?<=[.!?])\s", text, maxsplit=1)[0]
+    if len(first) <= limit:
+        return first
+    return first[:limit].rsplit(" ", 1)[0].rstrip(" ,;:-") + "..."
+
+
 def articles_from_feed(name, feed, cutoff_time):
     """Articles from a parsed feed: dated, inside the window, and past the source's filters.
 
@@ -254,7 +269,7 @@ def articles_from_feed(name, feed, cutoff_time):
     """
     is_arxiv = name.startswith("arXiv")
     is_bing = "(via Bing News)" in name
-    cap = ARXIV_MAX_PER_FEED if is_arxiv else MAX_PER_FEED
+    cap = ARXIV_MAX_PER_FEED if is_arxiv else TOP_PER_FEED if name in TOP_SOURCES else MAX_PER_FEED
     articles = []
     undated = 0
     for entry in feed.entries:
@@ -275,8 +290,9 @@ def articles_from_feed(name, feed, cutoff_time):
         if published < cutoff_time:
             continue
 
-        title = getattr(entry, "title", "No title")
         summary = plain_summary(getattr(entry, "summary", getattr(entry, "description", "")))
+        # Bluesky and Mastodon posts carry no title, so the post's opening words stand in.
+        title = getattr(entry, "title", None) or title_from_text(summary) or "No title"
         if name in AI_FILTER_SOURCES and not mentions_ai(title, summary):
             continue
         if name in MUSK_FILTER_SOURCES and not musk_on_ai(title, summary):
@@ -312,11 +328,19 @@ def articles_from_feed(name, feed, cutoff_time):
     return articles
 
 
+# A refusal worth one more try: Google News answers 503 and Reddit 429 to a burst
+# from the bot User-Agent, and both answer the browser one a moment later.
+RETRY_STATUSES = {403, 429, 503}
+
+
 def fetch_feed(name, url, cutoff_time, timeout=20):
     """Fetch and parse a single RSS feed. Returns list of articles."""
     ua = BROWSER_UA if name in BROWSER_UA_SOURCES else BOT_UA
     try:
         response = requests.get(url, timeout=timeout, headers={"User-Agent": ua})
+        if response.status_code in RETRY_STATUSES:
+            time.sleep(2)
+            response = requests.get(url, timeout=timeout, headers={"User-Agent": BROWSER_UA})
         response.raise_for_status()
         return articles_from_feed(name, feedparser.parse(response.content), cutoff_time)
     except requests.exceptions.Timeout:
@@ -472,7 +496,7 @@ EXTRA_READERS = {"hn": read_hn, "hf_models": read_hf_models, "yt_search": read_y
 POOL_CATEGORIES = {"general", "company_blog", "video", "social", "showcase"}
 CATEGORY_PRIORITY = ["opportunity", "quantum", "elon_musk", "xai_grok", "openai", "anthropic_claude",
                      "google", "open_model", "closed_model", "indian", "rsi", "problems",
-                     "automation", "business", "world"]
+                     "automation", "business", "world", "world_lang"]
 _ROUTES = [  # first match wins; Google is last because its name appears in other companies' stories
     ("elon_musk", re.compile(r"\b(elon|musk)\b", re.I)),
     ("xai_grok", re.compile(r"\b(xai|grok|spacexai)\b", re.I)),
@@ -551,11 +575,13 @@ def _representative(members):
 
     Prefers a real publisher feed over a Google News or Bing News proxy, then the
     entry with the most summary text, since proxy entries carry only the headline.
+    A forum post (Reddit, Bluesky) comes last: it is talk about a story, and the
+    outlet that reported it is the copy worth keeping.
     """
     def rank(a):
         source = a.get("source", "")
         is_proxy = "via Google News" in source or "via Bing News" in source
-        return (is_proxy, -len(a.get("summary") or ""))
+        return (a.get("category") == "forums", is_proxy, -len(a.get("summary") or ""))
     return sorted(members, key=rank)[0]
 
 
@@ -568,10 +594,18 @@ def _title_clustered(article):
     for Quantum Secret Sharing with a Helper" vs "Quantum Secret Sharing with a
     Helper and Programmable Access Structures" are two different papers, 0.8
     token overlap). Hugging Face items are all titled "New on Hugging Face: <id>",
-    so two models from one org already share three tokens.
+    so two models from one org already share three tokens. Non-English headlines
+    (world_lang) all carry their language's words for "artificial intelligence"
+    - Vietnamese "tri tue nhan tao" is four tokens once the accents go - so they
+    merged with each other on the first run (2026-10-03); a shared link still
+    de-duplicates them.
     """
     source = article.get("source", "")
-    return not (source.startswith("arXiv") or source == "Hugging Face new models")
+    return not (source.startswith("arXiv") or source == "Hugging Face new models"
+                or article.get("category") == "world_lang")
+
+
+MAX_ALTERNATES = 6
 
 
 def deduplicate_stories(articles):
@@ -627,6 +661,14 @@ def deduplicate_stories(articles):
         if others:
             best["also_reported_by"] = sorted({m["source"] for m in others})
             best["duplicate_count"] = len({m.get("url") for m in members})
+            # The other outlets' own links, so fetch_articles.py can read the story
+            # elsewhere when this publisher blocks the fetch or shows a paywall.
+            alternates, seen = [], {best.get("url")}
+            for m in sorted(others, key=lambda a: "via Google News" in a.get("source", "")):
+                if m.get("url") and m["url"] not in seen and len(alternates) < MAX_ALTERNATES:
+                    seen.add(m["url"])
+                    alternates.append({"source": m["source"], "url": m["url"], "title": m["title"]})
+            best["alternates"] = alternates
         kept.append(best)
 
     return kept, len(articles) - len(kept)

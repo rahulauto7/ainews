@@ -42,6 +42,7 @@ SECTIONS_FED_BY = {
     "showcase": ["ai_business_opportunities"],
     "indian": ["indian_ai_industry"],
     "world": ["global_ai_news"],
+    "world_lang": ["global_ai_news"],
     "general": ["global_ai_news"],
     "company_blog": ["global_ai_news"],
     "openai": ["openai_news"],
@@ -53,6 +54,7 @@ SECTIONS_FED_BY = {
     "elon_musk": ["elon_musk_ai_vision"],
     "video": [],
     "social": [],
+    "forums": [],
 }
 
 KEYED_HOSTS = {"api.twitter.com", "api.x.com", "www.googleapis.com", "newsapi.org"}

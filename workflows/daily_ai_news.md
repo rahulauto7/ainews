@@ -9,14 +9,18 @@ news explanations — see the **Plain-Language News Rule**.
 `QUANTUM_WEEKDAY = 3` in `scrape_rss_feeds.py` is authoritative; `prep_run.py` prints which way today
 falls, so it never has to be worked out by hand.
 
-**Fifteen pages at most.** Rahul, 2026-10-02: "make it max 15 pages". So: **3–5 stories per
-section**, **summaries of 400–800 characters**, and a layout where page 1 opens with a short masthead
-and a contents list (each entry links to its section and names its page) and the sections flow on
-from each other. Story URLs sit behind the titles rather than printed. A Thursday edition at the top
-of those ranges is 13 pages, a weekday one 12. `write_analyzed()` prints the page count while the
-builder is open, and `verify_edition.py` blocks the send above `PAGE_LIMIT` (15, in
-`generate_pdf.py`). This replaces the "no page limit" rule of the same morning, which produced a
-17-page edition, and a 5–6 page limit he withdrew the same evening.
+**Every story explained in full, fifteen pages at most.** Rahul, 2026-10-03: "I want a clear
+understanding, in layman's terms, a news summary, no matter how long it takes in lines", because the
+400–800 character summaries of 2026-10-02 gave him five lines a story and sent him elsewhere to
+understand them. Asked the same day whether to keep the page limit, he chose **max 15 pages**. So:
+**every summary is a full plain-language explanation of at least 1,000 characters with no upper
+limit** (see the Plain-Language News Rule), and the page limit is met by carrying **fewer stories,
+2–4 a section, usually 3**, never by shortening an explanation. Three 2,000-character stories a
+section is 14 pages on a weekday and 15 on a Thursday. Page 1 opens with a short masthead and a
+contents list (each entry links to its section and names its page), the sections flow on from each
+other, a long story runs on overleaf like a newspaper column, and story URLs sit behind the titles.
+`write_analyzed()` prints the page count while the builder is open and, over the limit, names the
+stories to drop; `verify_edition.py` blocks the send above `PAGE_LIMIT` (15, in `generate_pdf.py`).
 
 ---
 
@@ -80,10 +84,15 @@ Devpost, the carry-forward recheck and the other hackathon platforms **in parall
 suite**, and prints one brief: today's date and whether Quantum is in, the 16 section keys in render
 order, the last three editions on disk for the duplicate check, and the test result as one line.
 
-The scrape reads every source in the registry, `tools/feed_sources.py`: 214 RSS and Atom feeds plus
-four non-RSS readers (Hacker News, Hugging Face new models, two YouTube searches), all keyless. Hosts
-are fetched in parallel; the 41 Google News searches share one host and run in turn, about a minute.
-`.tmp/rss_scrape.log` ends with `Sources: N read, M returned articles` and a `none from:` line.
+The scrape reads every source in the registry, `tools/feed_sources.py`: 386 RSS and Atom feeds plus
+four non-RSS readers (Hacker News, Hugging Face new models, two YouTube searches), all keyless
+(rahul, 2026-10-03: "search everywhere on the internet ... if they are asking for any API, don't use
+that platform"). That is mainstream, wire, trade, science and regional press; Google News searches in
+14 English-language country editions and in 17 other languages; Bing News; YouTube channels and
+podcasts; Reddit and Bluesky. Hosts are fetched in parallel; the 80 Google News searches share one
+host and run in turn, about two minutes. A feed that answers 403, 429 or 503 is retried once with the
+browser User-Agent. `.tmp/rss_scrape.log` ends with `Sources: N read, M returned articles` and a
+`none from:` line.
 
 Outputs: `.tmp/rss_articles.json`, `.tmp/digest.md`, `.tmp/devpost.txt`, `.tmp/recheck.txt`,
 `.tmp/hackathons.txt`.
@@ -97,12 +106,22 @@ Outputs: `.tmp/rss_articles.json`, `.tmp/digest.md`, `.tmp/devpost.txt`, `.tmp/r
    group's heading names its section after `->`), biggest story first and direct feeds before search
    proxies, `PRINTED mm-dd` on anything from the last three editions, `{also: ...}` on a story that
    fits more than one group, gate-passing opportunities, and yesterday's opportunities, `best_for`
-   table and rejection log. **Each group is capped** (40; general 60; research, video and social 25)
+   table and rejection log. **Each group is capped** (40; general 60; world 50; non-English 30; video 30; research, social
+   and forums 25)
    and ends `(+K more in rss_articles.json, not shown)`: the cap limits what you read, never how many
    stories a section prints. Aim to keep the file under ~35k tokens; `prep_run.py` prints its size.
+   Two groups are new on 2026-10-03: **non-English press** (Global AI News; summarise in English and
+   give the story an English title with `S(..., title=...)`, since characters outside latin-1 print
+   as `?`) and **Reddit and Bluesky** (leads: write up the release or article a post points to).
 2. **`python3 tools/fetch_articles.py IDX IDX ...`** for the shortlist. Decodes Google News proxy
    links, fetches publisher pages in parallel, caches under `.tmp/articles/`, flags
    `OLD` / `THIN` / `FAILED` / `X POST`. **Batch it** — one call with 20 indices is one turn.
+   The excerpt is **5,000 characters** by default, enough of most articles to explain the story in
+   full; `--chars 0` prints status lines only. **A blocked, paywalled or empty page is read from
+   another outlet automatically**: first the other outlets the scrape found carrying the story, then
+   a keyless Google News search of the headline. The head line then says `read via <outlet>: URL`;
+   pass that URL and outlet to `S(..., url=..., source=...)` so the title links to a page the reader
+   can open. `own page FAILED, no other outlet found` means the story really is headline-only.
    **X posts are read in full** through the keyless embed endpoint: the whole post, any quoted post,
    the reply line, and the post's own timestamp on the head line. Pass that timestamp to
    `S(..., published_at=...)` so the 24h rule measures the post, not the day Google indexed it. The
@@ -117,7 +136,10 @@ Outputs: `.tmp/rss_articles.json`, `.tmp/digest.md`, `.tmp/devpost.txt`, `.tmp/r
    builder to copy boilerplate.** Reference source articles **by index** into `rss_articles.json` so
    title/url/source stay faithful to what was scraped; never hand-type a URL. `write_analyzed()`
    validates section counts, summary lengths, missing URLs and `published_date`, renders the PDF to
-   count its pages, and prints the problems. `rejected=[(name, reason)]` feeds tomorrow's digest so a rejected item is not
+   count its pages, and prints the problems. Over 15 pages it prints `to fit, drop:` with the
+   lowest-relevance stories from the fullest sections; drop those (or others of your choosing), never
+   shorten an explanation. Write a long summary in two or three paragraphs, separated by a blank
+   line inside the `'''` quotes; the PDF prints the break. `rejected=[(name, reason)]` feeds tomorrow's digest so a rejected item is not
    re-investigated.
 
 ### Step 3 — `python3 tools/verify_edition.py --send`
@@ -132,8 +154,9 @@ The rendered-text checks are the ones that used to be done by eye, and each is n
 - **Missing titles** — every story title must appear in the rendered page. Compared on a squashed
   30-character prefix, because `sanitize_text()` folds curly apostrophes, `multi_cell()` wraps
   titles across lines and `_fit_title()` truncates the longest ones.
-- **Page count** — over `PAGE_LIMIT` (15) stops the run. Cut the lowest-relevance story from the
-  fullest sections, or tighten the longest summaries, rebuild, and verify again.
+- **Page count** — over `PAGE_LIMIT` (15) stops the run. Drop the stories `write_analyzed()` named
+  under `to fit, drop:` (the lowest-relevance stories from the fullest sections), rebuild, and verify
+  again. Never shorten an explanation to fit (rahul, 2026-10-03).
 
 Flags: `--skip-pdf` (already rendered this run), `--skip-tests`, and no `--send` to verify and back
 up without mailing.
@@ -195,17 +218,30 @@ Google, Anthropic, xAI or Musk moves into that group), but the curator decides.
 ---
 
 ## Plain-Language News Rule
-Summaries explain **the news itself**, in language a reader with no background in the topic can
-follow. They are news explanations, not strategy notes, and they carry no advice.
+Summaries explain **the news itself**, in everyday language a reader with no background in the topic
+can follow, **as fully as the story needs, however many lines that takes**. The test (rahul,
+2026-10-03): after reading only that summary, he understands the story and never has to look
+elsewhere. They are news explanations, not strategy notes, and they carry no advice.
 
-**How to apply** — every summary does three things, woven into flowing prose with **no headings or
-bold labels inside the summary**:
+**How to apply** — every summary does these five things, woven into flowing prose with **no headings
+or bold labels inside the summary**, in two or three paragraphs when it runs long:
 1. **Say what happened.** Lead with the actual event, not with its implications.
 2. **Explain every name and term at first mention.** Who a person is, what a company does, what a
    product or technical term means — inline, in a clause or in brackets. Assume the reader has never
    heard of PhonePe, OAuth, prompt caching, a tensor network or a fractal dimension.
 3. **Explain why the news exists.** The situation, pressure or history that produced the event, so it
    makes sense instead of merely being reported.
+4. **Explain how it works.** The mechanism in everyday words: what the product actually does, how the
+   deal or rule operates, what the research found and how. An everyday comparison helps when it is
+   accurate ("like a spell-checker for code").
+5. **Say what changes and what comes next, as reported.** Who is affected and how, the next date or
+   step the source names, and what is still unknown. Numbers get context (bigger or smaller than
+   what, compared with last year). This is reporting, not advice.
+
+**Write it plainly:** short sentences (one idea each; `check_quality` flags any over 45 words),
+common words, active voice. Read the whole article first (`fetch_articles.py` prints 5,000
+characters, and reads another outlet when the publisher blocks it), so the explanation comes from
+the reporting rather than from the headline.
 
 **Do NOT include**: `Automation angle:` hooks, "why it matters for you" blocks, "the opportunity
 is..." framing, or suggestions about what to build. Removed 2026-09-03 on user instruction —
@@ -219,14 +255,14 @@ itself got lost.
   defined in the same sentence. This is the most common failure mode and the one that made the
   2026-09-03 first draft unreadable. `check_quality.py` flags ALL-CAPS acronyms it cannot find
   spelled out, and runs inside `verify_edition.py`.
-- **At least four complete sentences, 400–800 characters** (2026-10-02, the 15-page edition). Spend
-  the characters on what happened, the names and terms a newcomer needs, and why it happened; drop
-  background that does not change what the reader understands. The test: could he explain the story
-  to someone else after reading only that paragraph? Never spend characters on advice. The PDF prints
-  every summary whole; no ellipses, no mid-sentence cutoffs. `write_analyzed()` flags a summary
-  outside 400–800 characters.
-- **Fifteen pages is the limit; pick, don't squeeze.** 3–5 stories per section, the ones that matter
-  most.
+- **At least 1,000 characters and seven sentences, with no upper limit** (2026-10-03). Most stories
+  need 1,200–2,500 characters to cover the five parts above; a complicated one may need more, and
+  that is fine. The test: could he explain the story to someone else after reading only that
+  summary? Never spend characters on advice. The PDF prints every summary whole; no ellipses, no
+  mid-sentence cutoffs. `write_analyzed()` flags a summary under 1,000 characters, and
+  `check_quality` blocks the send on one (`short_summary`).
+- **Fifteen pages is the limit; pick, don't squeeze.** 2–4 stories per section, usually 3, the ones
+  that matter most. When the edition runs over, drop stories; never shorten an explanation.
   A section runs short only when nothing else inside its freshness window qualifies. Finish every
   section; no placeholder stubs in trailing sections.
 - **Do not invent facts.** Many headlines postdate the model's knowledge. Ground claims in what the
@@ -286,7 +322,7 @@ instead and the renderer skips dates there.
 ---
 
 ## Section-Specific Rules
-**All sections:** 3–5 stories, sorted by relevance (highest first).
+**All sections:** 2–4 stories, usually 3, sorted by relevance (highest first).
 Deduplicate across sources — the
 Google News proxies return the same story from a dozen outlets, so pick the most substantive one.
 
@@ -447,16 +483,19 @@ no session:
   cases in `tools/tests/test_fit_title.py`
 - No URL under a story → by design since 2026-10-02: the title is the link, and the line it took
   went to the page limit
-- PDF over 15 pages → `verify_edition.py` stops the run; `write_analyzed()` already printed the count.
-  Cut a story or tighten summaries rather than editing the layout
+- PDF over 15 pages → `verify_edition.py` stops the run; `write_analyzed()` already printed the count
+  and the stories to drop (`to fit, drop:`). Drop stories; never shorten an explanation or edit the
+  layout to squeeze
 - Tests "collect nothing" → they are plain scripts, **not** pytest. `verify_edition.py` runs them;
   `python3 -m pytest tools/tests/` finds nothing because there are no `test_*` functions
 
 ## Adding Sources
 Add a row to `RSS` in `tools/feed_sources.py`: `(name, url, category, flags)`. The category is the
 digest group, and `news_digest.CATEGORY_ORDER` names the section each group feeds. Flags, space
-separated: `ai` keeps only entries that mention AI (for general-interest feeds), `musk` keeps only
-Musk on AI or autonomy, `browser` sends the browser User-Agent to sites that refuse the bot one. A
+separated: `ai` keeps only entries that mention AI (for general-interest feeds; English only, so a
+non-English feed goes unfiltered with an AI search query instead), `musk` keeps only Musk on AI or
+autonomy, `browser` sends the browser User-Agent to sites that refuse the bot one, `top` keeps only
+the feed's first 20 entries (the regional Google News editions return 100). A
 non-RSS source goes in `EXTRA` with a reader in `scrape_rss_feeds.EXTRA_READERS`; keep its parsing in a
 pure function and test it offline. **Keyless only:** a source that needs an API key is skipped, even
 when the key sits in `.env` (X API, YouTube Data API, NewsAPI). Every source tested and rejected is
@@ -468,6 +507,20 @@ names, https, the keyless rule and that every section is fed.
 ## Lessons Learned
 
 ### Still live — these change what you do
+- **2026-10-03: summaries are full explanations; the edition drops stories to fit.** Rahul found the
+  400–800 character summaries too thin to understand without looking elsewhere, and kept the
+  15-page limit. Summaries are now at least 1,000 characters with no ceiling, written to the five
+  parts of the Plain-Language News Rule; sections carry 2–4 stories. Long stories run on overleaf
+  instead of moving whole, which reclaimed the blank foot of most pages. Do not go back to trimming
+  summaries when an edition runs long: drop a story. Rendering long summaries is slow (fpdf2's line
+  breaking costs about 2 seconds per pass for a full edition), so `fit_plan()` bisects its fixed drop
+  order instead of re-rendering after every drop; the drop-per-render version took five minutes on
+  the test suite's 128-story edition.
+- **2026-10-03: the source net is 390 keyless sources.** Probed ~300 candidates; the rejected ones,
+  with the reason, are listed at the end of `feed_sources.py` (every github.com `releases.atom` feed
+  answers 403 from the cloud; Bluesky search needs a login but profile RSS works; Mastodon hashtag
+  feeds are noise). Reddit RSS ends on 13 November 2026, which takes r/LocalLLaMA and the four new
+  Reddit rows in the forums group dark together.
 - **2026-10-01: Reddit ends RSS on 13 November 2026 (public API in March 2027).** r/LocalLLaMA reaches
   the scrape as an RSS feed and is the open-model section's highest-yield source, so that feed goes
   dark on 13 Nov. A replacement source has to be found and added to `FEEDS` before then, or the
@@ -605,6 +658,9 @@ names, https, the keyless rule and that every section is fed.
 | Dates missing from every story in the PDF (2026-09-17) | `test_story_dates.py`, `write_analyzed()` |
 | Empty sections spending a page and a contents slot | `generate_pdf.py` skips them |
 | A 17-page edition too long to read (2026-10-02) | `test_page_limit.py`, `PAGE_LIMIT`, `page_problem()` |
+| Five-line summaries too thin to understand (2026-10-03) | `short_summary` ERROR, `SUMMARY_MIN`, `test_summary_length.py`, `test_check_quality.py` |
+| Whole blocks moving overleaf and leaving the foot of the page blank | `_lines_before_break()`, `test_page_limit.py` |
+| Blocked publishers (Reuters, NYT, paywalls) leaving a story headline-only | `read_elsewhere()`, `alternates`, `test_wider_sources.py` |
 | Opportunity gate matching ordinary English ("models challenge…") | `test_opportunity_gate.py` |
 | Email body hardcoded and drifting from the edition | `test_email_body.py` |
 | Whole-title PDF comparison flagging 8 good stories | `missing_titles()`, `test_verify_edition.py` |
@@ -621,6 +677,18 @@ names, https, the keyless rule and that every section is fed.
 | The alert email re-sending a hackathon, or flooding on the first run | `test_hackathon_watch.py` |
 
 ### History
+- **2026-10-03:** On rahul's word that the five-line summaries were too thin ("a clear understanding,
+  in layman's terms ... no matter how long it takes in lines") and his choice to keep 15 pages:
+  summaries are full explanations of at least 1,000 characters with no ceiling, in five parts
+  (what happened, who and what everything is, why, how it works, what changes next), in paragraphs
+  when long; sections carry 2–4 stories; long stories run on overleaf; the builder prints the
+  stories to drop when the edition runs over; `check_quality` blocks a summary under 1,000
+  characters and flags sentences over 45 words. On "search everywhere on the internet" without
+  APIs: 172 new keyless sources (218 → 390), including Google News in 14 country editions and 17
+  languages, wire services, mainstream, trade, security and science press, regulators, podcasts,
+  Reddit and Bluesky; feeds refused with 403/429/503 are retried with the browser User-Agent;
+  `fetch_articles.py` prints 5,000 characters and reads a blocked story from another outlet. Tests
+  481 → 521 in 21 files.
 - **2026-10-03:** Hackathons: the 7-day build rule (submission deadline 7+ days away, registration
   deadlines never count) replaces the near-deadline rule for section 1 and blocks the send. The
   hackathon platforms moved to one keyless registry, `tools/hackathon_sources.py`, and grew from four

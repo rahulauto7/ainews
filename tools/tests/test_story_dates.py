@@ -39,7 +39,7 @@ ARTICLES = [
 ]
 
 # 507 characters: inside the builder's 400-600 rule, so only the dates get flagged.
-SUMMARY = "A plain-language summary of the story. " * 13
+SUMMARY = "A plain-language summary of the story. " * 27
 
 
 def check(failures, ok, message):
