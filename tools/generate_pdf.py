@@ -23,6 +23,10 @@ from datetime import datetime
 
 from fpdf import FPDF
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+from hackathon_sources import by_prize
+
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TMP_DIR = os.path.join(PROJECT_ROOT, ".tmp")
 TODAY = datetime.now().strftime("%Y-%m-%d")
@@ -668,8 +672,12 @@ def render_edition(data):
     prints those pages in the contents list. The list is the same height either
     way, so both passes lay the pages out identically.
     """
-    sections_data = data.get("sections") or {}
+    sections_data = dict(data.get("sections") or {})
     section_extras = data.get("section_extras") or {}
+    # Biggest prize first (rahul, 2026-10-03: "in PDF, give me hackathons with
+    # our top prizes first"), whatever order the builder wrote them in.
+    if sections_data.get("ai_hackathons"):
+        sections_data["ai_hackathons"] = by_prize(sections_data["ai_hackathons"])
     # Sections with nothing to show are skipped entirely. Quantum + AI is absent
     # six days a week by design. A section that carries extras (a model table)
     # still renders with no stories, because the table is the point.

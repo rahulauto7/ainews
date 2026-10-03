@@ -17,7 +17,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import builder_helpers
 import web_text
-from find_opportunities import _norm_url, _usd
+from find_opportunities import _norm_url
+from hackathon_sources import prize_usd
 from scrape_rss_feeds import plain_summary
 
 LEDE = "An artificial intelligence kill switch which can be checked by a third party may need to be mandatory."
@@ -87,8 +88,8 @@ def main():
 
     # Opportunity helpers
     cases += 3
-    check(failures, _usd("$138,000") == 138000, f"_usd $: {_usd('$138,000')}")
-    check(failures, 580 < _usd("₹ 50,000") < 600, f"_usd ₹: {_usd('₹ 50,000')}")
+    check(failures, prize_usd("$138,000") == 138000, f"prize_usd $: {prize_usd('$138,000')}")
+    check(failures, 580 < prize_usd("₹ 50,000") < 600, f"prize_usd ₹: {prize_usd('₹ 50,000')}")
     check(failures, _norm_url("https://www.Example.com/apply/") == _norm_url("example.com/apply"),
           "_norm_url: www/scheme/trailing slash should not matter")
 
