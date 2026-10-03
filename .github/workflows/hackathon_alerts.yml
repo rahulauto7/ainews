@@ -1,9 +1,10 @@
 # Emails rahul as soon as a new AI hackathon is listed anywhere it can be read.
 #
-# Every hour tools/hackathon_watch.py reads the nine platforms in
+# Every hour tools/hackathon_watch.py reads eight platforms from
 # tools/hackathon_sources.py (Devpost, lablab.ai, mlcontests.com for Kaggle and
-# the other ML competition sites, HackerEarth, Devfolio, Unstop, MLH, TAIKAI,
-# Hackster) and mails each AI hackathon it has not seen before whose submission
+# the other ML competition sites, Devfolio, Unstop, MLH, TAIKAI, Hackster;
+# HackerEarth refuses GitHub's servers, so it is in the daily PDF list only)
+# and mails each AI hackathon it has not seen before whose submission
 # deadline is at least 7 days away. The very first run sends one email listing
 # everything open now. The seen-list is kept on the hackathon-alerts-state
 # branch, so main stays clean, and changes only when something new turns up.

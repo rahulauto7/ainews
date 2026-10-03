@@ -7,7 +7,8 @@ hourly from GitHub Actions (.github/workflows/hackathon_alerts.yml), not from a
 Claude session: Claude cloud sessions in this project get linked to rahul's
 computer, and a linked session cannot sign in to Gmail (found 2026-10-03).
 
-Each run reads every platform in hackathon_sources.py and keeps the AI
+Each run reads the platforms in hackathon_sources.py (all but HackerEarth,
+which refuses GitHub's servers; see NOT_FROM_GITHUB) and keeps the AI
 hackathons that anyone can enter and whose submission deadline leaves 7+ days
 to build - the daily section's rule. An event that lists no deadline is kept and
 marked, because a missed hackathon costs more than a check. Events not seen
@@ -57,6 +58,13 @@ GMAIL_SEND = "https://gmail.googleapis.com/gmail/v1/users/me/messages/send"
 FORGET_AFTER_DAYS = 30
 # A platform unreadable for this long gets one email; a blip does not.
 WARN_AFTER_HOURS = 24
+
+# Platforms that refuse GitHub's servers. HackerEarth's event feed answers 403
+# to every GitHub Actions runner (first dry run, 2026-10-03) while answering a
+# Claude cloud session fine, and its listing page renders in the browser, so
+# there is nothing else to read. It stays in the daily PDF's candidate list.
+NOT_FROM_GITHUB = {"HackerEarth"}
+WATCHED = tuple((name, read) for name, read in hs.PLATFORMS if name not in NOT_FROM_GITHUB)
 
 
 # ── State ────────────────────────────────────────────────────────────────────
@@ -120,7 +128,7 @@ def plan(events, errors, state, today):
         if nk:
             names.setdefault(nk, []).append(date.fromisoformat(v["deadline"]) if v.get("deadline") else None)
     new, seeded = [], []
-    order = [name for name, _ in hs.PLATFORMS]
+    order = [name for name, _ in WATCHED]
     for e in sorted(events, key=lambda e: order.index(e["platform"]) if e["platform"] in order else 99):
         if e["platform"] in errors or not worth_alerting(e, today):
             continue
@@ -208,9 +216,9 @@ AI Hackathon Alerts</span></div>
 <p style="color:#888;font-size:12px;margin-top:20px;">{footer}</p></div></div>"""
 
 
-FOOTER = (f"Checked every hour on {len(hs.PLATFORMS)} platforms: "
+FOOTER = (f"Checked every hour on {len(WATCHED)} platforms: "
           + ", ".join(name if name != "mlcontests" else "mlcontests.com (Kaggle, AIcrowd, DrivenData, Zindi"
-                      " and more)" for name, _ in hs.PLATFORMS)
+                      " and more)" for name, _ in WATCHED)
           + f". Only AI hackathons with {hs.MIN_BUILD_DAYS}+ days left before the submission deadline.")
 
 
@@ -301,8 +309,8 @@ def run(state_path, to=None, dry_run=False, now=None, collect=hs.collect, send=g
     state = load_state(state_path)
     first_run = not state["platforms"]
 
-    events, errors = collect(today)
-    ok_platforms = [name for name, _ in hs.PLATFORMS if name not in errors]
+    events, errors = collect(today, WATCHED)
+    ok_platforms = [name for name, _ in WATCHED if name not in errors]
     for name, err in errors.items():
         print(f"::warning::{name} could not be read: {err}")
     counts = {}

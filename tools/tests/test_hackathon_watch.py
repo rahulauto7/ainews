@@ -23,7 +23,7 @@ import hackathon_watch as hw
 
 NOW = datetime(2026, 10, 3, 6, 0, tzinfo=timezone.utc)   # 11:30 IST
 TODAY = date(2026, 10, 3)
-ALL = [name for name, _ in hs.PLATFORMS]
+ALL = [name for name, _ in hw.WATCHED]
 
 
 def check(failures, cond, msg):
@@ -43,8 +43,10 @@ class World:
     def __init__(self, events, errors=None):
         self.events, self.errors, self.sent, self.fail_send = events, errors or {}, [], False
 
-    def collect(self, today):
-        return [e for e in self.events if e["platform"] not in self.errors], dict(self.errors)
+    def collect(self, today, platforms):
+        names = {name for name, _ in platforms}
+        return ([e for e in self.events if e["platform"] in names and e["platform"] not in self.errors],
+                {p: err for p, err in self.errors.items() if p in names})
 
     def send(self, to, subject, text, body):
         if self.fail_send:
@@ -134,12 +136,12 @@ def main():
           f"one name with a deadline a month apart is a new event: {[m['subject'] for m in world.sent]}")
 
     # ── 6. Several at once: one email, soonest first ─────────────────────────
-    world.events += [ev("HackerEarth", "vibe", "VibeCode AI Arena", 12, kind="end"),
+    world.events += [ev("MLH", "vibe", "VibeCode AI Arena", 12, kind="end"),
                      ev("Devfolio", "tum", "TUM Blockchain & AI Hackathon", 28, kind="end"),
                      ev("Unstop", "late", "Too Late AI Sprint", 3)]
     run(world, state)
     cases += 2
-    check(failures, len(world.sent) == 1 and world.sent[0]["subject"] == "2 new AI hackathons on Devfolio, HackerEarth",
+    check(failures, len(world.sent) == 1 and world.sent[0]["subject"] == "2 new AI hackathons on Devfolio, MLH",
           f"two new hackathons, one email: {[m['subject'] for m in world.sent]}")
     check(failures, world.sent and "Ends Thu 15 Oct 2026 (12 days to build)" in world.sent[0]["text"]
           and world.sent[0]["text"].index("VibeCode") < world.sent[0]["text"].index("TUM"),
@@ -210,7 +212,14 @@ def main():
     cases += 1
     check(failures, sorted(st["seen"]) == ["b", "c"], f"forget_expired kept {sorted(st['seen'])}")
 
-    # ── 12. Unknown deadlines are mailed, marked ─────────────────────────────
+    # ── 12. HackerEarth refuses GitHub's servers, so it is not watched ───────
+    world.events.append(ev("HackerEarth", "he", "HackerEarth GenAI Sprint", 30))
+    run(world, state)
+    cases += 2
+    check(failures, "HackerEarth" not in ALL, "HackerEarth must not be in the watched platforms")
+    check(failures, not world.sent, f"an event on an unwatched platform was mailed: {world.sent}")
+
+    # ── 13. Unknown deadlines are mailed, marked ─────────────────────────────
     world.events.append(ev("TAIKAI", "lab", "SpaceXAI Digital Transformation Lab", None, kind="end"))
     run(world, state)
     cases += 1

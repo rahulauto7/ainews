@@ -393,10 +393,12 @@ launched it will email me" (at rahularebhai@gmail.com). This is **not** part of 
 no session:
 
 - **`.github/workflows/hackathon_alerts.yml`** runs `tools/hackathon_watch.py` every hour (at :23) on
-  GitHub Actions. It reads the nine platforms in `hackathon_sources.py` and emails each AI hackathon it
-  has not seen before that anyone can enter and that leaves 7+ days before the submission deadline (one
+  GitHub Actions. It reads the platforms in `hackathon_sources.py` and emails each AI hackathon it has
+  not seen before that anyone can enter and that leaves 7+ days before the submission deadline (one
   with no deadline listed is sent too, marked "Deadline not listed"). Several new ones go in one email,
-  soonest deadline first.
+  soonest deadline first. **HackerEarth is not watched:** its event feed answers 403 to GitHub's
+  runners (first dry run, 2026-10-03) though a Claude session reads it, and its listing page renders
+  in the browser. It stays in `.tmp/hackathons.txt` for the PDF (`NOT_FROM_GITHUB` in the watcher).
 - **Why GitHub and not a Claude routine:** Claude cloud sessions in this project get linked to rahul's
   computer and then cannot sign in to Gmail (2026-10-03), and a routine draws on rahul's plan usage.
 - **Why hourly:** the repository is private, so Actions minutes count against the free 2,000 a month;
