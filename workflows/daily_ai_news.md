@@ -145,6 +145,17 @@ it late is what let the 2026-09-15 edition vanish untraced.
 `send_email.py` via Gmail OAuth. Recipient is `RECIPIENT_EMAIL` in `.env`; the body is generated from
 `analyzed_content.json` at send time, so the section list and counts are always the real ones.
 One-off override: `RECIPIENT_EMAIL=foo@bar.com python3 tools/send_email.py`.
+
+**Cloud routine runs send from GitHub, not from the Claude session.** Claude cloud sessions in this
+project get linked to rahul's computer, and a linked session cannot reach `oauth2.googleapis.com`, so
+the Gmail token never refreshes there (found 2026-10-03). In a routine run, run
+`verify_edition.py` **without** `--send`, push the backup to the archive branch
+(`claude/daily-news-editions-2hw8xn`, `editions/analyzed_content_<DATE>.bak.json`), then start the
+**Send daily edition** GitHub Actions workflow (`.github/workflows/send_edition.yml`, on `main`). It
+re-runs every check against the archived edition and mails it with the `GMAIL_TOKEN_JSON` and
+`RECIPIENT_EMAIL` repository secrets. It also runs by itself at 06:40 IST as a fallback, and a
+`editions/sent_<DATE>.txt` marker on the archive branch keeps it to one mail a day (rerun with
+`force` to send again). Since it re-measures freshness at send, start it as soon as the backup is pushed.
 The access token expires hourly and refreshes itself from `token.json`; only a revoked refresh token
 needs a browser.
 
