@@ -1,0 +1,140 @@
+# Emails rahul as soon as a new AI hackathon is listed anywhere it can be read.
+#
+# Every hour tools/hackathon_watch.py reads the nine platforms in
+# tools/hackathon_sources.py (Devpost, lablab.ai, mlcontests.com for Kaggle and
+# the other ML competition sites, HackerEarth, Devfolio, Unstop, MLH, TAIKAI,
+# Hackster) and mails each AI hackathon it has not seen before whose submission
+# deadline is at least 7 days away. The very first run sends one email listing
+# everything open now. The seen-list is kept on the hackathon-alerts-state
+# branch, so main stays clean, and changes only when something new turns up.
+#
+# It runs here rather than in a Claude routine because Claude cloud sessions in
+# this project get linked to rahul's computer and then cannot sign in to Gmail.
+#
+# Hourly, not more often: the repository is private, so Actions minutes count
+# against the free 2,000 a month, and a run bills one minute (about 720 a month).
+#
+# Repository secret (Settings > Secrets and variables > Actions):
+#   GMAIL_TOKEN_JSON        the same Gmail token JSON the daily edition uses
+# Optional repository variable (same page, Variables tab):
+#   HACKATHON_ALERT_EMAIL   send the alerts somewhere other than rahularebhai@gmail.com
+#
+# On a pull request that touches the watcher it runs the tests and a dry run:
+# every platform is read from GitHub's own network and the email it would send
+# is printed, nothing is mailed and nothing is saved.
+
+name: Hackathon alerts
+
+on:
+  schedule:
+    - cron: "23 * * * *"   # every hour at :23
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "tools/hackathon_sources.py"
+      - "tools/hackathon_watch.py"
+      - "tools/find_opportunities.py"
+      - "tools/check_quality.py"
+      - "tools/web_text.py"
+      - "tools/tests/test_hackathon_*.py"
+      - "tools/tests/test_build_window.py"
+      - ".github/workflows/hackathon_alerts.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: hackathon-alerts
+  cancel-in-progress: false
+
+env:
+  STATE_BRANCH: hackathon-alerts-state
+  STATE_FILE: .tmp/hackathon_watch/seen.json
+
+jobs:
+  watch:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: python -m pip install --quiet requests beautifulsoup4
+
+      - name: Load the seen-list
+        run: |
+          mkdir -p "$(dirname "$STATE_FILE")"
+          if git fetch --quiet --depth=1 origin "$STATE_BRANCH" 2>/dev/null \
+             && git show FETCH_HEAD:seen.json > "$STATE_FILE" 2>/dev/null; then
+            echo "Loaded the seen-list from $STATE_BRANCH."
+          else
+            rm -f "$STATE_FILE"
+            echo "No seen-list yet: this run records what is open and sends the welcome email."
+          fi
+
+      - name: Check the platforms and email what is new
+        id: watch
+        env:
+          GMAIL_TOKEN_JSON: ${{ secrets.GMAIL_TOKEN_JSON }}
+          HACKATHON_ALERT_EMAIL: ${{ vars.HACKATHON_ALERT_EMAIL || 'rahularebhai@gmail.com' }}
+        run: |
+          if [ -z "$GMAIL_TOKEN_JSON" ]; then
+            echo "::warning::Skipped: add the GMAIL_TOKEN_JSON repository secret (the same one the daily edition uses) to turn hackathon alerts on."
+            echo "skipped=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          python tools/hackathon_watch.py --state "$STATE_FILE"
+
+      - name: Save the seen-list
+        if: steps.watch.outputs.skipped != 'true'
+        run: |
+          [ -f "$STATE_FILE" ] || exit 0
+          cp "$STATE_FILE" "$RUNNER_TEMP/seen.json"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git fetch --quiet --depth=1 origin "$STATE_BRANCH" 2>/dev/null; then
+            git checkout --quiet -B state FETCH_HEAD
+          else
+            git checkout --quiet --orphan state
+            git rm -r --quiet --cached .
+          fi
+          cp "$RUNNER_TEMP/seen.json" seen.json
+          git add seen.json
+          if git diff --cached --quiet; then
+            echo "Seen-list unchanged."
+            exit 0
+          fi
+          git commit --quiet -m "Hackathon alerts: update the seen-list"
+          git push --quiet origin "HEAD:$STATE_BRANCH"
+
+  dry-run:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: python -m pip install --quiet -r requirements.txt
+
+      - name: Tests
+        shell: bash   # -eo pipefail: a failing test fails the step
+        run: |
+          for t in tools/tests/test_hackathon_platforms.py tools/tests/test_hackathon_watch.py \
+                   tools/tests/test_build_window.py tools/tests/test_check_quality.py; do
+            echo "== $t"
+            python "$t" | tail -5
+          done
+
+      - name: Dry run from GitHub's network
+        run: python tools/hackathon_watch.py --state "$RUNNER_TEMP/seen.json" --dry-run

@@ -154,7 +154,7 @@ needs a browser.
 In render order, Rahul's list of 2026-10-02. `prep_run.py` prints the keys, so they are never guessed:
 
 1. **AI Hackathons** — high-prize AI hackathons and competitions with entry deadlines, globally
-   scoped, open to professionals and founders
+   scoped, open to professionals and founders, whose **submission deadline is at least 7 days away**
 2. **AI Grants, Fellowships & Programs** — grants, fellowships, accelerators, incubators,
    residencies and cohort programmes
 3. **AI Self-Improvement (RSI)** — recursive self-improvement, AGI progress, alignment research
@@ -237,8 +237,10 @@ Only include items where **both team members** are eligible:
 the registrant is a working professional), or age/gender/geographic restrictions that exclude either
 member. Region-locked programmes (Kenya-only, Nigeria-only, Kurdistan-only) are out.
 
-**Near-deadline rule:** items whose deadline is tomorrow or later today MUST be included — this
-outranks the three-day-repeat rule. The reader wants imminent deadlines, not silent filtering.
+**Near-deadline rule (section 2 only):** programmes whose deadline is tomorrow or later today MUST be
+included — this outranks the three-day-repeat rule. The reader wants imminent deadlines, not silent
+filtering. **Hackathons follow the opposite rule** (rahul, 2026-10-03, see `ai_hackathons` below): one
+whose submission deadline is under 7 days away is left out, because there is no time left to build.
 
 ---
 
@@ -264,7 +266,9 @@ instead and the renderer skips dates there.
 - `unaddressed_ai_problems`: `who_affected`, `severity` (critical/high/medium)
 - `product_showcase_opportunities` / `ai_hackathons`: `opportunity_type`, `deadline`, `apply_url`,
   `prize`, `eligibility` — all optional. They render in that order and are dropped from the tail when
-  the line will not fit, so a blank field costs nothing but a wrong one is published.
+  the line will not fit, so a blank field costs nothing but a wrong one is published. **Except
+  `deadline` on `ai_hackathons`, which is required:** it is the *submission* deadline written as a date
+  ("23 Oct 2026"), and the 7-day build rule is checked against it.
 - `open_model_landscape`: owns the `section_extras` block above. Optional — omit it and the section
   renders as plain news.
 
@@ -285,19 +289,38 @@ Google News proxies return the same story from a dozen outlets, so pick the most
   pool and submission window. If it is not called a hackathon/competition/contest and awards no
   prize, it belongs in section 2. Sort by **prize size** after the eligibility filter, not by
   general relevance. Global, no geographic weighting.
+  - **The 7-day build rule (rahul, 2026-10-03): "7 days is for build time ... exclude within 7 days
+    submissions deadline not registration deadline".** Print a hackathon only when its **submission**
+    deadline is at least 7 days after the edition date (7 exactly is enough). A registration deadline
+    never counts, early or late: put the submission deadline in `deadline`, as a date ("23 Oct 2026";
+    a time or a range is fine, the last date written is read). A hackathon whose submission deadline
+    cannot be found is not printed. `check_quality.py` blocks the send on `hackathon_too_soon` and
+    `hackathon_no_deadline`, and `write_analyzed()` reports both while the builder is open. The rule is
+    in `hackathon_sources.MIN_BUILD_DAYS`; cases in `test_build_window.py`.
+  - The candidate files apply the rule already: `devpost.txt`, `hackathons.txt` and each lablab block
+    hide events closing in under 7 days (and say how many), and `recheck.txt` marks a carried-forward
+    hackathon `UNDER 7 DAYS - drop`. A deadline only gets closer, so yesterday's 8-day entry is today's
+    7 and tomorrow's 6: recheck before carrying one forward.
   - The scraper does not distinguish hackathons from grants — everything tagged `is_opportunity=True`
     is a candidate for both sections. Split them at curation by entry mechanism.
   - **Verify prize amounts against the organiser's own page.** Aggregators routinely quote non-cash
     reward totals ("$1M in prizes") that dwarf the actual cash prize ($3k first place). GatewayHacks
     2026 was rejected on 2026-09-12 for exactly this; `.tmp/devpost.txt` prints cash counts, but the
     `/rules` page is what settles it.
-  - **`.tmp/hackathons.txt`** (`find_opportunities.py platforms`) lists new hackathons from four more
-    places: lablab.ai's open events, soonest end first, each followed by the prize, eligibility and
-    deadline lines of its own page; Devpost's newest "AI" events outside the theme listing; Devfolio;
-    and Unstop. Lines carry `printed mm-dd` / `rejected mm-dd: reason` as in `devpost.txt`. lablab
-    prize lines often mix cash and credits ("$5k cash + $5k credits"), so the event page decides. The
-    Devfolio and Unstop blocks print their first record's keys, because their fields were not fully
-    known when the reader was written. The eligibility rules and the cash-prize check are unchanged.
+  - **`.tmp/hackathons.txt`** (`find_opportunities.py platforms`) lists AI hackathons from every
+    other platform that can be read without an API key (rahul, 2026-10-03: search every platform, but
+    skip any that asks for an API): lablab.ai's open events, soonest end first, each followed by the
+    prize, eligibility and deadline lines of its own page; Devpost's newest "AI" events outside the
+    theme listing; then mlcontests.com (Kaggle, AIcrowd, DrivenData, Zindi, CodaLab, Codabench and
+    more), HackerEarth, Devfolio, Unstop, MLH, TAIKAI and Hackster, soonest deadline first, each
+    block ending with how many it hid as not AI or under 7 days. "submissions close" means the
+    platform gives the submission deadline; "ends" means it gives only the event's end, the latest
+    a submission can be due, so confirm the submission date on the event page before printing. Lines
+    carry `printed mm-dd` / `rejected mm-dd: reason` as in `devpost.txt`. lablab prize lines often mix
+    cash and credits ("$5k cash + $5k credits"), so the event page decides. Unstop and Devfolio are
+    mostly Indian college events, often students-only, so the eligibility rules weed most of them out.
+    The readers live in `tools/hackathon_sources.py` (cases: `test_hackathon_platforms.py`). The
+    eligibility rules and the cash-prize check are unchanged.
 
 - **`product_showcase_opportunities`** — longer-form commitments: accelerators, incubators,
   fellowships, residencies, grants, cohort programmes. Global, ranked on merit, not region.
@@ -361,6 +384,38 @@ Google News proxies return the same story from a dozen outlets, so pick the most
   post's own timestamp (`S(..., published_at=...)`), not by the day Google indexed it. Sources: the
   X searches of x.com/elonmusk, Musk-on-AI news searches, Teslarati and Electrek (Musk-on-AI stories
   only), and a YouTube search. Preserve post URLs.
+
+---
+
+## Hackathon Alerts (hourly email, separate from the PDF)
+rahul, 2026-10-03: "make a scheduler who check popular hackathon sites for the moment hackathon
+launched it will email me" (at rahularebhai@gmail.com). This is **not** part of the daily run and needs
+no session:
+
+- **`.github/workflows/hackathon_alerts.yml`** runs `tools/hackathon_watch.py` every hour (at :23) on
+  GitHub Actions. It reads the nine platforms in `hackathon_sources.py` and emails each AI hackathon it
+  has not seen before that anyone can enter and that leaves 7+ days before the submission deadline (one
+  with no deadline listed is sent too, marked "Deadline not listed"). Several new ones go in one email,
+  soonest deadline first.
+- **Why GitHub and not a Claude routine:** Claude cloud sessions in this project get linked to rahul's
+  computer and then cannot sign in to Gmail (2026-10-03), and a routine draws on rahul's plan usage.
+- **Why hourly:** the repository is private, so Actions minutes count against the free 2,000 a month;
+  an hourly run bills one minute, about 720 a month beside the daily edition's send.
+- **Mail** goes through the Gmail API with the `GMAIL_TOKEN_JSON` repository secret, the same one the
+  daily edition's send uses. The recipient defaults to rahularebhai@gmail.com; the repository variable
+  `HACKATHON_ALERT_EMAIL` overrides it. Without the secret the run skips with a warning.
+- **The seen-list** is `seen.json` on the `hackathon-alerts-state` branch, committed only when it
+  changes. The first run sends one welcome email listing everything open; a platform read for the
+  first time later is recorded quietly, so it never floods the inbox. An event is recorded only after
+  its email went out, so a failed send is retried next hour. Entries are forgotten 30 days after their
+  deadline. To start over (a fresh welcome email), delete that branch.
+- **A platform that cannot be read for 24 hours** gets one email saying so, and another when it is
+  back. Shorter failures only show as warnings in the Actions run.
+- **On a pull request** that touches the watcher the workflow runs the hackathon tests and a dry run
+  from GitHub's network, printing the email it would send. Locally:
+  `python3 tools/hackathon_watch.py --state .tmp/hackathon_watch/seen.json --dry-run`.
+- Not watched: news articles about hackathons. They carry no reliable deadline and would mail rahul
+  for every winners' story; they reach the PDF through the opportunity feeds instead.
 
 ---
 
@@ -548,8 +603,18 @@ names, https, the keyless rule and that every section is fed.
 | Emoji in post and video titles printing as `?` and blocking the send | `_SYMBOL_CATEGORIES` in `sanitize_text()`, `test_sanitize_text.py` |
 | A summary ending `.”` (curly quote) flagged as truncated | `_is_truncated()`, `test_verify_edition.py` |
 | `write_analyzed()` flagging valid quantum stories as stale against a flat 24h, though the send gate allows 7 days (2026-10-01) | `stale_hours_for(key)` in `builder_helpers.py`, `test_freshness_gate.py` |
+| A hackathon closing in under 7 days, or with only a registration deadline, reaching the PDF (2026-10-03) | `build_time_problem()` in `check_quality.py`, `test_build_window.py` |
+| A platform's listing changing shape and its block going quietly empty | fixtures per reader, `test_hackathon_platforms.py` |
+| The alert email re-sending a hackathon, or flooding on the first run | `test_hackathon_watch.py` |
 
 ### History
+- **2026-10-03:** Hackathons: the 7-day build rule (submission deadline 7+ days away, registration
+  deadlines never count) replaces the near-deadline rule for section 1 and blocks the send. The
+  hackathon platforms moved to one keyless registry, `tools/hackathon_sources.py`, and grew from four
+  to nine: mlcontests.com (which brings Kaggle, AIcrowd, DrivenData, Zindi, CodaLab and Codabench
+  without Kaggle's keyed API), HackerEarth, MLH, TAIKAI and Hackster joined; Devfolio is read from its
+  listing page instead of its search API; Unstop is dated by the competition's end, never its
+  registration deadline. New hourly alert email from GitHub Actions (see **Hackathon Alerts**).
 - **2026-10-02:** Built the approved 16-section restructure (`handoff/`). Three new sections (OpenAI,
   Google AI, xAI & Grok); the Musk section is now "Elon Musk on AI", his own point of view; all
   sixteen in Rahul's order. Summaries are printed whole: the 1,200-character clip and the 1,150
@@ -652,7 +717,11 @@ names, https, the keyless rule and that every section is fed.
 - **Opportunity/hackathon platforms probed 2026-09-07 and rejected — do not retry:**
   `devpost.com/hackathons.rss` (HTTP 406 to bot *and* browser UA), `mlh.io/seasons/2026/events.rss`
   (200 with zero entries), `hackerearth.com/challenges/feed/`, `indiaai.gov.in/rss`,
-  `indiaai.gov.in/feed` (all 404). `opportunitydesk.org/feed/` is live but general-purpose — the AI
+  `indiaai.gov.in/feed` (all 404). MLH and HackerEarth are read another way since 2026-10-03 (the
+  events page's own JSON and `hackerearth.com/chrome-extension/events/`). Also probed 2026-10-03 and
+  left out: hackathon.com (start dates only), Cerebral Valley and lu.ma (in-person San Francisco
+  meetups; Luma's API needs a key), Kaggle directly (keyed API; mlcontests.com covers it),
+  `dorahacks.io/api/hackathon/` and `api.topcoder.com/v5/challenges` (404). `opportunitydesk.org/feed/` is live but general-purpose — the AI
   hit rate did not justify the noise. Devpost still works **per competition**
   (`opencv26.devpost.com` fetched fine); only the aggregate feed blocks.
 - **Open-model feeds probed 2026-09-07 and rejected — do not retry:** `mistral.ai/news/feed.xml`,
