@@ -274,6 +274,12 @@ def write_analyzed(sections, best_for=None, closed_best_for=None, rejected=None,
             # Opportunities are dated by their deadline and carry no publish date.
             if key not in OPPORTUNITY_KEYS and not s.get("published_date"):
                 problems.append(f"{key}: no date: {s['title'][:60]}")
+            # The 7-day build rule for hackathons, here for the same reason as
+            # the freshness rule below: the send gate blocks on it too.
+            if key == "ai_hackathons":
+                problem = check_quality.build_time_problem(s, today)
+                if problem:
+                    problems.append(f"{key}: {problem[1]}: {s['title'][:60]}")
             # The freshness rule, reported here so the curator sees a stale pick
             # while the builder is still open, not from a blocked send half an hour
             # later. Each section's own limit, as the send gate uses: a flat 24h
