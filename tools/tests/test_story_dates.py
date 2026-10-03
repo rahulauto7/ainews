@@ -19,6 +19,7 @@ import io
 import os
 import sys
 import tempfile
+from datetime import date, timedelta
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -73,8 +74,10 @@ def main():
 
     # O() is for opportunities verified on the organiser's page - there is no
     # feed article and so no publish date, and a blank beats an invention.
+    # The deadline sits a month out from whenever the test runs: the hackathon
+    # section's 7-day build rule would otherwise flag it once the date nears.
     opp = O("Y Combinator W27", SUMMARY, "Y Combinator", "https://ycombinator.com/apply",
-            5, ["accelerator"], deadline="2 Nov 2026")
+            5, ["accelerator"], deadline=f"{date.today() + timedelta(days=30):%d %b %Y}")
     cases += 1
     check(failures, "published_date" not in opp,
           f"O() invented a date: {opp.get('published_date')!r}")

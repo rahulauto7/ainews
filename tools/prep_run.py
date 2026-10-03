@@ -13,7 +13,8 @@ polling - and prints one compact brief:
   - the last three editions on disk, for the duplicate-across-days check
   - the test suite result as one line
   - the scrape, then the digest, Devpost, the carry-forward recheck and the
-    other hackathon platforms (lablab.ai, Devfolio, Unstop), in parallel
+    other hackathon platforms (lablab.ai, mlcontests, HackerEarth, Devfolio,
+    Unstop, MLH, TAIKAI, Hackster), in parallel
 
 Outputs land where they always do: .tmp/rss_articles.json, .tmp/digest.md,
 .tmp/devpost.txt, .tmp/recheck.txt, and now .tmp/hackathons.txt.

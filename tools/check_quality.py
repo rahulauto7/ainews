@@ -13,6 +13,10 @@ a check that fires on good copy gets ignored, and an ignored check is dead.
          truncated                 summary stops mid-sentence
          duplicate_across_sections one story printed in two sections
          stale_story               news older than 24h (quantum: 7d), at send
+         hackathon_too_soon        an AI hackathon whose submission deadline is
+                                   under 7 days away (rahul, 2026-10-03)
+         hackathon_no_deadline     an AI hackathon with no readable submission
+                                   deadline, so the 7-day rule cannot be checked
   WARN   unexplained_acronym       an acronym never expanded in its summary
          too_few_sentences         under the four-sentence floor
          stale_best_for            a standing model table older than 21 days
@@ -32,6 +36,7 @@ from datetime import datetime, timedelta, timezone
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import web_text
+from hackathon_sources import MIN_BUILD_DAYS, parse_deadline
 
 OPPORTUNITY_KEYS = ("ai_hackathons", "product_showcase_opportunities")
 BEST_FOR_STALE_DAYS = 21
@@ -245,6 +250,29 @@ def freshness_lines(data, now=None):
     return sorted(lines, key=lambda l: l["limit"])
 
 
+def build_time_problem(story, today):
+    """(code, detail) when an AI Hackathons entry breaks the build-time rule, else None.
+
+    rahul, 2026-10-03: "7 days is for build time ... exclude within 7 days
+    submissions deadline not registration deadline". So `deadline` must be the
+    SUBMISSION deadline, written as a date ("23 Oct 2026"), and at least
+    MIN_BUILD_DAYS after the edition date. Seven days exactly is enough.
+    """
+    today = datetime.strptime(str(today)[:10], "%Y-%m-%d").date()
+    raw = story.get("deadline")
+    due = parse_deadline(raw, today)
+    if due is None:
+        return ("hackathon_no_deadline",
+                f"deadline {raw!r} is not a date; give the submission deadline, e.g. '23 Oct 2026', "
+                f"so the {MIN_BUILD_DAYS}-day build rule can be checked")
+    days = (due - today).days
+    if days < MIN_BUILD_DAYS:
+        return ("hackathon_too_soon",
+                f"submissions close {due:%d %b %Y}, {days} day(s) from {today:%d %b}; the section "
+                f"lists only hackathons with {MIN_BUILD_DAYS}+ days left to build")
+    return None
+
+
 def _title_key(title):
     """Comparable form of a title, for spotting the same story twice."""
     words = re.findall(r"[a-z0-9]+", (title or "").lower())
@@ -311,6 +339,11 @@ def check_edition(data, today=None, now=None):
                     add("ERROR", "stale_story", key, title,
                         f"published {age / 24:.1f} days ago ({age:.0f}h); the rule for "
                         f"{key} is last {rule}, measured at send")
+
+            if key == "ai_hackathons":
+                problem = build_time_problem(s, today)
+                if problem:
+                    add("ERROR", problem[0], key, title, problem[1])
 
             n = _sentences(summary)
             if n < MIN_SENTENCES:
