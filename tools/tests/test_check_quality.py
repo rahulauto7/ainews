@@ -32,7 +32,13 @@ GOOD = (
     "automatically at a fixed point, such as just before it edits a file, so a team can enforce "
     "its own rules without changing the tool itself. The feature arrived because enterprise "
     "customers wanted an audit trail of every change an AI agent makes to their codebase. "
-    "Anthropic says the hooks run locally and never send code to its servers."
+    "Anthropic says the hooks run locally and never send code to its servers.\n\n"
+    "Until now, a company that wanted Claude Code to follow house rules had to write them into "
+    "a long instruction file and hope the model obeyed. A hook is different because it is "
+    "ordinary code that always runs, so a rule such as never touching the payments folder holds "
+    "every time. Rival tools from GitHub and Google have added similar controls this year, as "
+    "businesses hand more of their routine coding to AI agents. Anthropic said the feature is "
+    "available today to every Claude Code user at no extra cost."
 )
 
 
@@ -172,7 +178,31 @@ def main():
     check(failures, "unexplained_acronym" not in codes(found),
           f"acronym check fired on everyday terms: {[f['detail'] for f in found]}")
 
-    # WARN: fewer than the four sentences the summary rules require.
+    # ERROR: a summary under the 1,000-character floor is not a full explanation
+    # (rahul, 2026-10-03: five-line summaries sent him elsewhere to understand them).
+    five_lines = GOOD.split("\n\n")[0]
+    found = check_edition(edition({"global_ai_news": [story(summary=five_lines)]}),
+                          today="2026-09-17", now=NOW)
+    cases += 2
+    check(failures, "short_summary" in codes(found, "ERROR"),
+          f"a {len(five_lines)}-character summary must block the send: {codes(found)}")
+    check(failures, len(GOOD) >= 1000 and "short_summary" not in codes(check_edition(
+        edition({"global_ai_news": [story()]}), today="2026-09-17", now=NOW)),
+          f"a {len(GOOD)}-character summary is a full explanation")
+
+    # WARN: a sentence too long to follow in plain language, and not on GOOD.
+    rambling = GOOD + (" The company said that the hooks, which it had been testing with a small "
+                       "group of large customers in banking and retail for several months before "
+                       "this week's release, would later be extended to cover the other tools it "
+                       "sells, including its chat app and its developer platform, once it had "
+                       "gathered enough feedback from those early users about how they work.")
+    found = check_edition(edition({"global_ai_news": [story(summary=rambling)]}),
+                          today="2026-09-17", now=NOW)
+    cases += 1
+    check(failures, "long_sentence" in codes(found, "WARN"),
+          f"a 60-word sentence must be flagged: {codes(found)}")
+
+    # WARN: fewer than the seven sentences the summary rules require.
     short = "Anthropic shipped hooks. They run locally. " + "Teams can enforce rules with them. "
     found = check_edition(edition({"global_ai_news": [story(summary=short * 4)]}), today="2026-09-17", now=NOW)
     cases += 1

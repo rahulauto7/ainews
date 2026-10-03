@@ -9,9 +9,20 @@ links, fetches every publisher page in parallel, caches the text under
 
 Usage:
   python3 tools/fetch_articles.py 3 5 7 11 51          # indices into rss_articles.json
-  python3 tools/fetch_articles.py 51 --chars 4000      # longer excerpt, served from cache
+  python3 tools/fetch_articles.py 51 --chars 8000      # longer excerpt, served from cache
   python3 tools/fetch_articles.py 3 5 --chars 0        # status lines only
+  python3 tools/fetch_articles.py 3 --no-fallback      # the story's own page only
   python3 tools/fetch_articles.py --url URL --grep "deadline|prize"
+
+The excerpt defaults to 5,000 characters: enough of most articles to explain the
+story in full, which is what every summary now does (rahul, 2026-10-03).
+
+When a story's own page is blocked, paywalled or empty (FAILED / THIN), the
+same story is read from another outlet instead: first the other outlets the
+scrape found carrying it (`alternates` in rss_articles.json), then a keyless
+Google News search of the headline. The head line then says `read via <outlet>`,
+and that outlet's URL is printed so S(..., url=..., source=...) can point the
+story at the page the reader can actually open.
 
 Flags printed per article:
   OLD      the page's own publish date is more than 3 days before the scrape -
@@ -88,6 +99,45 @@ def fetch_one(url, decoded_cache):
     return rec
 
 
+def _usable(rec):
+    """True for a fetched page with enough body text to write from."""
+    return not rec.get("error") and (rec.get("x_post") or len(rec.get("text") or "") >= THIN_BELOW)
+
+
+def _domain(url):
+    return urlparse(url or "").netloc.lower().replace("www.", "")
+
+
+def read_elsewhere(article, rec, decoded_cache, max_tries=4):
+    """The same story from another outlet, when `rec` (its own page) is unusable.
+
+    Tries the outlets the scrape found carrying it, then a Google News search of
+    the headline. Returns the first usable record with `read_via` set, or None.
+    Never raises: a failed fallback leaves the original flags in place.
+    """
+    own = {_domain(rec.get("url")), _domain(article.get("url"))}
+    candidates = [(a["source"], a["url"]) for a in article.get("alternates") or []]
+    tried = 0
+    for searched in (False, True):
+        if searched:
+            try:
+                hits = web_text.search_google_news(web_text.search_terms(article.get("title")))
+            except Exception:  # noqa: BLE001 - the search is a bonus, never a failure
+                return None
+            candidates = [(h["source"], h["url"]) for h in hits[:8]]
+        for source, url in candidates:
+            if tried >= max_tries * 2:
+                return None
+            alt = fetch_one(url, decoded_cache)
+            tried += 1
+            if _domain(alt.get("url")) in own or not _usable(alt):
+                continue
+            alt = dict(alt)
+            alt["read_via"] = source + (" (found by search)" if searched else "")
+            return alt
+    return None
+
+
 def flags_for(rec, scrape_date):
     flags = []
     if rec.get("error"):
@@ -110,6 +160,10 @@ def render(label, rec, chars, scrape_date):
     head = f"[{label}] {domain} | published {published or '?'} | {len(rec.get('text') or ''):,} chars"
     if flags:
         head += " | " + " | ".join(flags)
+    if rec.get("read_via"):
+        head += f" | read via {rec['read_via']}: {rec.get('final_url') or rec.get('url')}"
+    elif rec.get("own_page_problem"):
+        head += f" | own page {rec['own_page_problem']}, no other outlet found"
     lines = [head]
     if chars and not rec.get("error"):
         if rec.get("description"):
@@ -122,7 +176,9 @@ def render(label, rec, chars, scrape_date):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("indices", nargs="*", type=int, help="indices into .tmp/rss_articles.json")
-    ap.add_argument("--chars", type=int, default=1500, help="excerpt length per article (0 = status only)")
+    ap.add_argument("--chars", type=int, default=5000, help="excerpt length per article (0 = status only)")
+    ap.add_argument("--no-fallback", action="store_true",
+                    help="do not read a blocked or thin story from another outlet")
     ap.add_argument("--url", action="append", default=[], help="fetch an arbitrary page (repeatable)")
     ap.add_argument("--grep", help="with --url: print only snippets around this regex")
     args = ap.parse_args()
@@ -130,7 +186,7 @@ def main():
         ap.error("give article indices or --url")
 
     decoded = web_text.load_decoded_cache()
-    jobs = []  # (label, url)
+    jobs = []  # (label, url, article or None)
     scrape_date = None
     if args.indices:
         data, arts = web_text.load_articles()
@@ -139,15 +195,25 @@ def main():
             if not 0 <= i < len(arts):
                 print(f"[{i}] no such article (rss_articles.json has {len(arts)})")
                 continue
-            jobs.append((str(i), arts[i]["url"]))
-    jobs += [(u, u) for u in args.url]
+            jobs.append((str(i), arts[i]["url"], arts[i]))
+    jobs += [(u, u, None) for u in args.url]
+
+    def run(job):
+        _, url, article = job
+        rec = fetch_one(url, decoded)
+        if article is not None and not args.no_fallback and not _usable(rec) and not rec.get("x_post"):
+            alt = read_elsewhere(article, rec, decoded)
+            if alt:
+                return alt
+            rec = dict(rec, own_page_problem=(rec.get("error") or "THIN").split(":")[0])
+        return rec
 
     # Google rate-limits bursts of decode requests, so decode with less concurrency.
     with ThreadPoolExecutor(max_workers=4) as ex:
-        results = list(ex.map(lambda job: fetch_one(job[1], decoded), jobs))
+        results = list(ex.map(run, jobs))
     web_text.save_decoded_cache(decoded)
 
-    for (label, _), rec in zip(jobs, results):
+    for (label, _, _), rec in zip(jobs, results):
         if args.grep and label in args.url and not rec.get("error"):
             print(f"[{label}]")
             text = rec.get("page") or rec.get("text") or ""
@@ -156,8 +222,11 @@ def main():
         else:
             print(render(label, rec, args.chars, scrape_date))
 
-    failed = [label for (label, _), rec in zip(jobs, results) if (rec.get("error") or "").startswith("FAILED")]
-    print(f"\n{len(jobs)} requested, {len(jobs) - len(failed)} ok" + (f", failed: {' '.join(failed)}" if failed else ""))
+    failed = [label for (label, _, _), rec in zip(jobs, results) if (rec.get("error") or "").startswith("FAILED")]
+    elsewhere = [label for (label, _, _), rec in zip(jobs, results) if rec.get("read_via")]
+    print(f"\n{len(jobs)} requested, {len(jobs) - len(failed)} ok"
+          + (f", read elsewhere: {' '.join(elsewhere)}" if elsewhere else "")
+          + (f", failed: {' '.join(failed)}" if failed else ""))
 
 
 if __name__ == "__main__":

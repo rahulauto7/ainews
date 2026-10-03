@@ -74,7 +74,7 @@ def main():
         cases += 3
         check(failures, cap_for("general") == 60, f"cap_for('general') = {cap_for('general')}")
         check(failures, cap_for("openai") == 40, f"cap_for('openai') = {cap_for('openai')}")
-        check(failures, cap_for("video") == 25, f"cap_for('video') = {cap_for('video')}")
+        check(failures, cap_for("video") == 30, f"cap_for('video') = {cap_for('video')}")
 
         # ── 5. Short source names ────────────────────────────────────────────
         cases += 4
@@ -84,8 +84,8 @@ def main():
         check(failures, bing.startswith("Bing-"), f"a Bing search must read Bing-...: {bing!r}")
         check(failures, short_source("Anthropic News (via Google News)").startswith("GN-"),
               "a Google News search must read GN-...")
-        check(failures, all(len(short_source(n)) <= 18 for n, *_ in feed_sources.RSS),
-              "every short source name must fit 18 characters")
+        check(failures, all(len(short_source(n)) <= 22 for n, *_ in feed_sources.RSS),
+              "every short source name must fit 22 characters")
 
     cases += 1
     check(failures, news_digest.snippet({"source": "OpenAI (via Bing News)", "title": "T",

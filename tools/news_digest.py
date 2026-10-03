@@ -51,7 +51,8 @@ CATEGORY_ORDER = [
     ("business", "Funding, startups, markets -> AI Business Opportunities"),
     ("showcase", "Product Hunt -> AI Business Opportunities"),
     ("indian", "Indian publishers -> Indian AI Industry"),
-    ("world", "China, Europe, Japan, Korea, Middle East, Africa -> Global AI News"),
+    ("world", "Regional editions and outlets worldwide, policy and regulators -> Global AI News"),
+    ("world_lang", "Non-English press (summarise in English, English title) -> Global AI News"),
     ("general", "General AI news -> Global AI News"),
     ("company_blog", "Other AI companies' own blogs -> Global AI News"),
     ("openai", "OpenAI -> OpenAI"),
@@ -61,16 +62,18 @@ CATEGORY_ORDER = [
     ("open_model", "Open models -> Open Models & Open Weights"),
     ("closed_model", "Closed models -> Closed Models & Frontier APIs"),
     ("elon_musk", "Elon Musk in his own words -> Elon Musk on AI"),
-    ("video", "YouTube: leads for any section"),
-    ("social", "X posts, Hacker News, forums: leads for any section"),
+    ("video", "YouTube and podcasts: leads for any section"),
+    ("social", "X posts, Hacker News, Lobsters: leads for any section"),
+    ("forums", "Reddit and Bluesky: leads for any section"),
 ]
 
 # How many articles each group shows, so the digest stays near its old size (about
 # 17k tokens with 34 feeds; keep it under 35k). This limits what the curator reads,
 # never how many stories a section prints: the rest stay in rss_articles.json.
 DIGEST_CAP = 40
-_CAPS = {"general": 60, "ai_research": 25, "video": 25, "social": 25}
-SHORT_MAX = 18
+_CAPS = {"general": 60, "world": 50, "world_lang": 30, "ai_research": 25, "video": 30,
+         "social": 25, "forums": 25}
+SHORT_MAX = 22
 
 
 def cap_for(category):
@@ -100,6 +103,10 @@ def short_source(name):
         short = "Bing-" + name[: -len(" (via Bing News)")]
     elif "YouTube" in name:
         short = "YT-" + re.sub(r"\s*\(?YouTube\)?\s*", " ", name).strip()
+    elif name.endswith(" on Bluesky"):
+        short = "Bsky-" + name[: -len(" on Bluesky")]
+    elif name.endswith(" podcast"):
+        short = "Pod-" + name[: -len(" podcast")]
     else:
         short = name[:16]
     return short[:SHORT_MAX]
