@@ -43,6 +43,19 @@ PAGE_BOTTOM = 278
 SECTION_HEAD_H = 14
 # Summary text: 8pt Helvetica on this leading, in a 178mm column.
 SUMMARY_LH = 3.7
+# Where fpdf's automatic page break falls: A4's 297mm less the 15mm bottom margin.
+PAGE_BREAK_Y = 282
+# Title line and metadata line above a story's summary.
+STORY_HEAD_H = 10.5
+# A long story may run on overleaf, the way a newspaper column does, instead of
+# moving whole and leaving the foot of the page blank (rahul, 2026-10-03: explain
+# each story fully "no matter how long it takes in lines"). It starts on the page
+# only when its title and at least this many summary lines fit there, and leaves
+# at least the second number of lines for the next page.
+MIN_LINES_BEFORE_BREAK = 3
+MIN_LINES_AFTER_BREAK = 2
+# Background of every other story block.
+STORY_FILL = (245, 247, 250)
 
 # ── Section Config ────────────────────────────────────────────────────────────
 SECTION_CONFIG = {
@@ -173,7 +186,14 @@ SECTION_ORDER = [
 class GlobalAINewsPDF(FPDF):
     """Custom PDF with headers, footers, and styling."""
 
+    # Height of a story's background still to draw at the top of the next page,
+    # when a story runs on overleaf. build_section sets it; header() draws it,
+    # because the summary's own page break happens inside multi_cell.
+    carry_fill = 0.0
+
     def header(self):
+        # A story split at a chosen line moves the break up for one page only.
+        self.page_break_trigger = self.h - self.b_margin
         if self.page_no() == 1:
             return  # page 1 carries the masthead
         self.set_fill_color(26, 26, 46)
@@ -185,6 +205,11 @@ class GlobalAINewsPDF(FPDF):
         self.set_xy(150, 1.5)
         self.cell(52, 6, TODAY, align="R")
         self.set_text_color(0, 0, 0)
+        if self.carry_fill > 0:
+            h = min(self.carry_fill, PAGE_BREAK_Y - 12)
+            self.set_fill_color(*STORY_FILL)
+            self.rect(10, 12, 190, h, "F")
+            self.carry_fill -= h
         self.set_y(12)
 
     def footer(self):
@@ -327,17 +352,54 @@ def build_masthead(pdf, sections_data, rendered, links, pages=None):
     return y + 1
 
 
+# Summary text -> line count. Measuring a 2,000-character summary means a
+# dry-run line break that costs as much as drawing it, and a render measures each
+# story two or three times, twice over (render_edition's two passes) and again on
+# every fit_plan() trial. The font and column never change, so the text decides.
+_LINES_CACHE = {}
+
+
+def _summary_lines(pdf, story):
+    """How many lines the story's summary takes in its column.
+
+    Paragraph breaks count: a blank line between paragraphs is a line.
+    """
+    text = sanitize_text(story.get("summary", ""))
+    if text not in _LINES_CACHE:
+        pdf.set_font("Helvetica", "", 8)
+        pdf.set_x(14)
+        summary_h = pdf.multi_cell(178, SUMMARY_LH, text, dry_run=True, output="HEIGHT")
+        _LINES_CACHE[text] = round(summary_h / SUMMARY_LH)
+    return _LINES_CACHE[text]
+
+
 def _story_height(pdf, story):
     """Height a story block takes: title, metadata line, summary, padding.
 
     Measured before drawing so the background box and the page break both match
     the real rendered height.
     """
-    pdf.set_font("Helvetica", "", 8)
-    pdf.set_x(14)
-    summary_h = pdf.multi_cell(178, SUMMARY_LH, sanitize_text(story.get("summary", "")),
-                               dry_run=True, output="HEIGHT")
-    return 10.5 + summary_h + 2
+    return STORY_HEAD_H + _summary_lines(pdf, story) * SUMMARY_LH + 2
+
+
+def _story_start_height(pdf, story):
+    """The least room a story needs to start on the current page.
+
+    A story that can run on overleaf needs its title and MIN_LINES_BEFORE_BREAK
+    lines; one too short to split needs its whole block.
+    """
+    lines = _summary_lines(pdf, story)
+    if lines < MIN_LINES_BEFORE_BREAK + MIN_LINES_AFTER_BREAK:
+        return STORY_HEAD_H + lines * SUMMARY_LH + 2
+    return STORY_HEAD_H + MIN_LINES_BEFORE_BREAK * SUMMARY_LH
+
+
+def _lines_before_break(y, lines):
+    """Summary lines to print on this page for a story starting at `y` that
+    does not fit whole, or 0 when it should move overleaf instead."""
+    room = int((PAGE_BREAK_Y - (y + STORY_HEAD_H)) / SUMMARY_LH + 1e-6)
+    k = min(room, lines - MIN_LINES_AFTER_BREAK)
+    return k if k >= MIN_LINES_BEFORE_BREAK else 0
 
 
 def build_section(pdf, section_key, stories, extras=None, link=None):
@@ -362,7 +424,7 @@ def build_section(pdf, section_key, stories, extras=None, link=None):
     if has_table:
         first_h = _best_for_layout(pdf, extras)[2]
     elif stories:
-        first_h = _story_height(pdf, stories[0])
+        first_h = _story_start_height(pdf, stories[0])
     else:
         first_h = 8
     # A block taller than a page starts where it is anyway (see below), so it
@@ -409,20 +471,29 @@ def build_section(pdf, section_key, stories, extras=None, link=None):
         summary = sanitize_text(story.get("summary", ""))
         story_url = story.get("url", "")
         meta_line = _fit_meta_line(pdf, _meta_parts(section_key, story), 178)
-        block_h = _story_height(pdf, story)
+        lines = _summary_lines(pdf, story)
+        block_h = STORY_HEAD_H + lines * SUMMARY_LH + 2
 
-        # Page break if this story will not fit. A block taller than a whole page
-        # cannot fit anywhere, so it starts where it is unless the page is nearly
-        # full; multi_cell carries the rest of the summary overleaf.
-        if y + block_h > PAGE_BOTTOM and (block_h <= 260 or y > 230):
-            pdf.add_page()
-            y = pdf.get_y()
+        # A story that does not fit whole runs on overleaf from a chosen line, or
+        # moves overleaf when too little of it would fit here. A story longer than
+        # a page then splits again where the page ends.
+        split = 0
+        if y + block_h > PAGE_BOTTOM:
+            split = _lines_before_break(y, lines)
+            if not split:
+                pdf.add_page()
+                y = pdf.get_y()
+                if y + block_h > PAGE_BOTTOM:
+                    split = _lines_before_break(y, lines)
 
-        # Alternating background, sized to the measured block but never drawn past
-        # the bottom of the page.
+        # Alternating background, sized to the measured block; the part of a
+        # split story that runs on overleaf is drawn by header() on that page.
         if idx % 2 == 0:
-            pdf.set_fill_color(245, 247, 250)
-            pdf.rect(10, y, 190, min(block_h - 1, 282 - y), "F")
+            here = STORY_HEAD_H + split * SUMMARY_LH if split else block_h - 1
+            pdf.set_fill_color(*STORY_FILL)
+            pdf.rect(10, y, 190, min(here, PAGE_BREAK_Y - y), "F")
+            if split:
+                pdf.carry_fill = (lines - split) * SUMMARY_LH + 1
 
         # Title (a link to the story) + relevance stars
         pdf.set_font("Helvetica", "B", 9)
@@ -439,11 +510,15 @@ def build_section(pdf, section_key, stories, extras=None, link=None):
         pdf.set_xy(14, y + 6)
         pdf.cell(180, 4, meta_line)
 
-        # Summary - full sentences, no truncation
+        # Summary - full sentences, no truncation, paragraphs kept
         pdf.set_font("Helvetica", "", 8)
         pdf.set_text_color(60, 60, 60)
-        pdf.set_xy(14, y + 10.5)
+        pdf.set_xy(14, y + STORY_HEAD_H)
+        if split:
+            # Break after exactly `split` lines; header() restores the trigger.
+            pdf.page_break_trigger = y + STORY_HEAD_H + split * SUMMARY_LH + 0.01
         pdf.multi_cell(178, SUMMARY_LH, summary)
+        pdf.carry_fill = 0.0
         y = pdf.get_y() + 2
 
     pdf.set_y(y)
@@ -665,12 +740,13 @@ def _meta_parts(section_key, story):
     return parts
 
 
-def render_edition(data):
+def render_edition(data, passes=2):
     """Draw the whole edition and return the FPDF object, not yet saved.
 
     Drawn twice: the first pass finds the page each section starts on, the second
     prints those pages in the contents list. The list is the same height either
-    way, so both passes lay the pages out identically.
+    way, so both passes lay the pages out identically, and one pass is enough to
+    count pages (page_count()).
     """
     sections_data = dict(data.get("sections") or {})
     section_extras = data.get("section_extras") or {}
@@ -684,7 +760,7 @@ def render_edition(data):
     rendered = [k for k in SECTION_ORDER
                 if _section_renders(k, sections_data, section_extras)]
     pages = None
-    for _ in range(2):
+    for _ in range(passes):
         pdf = GlobalAINewsPDF()
         pdf.alias_nb_pages()
         pdf.set_auto_page_break(auto=True, margin=15)
@@ -695,6 +771,11 @@ def render_edition(data):
                                   section_extras.get(k), links[k])
                  for k in rendered}
     return pdf
+
+
+def page_count(data):
+    """How many pages the edition renders to, from a single layout pass."""
+    return render_edition(data, passes=1).page_no()
 
 
 def generate_pdf():

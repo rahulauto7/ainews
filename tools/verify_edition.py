@@ -120,8 +120,9 @@ def page_problem(pages):
     """The blocking problem for a PDF over the page limit, or None."""
     from generate_pdf import PAGE_LIMIT
     if pages > PAGE_LIMIT:
-        return (f"the PDF is {pages} pages; the limit is {PAGE_LIMIT} - cut a story "
-                "from the longest sections or shorten summaries, then rebuild")
+        return (f"the PDF is {pages} pages; the limit is {PAGE_LIMIT} - drop the stories "
+                "write_analyzed() names under 'to fit, drop:' (never shorten an explanation), "
+                "then rebuild")
     return None
 
 

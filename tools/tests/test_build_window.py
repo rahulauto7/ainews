@@ -26,7 +26,16 @@ from hackathon_sources import MIN_BUILD_DAYS, has_build_time, parse_deadline
 TODAY = date(2026, 10, 3)
 SUMMARY = ("A global online hackathon for teams building AI agents. Entrants submit a working demo "
            "and a short video. The organiser pays cash prizes to the top three teams. Anyone over "
-           "eighteen can enter from any country. Judging runs for two weeks after the deadline.")
+           "eighteen can enter from any country. Judging runs for two weeks after the deadline. "
+           "Teams of up to four people may enter, and solo entrants are welcome too. The brief asks "
+           "for an agent that completes a real task for a small business, such as booking "
+           "appointments, answering customer email or reconciling invoices. Each entry needs a public "
+           "code repository, a three-minute video showing the agent at work and a short written "
+           "description of how it was built. The organiser provides free cloud credits to every "
+           "registered team, and mentors hold open office hours twice a week. Judges score entries "
+           "on usefulness, technical quality, design and how clearly the team explains its work. "
+           "Winners are announced in a live online session, and prize money is paid within thirty "
+           "days of the announcement. Past winners have gone on to raise seed funding.")
 
 
 def check(failures, cond, msg):

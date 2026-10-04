@@ -6,7 +6,13 @@ sections meant seventeen pages before a single summary ran long.
 
 Since then: page 1 opens with a masthead and a contents list that links to each
 section and names its page, sections flow on from each other, and the send is
-blocked above generate_pdf.PAGE_LIMIT pages. All cases here are offline.
+blocked above generate_pdf.PAGE_LIMIT pages.
+
+2026-10-03: summaries became full plain-language explanations with no ceiling,
+and rahul kept the 15-page limit. So long stories run on overleaf instead of
+leaving the foot of a page blank, and an edition over the limit drops stories
+(builder_helpers.fit_plan) rather than shortening any explanation. All cases
+here are offline.
 
 Run: python3 tools/tests/test_page_limit.py
 """
@@ -24,15 +30,17 @@ import builder_helpers
 from generate_pdf import PAGE_LIMIT, SECTION_CONFIG, SECTION_ORDER, render_edition
 from verify_edition import page_problem
 
-# Cut to length at a word, so a full edition of summary(SUMMARY_MAX) is the worst
-# case the builder's rule accepts.
+# The planning figure in builder_helpers: three 2,000-character stories a section
+# fit 15 pages on a Thursday, when all sixteen sections run.
+PLAN_STORIES, PLAN_CHARS = 3, 2000
+# Cut to length at a word.
 TEXT = ("OpenAI released a new reasoning model on Thursday that it says solves harder maths and "
         "coding problems while costing less to run than the one before it. The company said "
         "developers can use it through the API today, and ChatGPT Plus users get it next week. "
         "Early tests by outside researchers show it beats Google's Gemini on two coding "
         "benchmarks but trails it on long documents. This matters because cheaper reasoning "
         "lets small teams build agents that check their own work before answering. Analysts "
-        "expect rivals to cut prices again within a month. ") * 3
+        "expect rivals to cut prices again within a month. ") * 12
 WHY = ("Leads the LMArena coding board this week and costs a third of the next best; "
        "the licence allows commercial use.")
 
@@ -82,15 +90,15 @@ def main():
     cases += 1
     check(failures, PAGE_LIMIT == 15, f"PAGE_LIMIT is {PAGE_LIMIT}; rahul asked for 15 pages max")
 
-    # ── 1. A full Thursday edition at the builder's limits fits ──────────────
-    # Sixteen sections (quantum runs on Thursdays), the most stories each at the
-    # summary ceiling, and both model tables: the most the rules allow.
-    full = edition(builder_helpers.STORIES_PER_SECTION[1], builder_helpers.SUMMARY_MAX)
+    # ── 1. A full Thursday edition at the planning figure fits ───────────────
+    # Sixteen sections (quantum runs on Thursdays), three 2,000-character
+    # explanations each, and both model tables.
+    full = edition(PLAN_STORIES, PLAN_CHARS)
     reader = read(render_edition(full))
     pages = [pg.extract_text() for pg in reader.pages]
     cases += 1
     check(failures, len(pages) <= PAGE_LIMIT,
-          f"a 16-section edition at the builder's limits ran to {len(pages)} pages")
+          f"a 16-section edition of three 2,000-character stories ran to {len(pages)} pages")
 
     # ── 2. Every story is in it ──────────────────────────────────────────────
     whole = squash("".join(pages))
@@ -106,8 +114,7 @@ def main():
     check(failures, len(listed) == len(SECTION_ORDER),
           f"contents lists {len(listed)} of {len(SECTION_ORDER)} sections")
 
-    most = builder_helpers.STORIES_PER_SECTION[1]
-    numbers = re.findall(rf"\({most}\)\s*p(\d+)", page1)
+    numbers = re.findall(rf"\({PLAN_STORIES}\)\s*p(\d+)", page1)
     cases += 1
     check(failures, len(numbers) == len(SECTION_ORDER) and numbers == sorted(numbers, key=int),
           f"contents must name each section's page, in order: {numbers}")
@@ -169,12 +176,17 @@ def main():
     check(failures, "example.com/" not in whole,
           "a story URL is printed; the title carries the link")
 
+    # One layout pass counts the pages the two-pass render prints.
+    from generate_pdf import page_count
+    cases += 1
+    check(failures, page_count(full) == len(pages),
+          f"page_count() says {page_count(full)}, the render has {len(pages)} pages")
+
     # ── 7. A normal (non-Thursday) day has room to spare ─────────────────────
     cases += 1
-    weekday = len(read(render_edition(edition(most, builder_helpers.SUMMARY_MAX,
-                                              quantum=False))).pages)
+    weekday = len(read(render_edition(edition(PLAN_STORIES, PLAN_CHARS, quantum=False))).pages)
     check(failures, weekday < PAGE_LIMIT,
-          f"15 sections at the rules' limits took {weekday} pages, no room to spare")
+          f"15 sections at the planning figure took {weekday} pages, no room to spare")
 
     # ── 8. Over the limit: reported by the builder, blocked at send ──────────
     over = edition(8, 1000)
@@ -190,6 +202,7 @@ def main():
             with contextlib.redirect_stdout(buf):
                 builder_helpers.write_analyzed(
                     over["sections"], best_for=over["section_extras"]["open_model_landscape"],
+                    closed_best_for=over["section_extras"]["closed_model_landscape"],
                     out_file=os.path.join(tmp, "analyzed_content.json"))
     finally:
         builder_helpers._ARTS = saved
@@ -199,6 +212,74 @@ def main():
           f"the builder's first line must give the page count: {printed.splitlines()[0]!r}")
     check(failures, f"limit {PAGE_LIMIT}" in printed,
           f"the builder must flag a PDF over the limit, printed:\n{printed[:400]}")
+    cases += 1
+    check(failures, "to fit, drop:" in printed,
+          f"the builder must name the stories to drop, printed:\n{printed[:600]}")
+
+    # ── 9. The fit plan drops stories, lowest relevance first, never below two ─
+    plan_ed = edition(4, 2000)
+    for key, stories in plan_ed["sections"].items():
+        stories[-1]["relevance"] = 2  # the weakest story in every section
+    drops = builder_helpers.fit_plan(plan_ed, PAGE_LIMIT)
+    for key, story in drops:
+        plan_ed["sections"][key].remove(story)
+    left = {k: len(v) for k, v in plan_ed["sections"].items()}
+    cases += 4
+    check(failures, drops, "four 2,000-character stories a section must need a fit plan")
+    check(failures, render_edition(plan_ed).page_no() <= PAGE_LIMIT,
+          f"after the fit plan's {len(drops)} drops the edition still runs over")
+    check(failures, min(left.values()) >= builder_helpers.STORIES_PER_SECTION[0],
+          f"the fit plan took a section below its floor: {left}")
+    check(failures, all(s.get("relevance") == 2 for _, s in drops),
+          "the fit plan must drop the lowest-relevance stories first")
+    cases += 1
+    check(failures, builder_helpers.fit_plan(edition(2, 1000), PAGE_LIMIT) == [],
+          "an edition that fits needs no drops")
+
+    # ── 10. Long stories run on overleaf; short ones move whole ──────────────
+    from generate_pdf import (MIN_LINES_AFTER_BREAK, MIN_LINES_BEFORE_BREAK, PAGE_BREAK_Y,
+                              STORY_HEAD_H, SUMMARY_LH, _summary_lines)
+    long_story = dict(full["sections"]["global_ai_news"][0],
+                      title="Runs on overleaf, a long explained story", summary=summary(2400))
+    short_story = dict(long_story, title="Moves whole, a short story", summary=summary(300))
+
+    def at(y, story):
+        pdf = GlobalAINewsPDF()
+        pdf.alias_nb_pages()
+        pdf.set_auto_page_break(auto=True, margin=15)
+        pdf.add_page()
+        pdf.add_page()
+        pdf.set_y(y)
+        build_section(pdf, "global_ai_news", [dict(full["sections"]["global_ai_news"][1],
+                                                   summary=summary(120)), story])
+        return [squash(pg.extract_text()) for pg in read(pdf).pages]
+
+    probe = GlobalAINewsPDF()
+    probe.add_page()
+    first_h = STORY_HEAD_H + _summary_lines(probe, dict(long_story, summary=summary(120))) * SUMMARY_LH + 2
+    # Start the long story with room for its title and five lines.
+    y = PAGE_BREAK_Y - first_h - SECTION_HEAD_H - 2 - STORY_HEAD_H - 5 * SUMMARY_LH - 0.5
+    texts = at(y, long_story)
+    tail = squash(long_story["summary"])[-40:]
+    head = squash(long_story["title"])[:30]
+    cases += 2
+    check(failures, head in texts[1] and tail in texts[2],
+          "a long story with room for five lines must start on the page and finish overleaf")
+    check(failures, len(texts) == 3, f"the run-on story took {len(texts)} pages, expected 3")
+
+    # With room for only two lines, it moves overleaf whole instead.
+    y = PAGE_BREAK_Y - first_h - SECTION_HEAD_H - 2 - STORY_HEAD_H - 2 * SUMMARY_LH - 0.5
+    texts = at(y, long_story)
+    cases += 1
+    check(failures, head not in texts[1] and head in texts[2],
+          f"with room for fewer than {MIN_LINES_BEFORE_BREAK} lines the story must move overleaf")
+
+    # A story too short to split never splits.
+    texts = at(y, short_story)
+    cases += 1
+    check(failures, squash(short_story["title"])[:30] in texts[2]
+          and squash(short_story["summary"])[-30:] in texts[2],
+          f"a story under {MIN_LINES_BEFORE_BREAK + MIN_LINES_AFTER_BREAK} lines must move whole")
 
     cases += 3
     check(failures, page_problem(PAGE_LIMIT) is None, "a PDF at the limit must not block")

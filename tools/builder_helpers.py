@@ -36,9 +36,12 @@ O(...)       an opportunity or story not carried by today's feed, verified on th
 rejected     lands in analyzed_content.json as curation_log, and news_digest.py
              prints it tomorrow, so a rejected item is not re-investigated.
 
-Size: 3-5 stories a section, summaries of 400-800 characters. write_analyzed()
-prints the PDF's page count; over 15 pages, cut the weakest story from a section
-or tighten summaries, and rerun.
+Size: every summary is a full plain-language explanation of at least 1,000
+characters and as long as the story needs (rahul, 2026-10-03), so a section
+carries 2-4 stories, usually 3. Separate paragraphs with a blank line inside the
+''' quotes; the PDF keeps them. write_analyzed() prints the PDF's page count and,
+over 15 pages, the stories to drop to fit: drop stories, never shorten an
+explanation.
 """
 
 import glob
@@ -54,12 +57,19 @@ import web_text
 
 OUTPUT_FILE = os.path.join(web_text.TMP_DIR, "analyzed_content.json")
 OPPORTUNITY_KEYS = ("ai_hackathons", "product_showcase_opportunities")
-# The most that fits the whole edition in generate_pdf.PAGE_LIMIT pages (rahul,
-# 2026-10-02: "make it max 15 pages"). Measured with both model tables: five
-# 800-character stories a section is 12 pages on a weekday and 13 on a Thursday,
-# when quantum runs too; six 800-character stories took 17.
-STORIES_PER_SECTION = (3, 5)
-SUMMARY_MIN, SUMMARY_MAX = 400, 800
+# Summaries explain each story fully in plain language, however many lines that
+# takes (rahul, 2026-10-03: "I want a clear understanding, in layman's terms ...
+# no matter how long it takes in lines"). The 400-800 character range of
+# 2026-10-02 printed five-line summaries that sent him elsewhere to understand
+# them. So there is a floor and no ceiling: under 1,000 characters (about nine
+# lines on the page) a story cannot carry what happened, who everyone is, why it
+# happened and how it works. SUMMARY_MAX stays None: nothing caps a summary.
+SUMMARY_MIN, SUMMARY_MAX = 1000, None
+# The page limit (15, generate_pdf.PAGE_LIMIT) is met by carrying fewer stories,
+# never by shortening explanations. Measured with both model tables and stories
+# allowed to run on overleaf: three 2,000-character stories a section is 14 pages
+# on a weekday and 15 on a Thursday; four 1,500-character ones 14 and 15.
+STORIES_PER_SECTION = (2, 4)
 
 _ARTS = None
 _DECODED = None
@@ -90,10 +100,20 @@ def _published_date(article):
         return None
 
 
+def tidy_summary(summary):
+    """Whitespace collapsed inside each paragraph, paragraphs kept.
+
+    A blank line separates paragraphs. A long explanation reads better in two or
+    three paragraphs than as one block, and the PDF prints the break.
+    """
+    paras = [" ".join(p.split()) for p in re.split(r"\n\s*\n", summary or "")]
+    return "\n\n".join(p for p in paras if p)
+
+
 def _story(title, summary, source, url, relevance, tags, extra):
     story = {
         "title": title,
-        "summary": " ".join(summary.split()),
+        "summary": tidy_summary(summary),
         "source": source,
         "url": url,
         "relevance": relevance,
@@ -243,8 +263,9 @@ def write_analyzed(sections, best_for=None, closed_best_for=None, rejected=None,
             problems.append(f"{key}: {len(stories)} stories (rule: {lo}-{hi})")
         for s in stories:
             n = len(s["summary"])
-            if not SUMMARY_MIN <= n <= SUMMARY_MAX:
-                problems.append(f"{key}: summary {n} chars (rule: {SUMMARY_MIN}-{SUMMARY_MAX}): "
+            if n < SUMMARY_MIN or (SUMMARY_MAX and n > SUMMARY_MAX):
+                rule = f"{SUMMARY_MIN}-{SUMMARY_MAX}" if SUMMARY_MAX else f"at least {SUMMARY_MIN}"
+                problems.append(f"{key}: summary {n} chars (rule: {rule}; explain it fully): "
                                 f"{s['title'][:60]}")
             if "automation angle" in s["summary"].lower():
                 problems.append(f"{key}: 'Automation angle' is banned: {s['title'][:60]}")
@@ -271,19 +292,78 @@ def write_analyzed(sections, best_for=None, closed_best_for=None, rejected=None,
                                     f"(rule: {limit}h): {s['title'][:60]}")
     # The page count, while the curator can still cut: the send blocks above the
     # limit, and finding out there costs a re-render and a second verify.
-    from generate_pdf import PAGE_LIMIT, render_edition
+    from generate_pdf import PAGE_LIMIT, page_count
     try:
-        pages = render_edition(out).page_no()
+        pages = page_count(out)
     except Exception as exc:  # noqa: BLE001 - report it; the PDF step will fail loudly
         pages = None
         problems.append(f"the PDF did not render: {exc!r}")
     if pages and pages > PAGE_LIMIT:
-        problems.append(f"PDF is {pages} pages (limit {PAGE_LIMIT}): cut a story or shorten summaries")
+        drops = fit_plan(out, PAGE_LIMIT)
+        problems.append(f"PDF is {pages} pages (limit {PAGE_LIMIT}): drop stories, never shorten "
+                        f"an explanation")
+        if drops:
+            problems.append("to fit, drop: " + "; ".join(
+                f"{key} r{s.get('relevance', '?')} {s['title'][:50]!r}" for key, s in drops))
 
+    chars = [len(s["summary"]) for v in sections.values() for s in v]
     counts = " ".join(f"{n}:{len(sections.get(k, []))}" for n, k in enumerate(SECTION_ORDER, 1))
     print(f"Wrote {out_file}: {total} stories, {pages or '?'} pages | per section in render order {counts}")
+    if chars:
+        print(f"  summaries: shortest {min(chars):,}, average {sum(chars) // len(chars):,}, "
+              f"longest {max(chars):,} characters")
     for p in problems:
         print("  !!", p)
     if not problems:
         print("  no problems found")
     return out
+
+
+def fit_plan(edition, page_limit):
+    """[(section_key, story)] to drop so the edition fits `page_limit` pages.
+
+    Explanations are never shortened to fit (rahul, 2026-10-03), so the only
+    lever is how many stories run. Drops go in a fixed order: the lowest-relevance
+    story from the section carrying the most, one at a time, never taking a
+    section below STORIES_PER_SECTION[0] (or its last story). The order does not
+    depend on the layout, so the fewest drops that fit are found by bisecting it,
+    a handful of renders rather than one per drop (a 128-story edition took
+    minutes the slow way). Returns [] when the edition already fits, and every
+    allowed drop when even that leaves it over the limit.
+    """
+    from generate_pdf import SECTION_ORDER, page_count
+
+    if page_count(edition) <= page_limit:
+        return []
+    sections = edition.get("sections") or {}
+    left = {k: list(range(len(sections.get(k) or []))) for k in SECTION_ORDER}
+    floor = max(STORIES_PER_SECTION[0], 1)
+    order = []
+    while True:
+        candidates = [k for k in SECTION_ORDER if len(left[k]) > floor]
+        if not candidates:
+            break
+        most = max(len(left[k]) for k in candidates)
+        pool = [(k, pos, i) for k in candidates if len(left[k]) == most
+                for pos, i in enumerate(left[k])]
+        # Lowest relevance first; among equals, the later story in the later section.
+        key, pos, i = min(pool, key=lambda t: (sections[t[0]][t[2]].get("relevance", 3),
+                                               -SECTION_ORDER.index(t[0]), -t[1]))
+        order.append((key, i))
+        del left[key][pos]
+
+    def fits(n):
+        gone = set(order[:n])
+        trial = dict(edition, sections={k: [s for i, s in enumerate(v) if (k, i) not in gone]
+                                        for k, v in sections.items()})
+        return page_count(trial) <= page_limit
+
+    lo, hi = 1, len(order)
+    if order and fits(hi):
+        while lo < hi:
+            mid = (lo + hi) // 2
+            if fits(mid):
+                hi = mid
+            else:
+                lo = mid + 1
+    return [(k, sections[k][i]) for k, i in order[:hi]]

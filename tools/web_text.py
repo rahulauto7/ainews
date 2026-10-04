@@ -142,6 +142,41 @@ def decode_google_news(url, cache=None):
     return target
 
 
+def search_google_news(query, days=3, timeout=20):
+    """[{title, url, source}] from a keyless Google News search, newest coverage first.
+
+    Used to find another outlet carrying a story whose own publisher blocks the
+    fetch: Google News indexes outlets worldwide, so a story on one blocked site
+    is nearly always on an open one too.
+    """
+    import feedparser  # the scraper's dependency; imported here so web_text stays light
+
+    q = f"{query} when:{days}d"
+    r = requests.get("https://news.google.com/rss/search", timeout=timeout, headers=HEADERS,
+                     cookies=CONSENT_COOKIES,
+                     params={"q": q, "hl": "en-US", "gl": "US", "ceid": "US:en"})
+    r.raise_for_status()
+    out = []
+    for e in feedparser.parse(r.content).entries:
+        title = e.get("title") or ""
+        source = (e.get("source") or {}).get("title") or ""
+        if not source:
+            m = re.search(r" - ([^-]+)$", title)
+            source = m.group(1).strip() if m else "Google News"
+        out.append({"title": title, "url": e.get("link") or "", "source": source})
+    return out
+
+
+def search_terms(title, limit=8):
+    """The words of a headline worth searching on, in order, publisher suffix dropped."""
+    base = re.sub(r"\s+[-|]\s+[^-|]+$", "", title or "")
+    stop = {"the", "a", "an", "and", "or", "of", "to", "in", "for", "on", "with", "at", "by",
+            "from", "as", "is", "are", "was", "be", "its", "it", "this", "that", "says", "said",
+            "how", "why", "what", "will", "can", "new", "after", "over", "into", "amid"}
+    words = [w for w in re.findall(r"[\w$%.'-]+", base) if w.lower().strip(".'") not in stop]
+    return " ".join(words[:limit])
+
+
 # ── X posts ───────────────────────────────────────────────────────────────────
 # X has no keyless feed, but one post can be read in full through the embed
 # endpoint the publishers' widgets use. It needs a token derived from the post id;

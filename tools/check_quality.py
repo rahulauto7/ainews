@@ -11,6 +11,7 @@ a check that fires on good copy gets ignored, and an ignored check is dead.
 
   ERROR  banned_phrase             the strategy-note framing dropped 2026-09-03
          truncated                 summary stops mid-sentence
+         short_summary             under the 1,000-character floor: not a full explanation
          duplicate_across_sections one story printed in two sections
          stale_story               news older than 24h (quantum: 7d), at send
          hackathon_too_soon        an AI hackathon whose submission deadline is
@@ -18,7 +19,8 @@ a check that fires on good copy gets ignored, and an ignored check is dead.
          hackathon_no_deadline     an AI hackathon with no readable submission
                                    deadline, so the 7-day rule cannot be checked
   WARN   unexplained_acronym       an acronym never expanded in its summary
-         too_few_sentences         under the four-sentence floor
+         too_few_sentences         under the seven-sentence floor
+         long_sentence             a sentence over 45 words, hard to follow in plain language
          stale_best_for            a standing model table older than 21 days
 
 Usage:
@@ -36,6 +38,7 @@ from datetime import datetime, timedelta, timezone
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import web_text
+from builder_helpers import SUMMARY_MIN
 from hackathon_sources import MIN_BUILD_DAYS, parse_deadline
 
 OPPORTUNITY_KEYS = ("ai_hackathons", "product_showcase_opportunities")
@@ -59,7 +62,12 @@ SECTION_STALE_HOURS = {"quantum_ai_research": 24 * 7}
 def stale_hours_for(section_key):
     """The freshness limit, in hours, that applies to a section."""
     return SECTION_STALE_HOURS.get(section_key, STALE_HOURS)
-MIN_SENTENCES = 4
+# A full plain-language explanation (rahul, 2026-10-03) says what happened, who
+# everyone is, why it happened and how it works: that is not four sentences.
+MIN_SENTENCES = 7
+# Plain language is short sentences. Over this many words a reader with no
+# background loses the thread, so the sentence is flagged for splitting.
+LONG_SENTENCE_WORDS = 45
 
 # Removed on 2026-09-03: summaries had become strategy essays and the news got
 # lost. Matched case-insensitively on the summary text.
@@ -111,6 +119,14 @@ def _sentences(text):
     """Rough sentence count - good enough to spot a two-line summary."""
     masked = ABBREV_RE.sub(lambda m: m.group(0)[:-1] + "\x00", text or "")
     return len(SENTENCE_END_RE.findall(masked))
+
+
+def _long_sentences(text):
+    """Sentences of the summary longer than LONG_SENTENCE_WORDS words."""
+    masked = ABBREV_RE.sub(lambda m: m.group(0)[:-1] + "\x00", text or "")
+    parts = SENTENCE_END_RE.split(masked)
+    return [p.replace("\x00", ".").strip() for p in parts
+            if len(p.split()) > LONG_SENTENCE_WORDS]
 
 
 def _is_truncated(summary):
@@ -311,6 +327,11 @@ def check_edition(data, today=None, now=None):
                 add("ERROR", "truncated", key, title,
                     f"summary ends mid-sentence: ...{summary.strip()[-60:]!r}")
 
+            if len(summary) < SUMMARY_MIN:
+                add("ERROR", "short_summary", key, title,
+                    f"{len(summary)} characters; a full plain-language explanation is at least "
+                    f"{SUMMARY_MIN} (what happened, who everyone is, why, how it works)")
+
             url = (s.get("url") or "").rstrip("/")
             if url:
                 if url in seen_urls and seen_urls[url] != key:
@@ -349,6 +370,12 @@ def check_edition(data, today=None, now=None):
             if n < MIN_SENTENCES:
                 add("WARN", "too_few_sentences", key, title,
                     f"{n} sentences; the floor is {MIN_SENTENCES}")
+
+            long = _long_sentences(summary)
+            if long:
+                add("WARN", "long_sentence", key, title,
+                    f"{len(long)} sentence(s) over {LONG_SENTENCE_WORDS} words; split them: "
+                    f"{long[0][:70]!r}...")
 
             # One finding per story, not per term: a story using four unexplained
             # acronyms is one summary to rewrite, not four lines to read.

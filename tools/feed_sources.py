@@ -15,6 +15,8 @@ flags     space-separated, "" for none:
             ai       general-interest feed: keep only entries that mention AI
             musk     keep only entries where Musk talks about AI or autonomy
             browser  the site refuses the bot User-Agent: send the browser one
+            top      keep only the feed's first 20 entries (regional Google News
+                     editions return 100 each)
 
 Names are keys elsewhere: scrape_rss_feeds.window_hours_for() and the tests look
 some up, and "arXiv ..." names keep the 15-per-feed cap. Rename with care.
@@ -51,6 +53,8 @@ RSS = [
     ('Zvi Mowshowitz', 'https://thezvi.substack.com/feed', 'rsi', ''),
     ('Transformer News', 'https://www.transformernews.ai/feed', 'rsi', ''),
     ('AI as Normal Technology', 'https://www.normaltech.ai/feed', 'rsi', ''),
+    # Added 2026-10-03 ("search everywhere on the internet"):
+    ('AI Safety (via Bing News)', 'https://www.bing.com/news/search?q=AI+safety+alignment&qft=interval%3d%227%22+sortbydate%3d%221%22&form=PTFTNR&format=rss', 'rsi', 'browser'),
 
     # --- ai_research -> AI Self-Improvement (RSI) and leads for other sections. Names starting "arXiv" keep the 15-per-feed cap.
     ('arXiv AI', 'https://rss.arxiv.org/rss/cs.AI', 'ai_research', ''),
@@ -66,6 +70,16 @@ RSS = [
     ('phys.org AI', 'https://phys.org/rss-feed/technology-news/machine-learning-ai/', 'ai_research', ''),
     ('ScienceDaily AI', 'https://www.sciencedaily.com/rss/computers_math/artificial_intelligence.xml', 'ai_research', ''),  # live
     ('Quanta Magazine', 'https://www.quantamagazine.org/feed/', 'ai_research', 'ai'),
+    # Science explainers, added 2026-10-03: written for readers with no background,
+    # which is what every summary now has to do.
+    ('The Conversation AI', 'https://theconversation.com/global/topics/artificial-intelligence-ai-90/articles.atom', 'ai_research', ''),
+    ('New Scientist Technology', 'https://www.newscientist.com/subject/technology/feed/', 'ai_research', 'ai'),
+    ('Nature News', 'https://www.nature.com/nature.rss', 'ai_research', 'ai'),
+    ('Science News', 'https://www.sciencenews.org/feed', 'ai_research', 'ai'),
+    ('Science Magazine News', 'https://www.science.org/rss/news_current.xml', 'ai_research', 'ai'),
+    ('Big Think', 'https://bigthink.com/feed/', 'ai_research', 'ai'),  # live
+    ('Sakana AI', 'https://sakana.ai/feed.xml', 'ai_research', ''),  # live
+    ('AI Research (via Bing News)', 'https://www.bing.com/news/search?q=AI+research+breakthrough&qft=interval%3d%227%22+sortbydate%3d%221%22&form=PTFTNR&format=rss', 'ai_research', 'browser'),
 
     # --- quantum (7-day rule, Thursdays only) -> Quantum + AI
     # The arXiv RSS feed only ever carries a SINGLE day of papers (verified
@@ -86,6 +100,16 @@ RSS = [
     ('AI Incident Database', 'https://incidentdatabase.ai/rss.xml', 'problems', ''),  # live
     ('404 Media', 'https://www.404media.co/rss/', 'problems', 'ai'),
     ('Marcus on AI', 'https://garymarcus.substack.com/feed', 'problems', ''),  # live
+    # Added 2026-10-03: AI security incidents and AI's critics.
+    ('The Hacker News', 'https://feeds.feedburner.com/TheHackersNews', 'problems', 'ai'),
+    ('BleepingComputer', 'https://www.bleepingcomputer.com/feed/', 'problems', 'ai'),
+    ('Dark Reading', 'https://www.darkreading.com/rss.xml', 'problems', 'ai'),
+    ('SecurityWeek', 'https://www.securityweek.com/feed/', 'problems', 'ai'),
+    ('EFF Deeplinks', 'https://www.eff.org/rss/updates.xml', 'problems', 'ai'),
+    ('AI Now Institute', 'https://ainowinstitute.org/feed', 'problems', ''),  # live
+    ('Pivot to AI', 'https://pivot-to-ai.com/feed/', 'problems', ''),
+    ("Where's Your Ed At", 'https://www.wheresyoured.at/feed', 'problems', ''),  # live
+    ('AI Problems (via Bing News)', 'https://www.bing.com/news/search?q=AI+failure+OR+AI+problem&qft=interval%3d%227%22+sortbydate%3d%221%22&form=PTFTNR&format=rss', 'problems', 'browser'),
 
     # --- automation -> AI Automation & Business
     ('AI Automation (via Google News)', 'https://news.google.com/rss/search?q=(%22AI+automation%22+OR+%22AI+agents%22+OR+%22agentic+AI%22+OR+%22workflow+automation%22)+when:1d&hl=en-US&gl=US&ceid=US:en', 'automation', ''),
@@ -105,6 +129,19 @@ RSS = [
     ('AI Business', 'https://aibusiness.com/rss.xml', 'automation', ''),
     ('KDnuggets', 'https://www.kdnuggets.com/feed', 'automation', 'ai'),
     ('Analytics Vidhya', 'https://www.analyticsvidhya.com/feed/', 'automation', 'ai'),  # live
+    # Added 2026-10-03: enterprise and developer trade press.
+    ('InfoQ AI', 'https://feed.infoq.com/ai-ml-data-eng/', 'automation', ''),
+    ('Dataconomy', 'https://dataconomy.com/feed/', 'automation', 'ai'),
+    ('eWeek AI', 'https://www.eweek.com/artificial-intelligence/feed/', 'automation', ''),
+    ('CRN', 'https://www.crn.com/news/rss.xml', 'automation', 'ai'),
+    ('Computer Weekly', 'https://www.computerweekly.com/rss/All-Computer-Weekly-content.xml', 'automation', 'ai'),
+    ('ITPro', 'https://www.itpro.com/feeds/all', 'automation', 'ai'),
+    ('Techstrong AI', 'https://techstrong.ai/feed/', 'automation', ''),
+    ('DevOps.com', 'https://devops.com/feed/', 'automation', 'ai'),
+    ('The Next Platform', 'https://www.nextplatform.com/feed/', 'automation', 'ai'),  # live
+    ('The Pragmatic Engineer', 'https://newsletter.pragmaticengineer.com/feed', 'automation', 'ai'),  # live
+    ("Lenny's Newsletter", 'https://www.lennysnewsletter.com/feed', 'automation', 'ai'),  # live
+    ('AI Automation (via Bing News)', 'https://www.bing.com/news/search?q=AI+agents+automation&qft=interval%3d%227%22+sortbydate%3d%221%22&form=PTFTNR&format=rss', 'automation', 'browser'),
 
     # --- business -> AI Business Opportunities
     ('AI Funding (via Google News)', 'https://news.google.com/rss/search?q=AI+startup+(raises+OR+funding+OR+valuation+OR+%22Series+A%22+OR+%22seed+round%22)+when:1d&hl=en-US&gl=US&ceid=US:en', 'business', ''),
@@ -114,9 +151,17 @@ RSS = [
     ('AlleyWatch', 'https://www.alleywatch.com/feed/', 'business', 'ai'),
     ('Sifted', 'https://sifted.eu/feed', 'business', 'ai'),
     ('Tech.eu', 'https://tech.eu/feed/', 'business', 'ai'),
+    # Added 2026-10-03: business and markets press.
+    ('Inc', 'https://www.inc.com/rss', 'business', 'ai'),
+    ('Entrepreneur', 'https://www.entrepreneur.com/latest.rss', 'business', 'ai'),
+    ('MarketWatch', 'https://feeds.content.dowjones.io/public/rss/mw_topstories', 'business', 'ai'),
+    ('Benzinga', 'https://www.benzinga.com/feed', 'business', 'ai'),
+    ('Noahpinion', 'https://www.noahpinion.blog/feed', 'business', 'ai'),  # live
+    ('AI Funding (via Bing News)', 'https://www.bing.com/news/search?q=AI+startup+funding&qft=interval%3d%227%22+sortbydate%3d%221%22&form=PTFTNR&format=rss', 'business', 'browser'),
 
     # --- showcase -> AI Business Opportunities
     ('Product Hunt AI', 'https://www.producthunt.com/feed?category=artificial-intelligence', 'showcase', ''),
+    ('Product Hunt', 'https://www.producthunt.com/feed', 'showcase', 'ai'),
 
     # --- indian -> Indian AI Industry
     ('Inc42', 'https://inc42.com/feed/', 'indian', 'ai'),
@@ -132,6 +177,14 @@ RSS = [
     ('MediaNama', 'https://www.medianama.com/feed/', 'indian', 'ai'),  # live
     ('Entrackr', 'https://entrackr.com/rss', 'indian', 'ai'),  # live
     ('The Ken', 'https://the-ken.com/feed/', 'indian', 'ai'),
+    # Added 2026-10-03.
+    ('Economic Times AI', 'https://economictimes.indiatimes.com/tech/artificial-intelligence/rssfeeds/119215726.cms', 'indian', ''),
+    ('India Today Technology', 'https://www.indiatoday.in/rss/1206688', 'indian', 'ai'),
+    ('ThePrint Tech', 'https://theprint.in/category/tech/feed/', 'indian', 'ai'),  # live
+    ('Express Computer', 'https://www.expresscomputer.in/feed/', 'indian', 'ai'),
+    ('ETCIO', 'https://cio.economictimes.indiatimes.com/rss/topstories', 'indian', 'ai'),
+    ('India AI (via Bing News)', 'https://www.bing.com/news/search?q=India+artificial+intelligence&qft=interval%3d%227%22+sortbydate%3d%221%22&form=PTFTNR&format=rss', 'indian', 'browser'),
+    ('AI in Hindi (via Google News)', 'https://news.google.com/rss/search?q=%28%E0%A4%8F%E0%A4%86%E0%A4%88+OR+%22%E0%A4%86%E0%A4%B0%E0%A5%8D%E0%A4%9F%E0%A4%BF%E0%A4%AB%E0%A4%BF%E0%A4%B6%E0%A4%BF%E0%A4%AF%E0%A4%B2+%E0%A4%87%E0%A4%82%E0%A4%9F%E0%A5%87%E0%A4%B2%E0%A4%BF%E0%A4%9C%E0%A5%87%E0%A4%82%E0%A4%B8%22%29+when%3A1d&hl=hi&gl=IN&ceid=IN:hi', 'indian', 'top'),
 
     # --- world -> Global AI News (regional coverage)
     ('China AI (via Google News)', 'https://news.google.com/rss/search?q=China+(AI+OR+%22artificial+intelligence%22)+when:1d&hl=en-US&gl=US&ceid=US:en', 'world', ''),
@@ -152,6 +205,71 @@ RSS = [
     ('Rest of World', 'https://restofworld.org/feed/latest', 'world', 'ai'),
     ('Politico Europe Technology', 'https://www.politico.eu/section/technology/feed/', 'world', 'ai'),  # live
     ('ChinaTalk', 'https://www.chinatalk.media/feed', 'world', ''),
+    # Added 2026-10-03 ("search everywhere on the internet on Earth"): the same AI
+    # search in Google News' regional editions, each led by that country's own outlets,
+    # and regional outlets with their own feeds. "top" keeps each edition's first 20.
+    ('UK AI (via Google News)', 'https://news.google.com/rss/search?q=%28AI+OR+%22artificial+intelligence%22%29+when%3A1d&hl=en-GB&gl=GB&ceid=GB:en', 'world', 'top'),
+    ('Australia AI (via Google News)', 'https://news.google.com/rss/search?q=%28AI+OR+%22artificial+intelligence%22%29+when%3A1d&hl=en-AU&gl=AU&ceid=AU:en', 'world', 'top'),
+    ('Canada AI (via Google News)', 'https://news.google.com/rss/search?q=%28AI+OR+%22artificial+intelligence%22%29+when%3A1d&hl=en-CA&gl=CA&ceid=CA:en', 'world', 'top'),
+    ('Singapore AI (via Google News)', 'https://news.google.com/rss/search?q=%28AI+OR+%22artificial+intelligence%22%29+when%3A1d&hl=en-SG&gl=SG&ceid=SG:en', 'world', 'top'),
+    ('South Africa AI (via Google News)', 'https://news.google.com/rss/search?q=%28AI+OR+%22artificial+intelligence%22%29+when%3A1d&hl=en-ZA&gl=ZA&ceid=ZA:en', 'world', 'top'),
+    ('Nigeria AI (via Google News)', 'https://news.google.com/rss/search?q=%28AI+OR+%22artificial+intelligence%22%29+when%3A1d&hl=en-NG&gl=NG&ceid=NG:en', 'world', 'top'),
+    ('Kenya AI (via Google News)', 'https://news.google.com/rss/search?q=%28AI+OR+%22artificial+intelligence%22%29+when%3A1d&hl=en-KE&gl=KE&ceid=KE:en', 'world', 'top'),
+    ('Ireland AI (via Google News)', 'https://news.google.com/rss/search?q=%28AI+OR+%22artificial+intelligence%22%29+when%3A1d&hl=en-IE&gl=IE&ceid=IE:en', 'world', 'top'),
+    ('New Zealand AI (via Google News)', 'https://news.google.com/rss/search?q=%28AI+OR+%22artificial+intelligence%22%29+when%3A1d&hl=en-NZ&gl=NZ&ceid=NZ:en', 'world', 'top'),
+    ('Philippines AI (via Google News)', 'https://news.google.com/rss/search?q=%28AI+OR+%22artificial+intelligence%22%29+when%3A1d&hl=en-PH&gl=PH&ceid=PH:en', 'world', 'top'),
+    ('Malaysia AI (via Google News)', 'https://news.google.com/rss/search?q=%28AI+OR+%22artificial+intelligence%22%29+when%3A1d&hl=en-MY&gl=MY&ceid=MY:en', 'world', 'top'),
+    ('Pakistan AI (via Google News)', 'https://news.google.com/rss/search?q=%28AI+OR+%22artificial+intelligence%22%29+when%3A1d&hl=en-PK&gl=PK&ceid=PK:en', 'world', 'top'),
+    ('UAE AI (via Google News)', 'https://news.google.com/rss/search?q=%28AI+OR+%22artificial+intelligence%22%29+when%3A1d&hl=en-AE&gl=AE&ceid=AE:en', 'world', 'top'),
+    ('Israel AI (via Google News)', 'https://news.google.com/rss/search?q=%28AI+OR+%22artificial+intelligence%22%29+when%3A1d&hl=en-IL&gl=IL&ceid=IL:en', 'world', 'top'),
+    ('Africa AI (via Google News)', 'https://news.google.com/rss/search?q=%28Africa+OR+Nigeria+OR+Kenya+OR+%22South+Africa%22+OR+Egypt%29+%28AI+OR+%22artificial+intelligence%22%29+when%3A1d&hl=en-US&gl=US&ceid=US:en', 'world', 'top'),
+    ('Latin America AI (via Google News)', 'https://news.google.com/rss/search?q=%28Brazil+OR+Mexico+OR+Argentina+OR+Chile+OR+Colombia+OR+%22Latin+America%22%29+%28AI+OR+%22artificial+intelligence%22%29+when%3A1d&hl=en-US&gl=US&ceid=US:en', 'world', 'top'),
+    ('Southeast Asia AI (via Google News)', 'https://news.google.com/rss/search?q=%28Singapore+OR+Indonesia+OR+Vietnam+OR+Malaysia+OR+Thailand+OR+Philippines%29+%28AI+OR+%22artificial+intelligence%22%29+when%3A1d&hl=en-US&gl=US&ceid=US:en', 'world', 'top'),
+    ('China AI (via Bing News)', 'https://www.bing.com/news/search?q=China+AI&qft=interval%3d%227%22+sortbydate%3d%221%22&form=PTFTNR&format=rss', 'world', 'browser'),
+    ('Europe AI (via Bing News)', 'https://www.bing.com/news/search?q=Europe+AI&qft=interval%3d%227%22+sortbydate%3d%221%22&form=PTFTNR&format=rss', 'world', 'browser'),
+    ('AI Policy (via Bing News)', 'https://www.bing.com/news/search?q=AI+regulation&qft=interval%3d%227%22+sortbydate%3d%221%22&form=PTFTNR&format=rss', 'world', 'browser'),
+    ('Digitimes Asia', 'https://www.digitimes.com/rss/daily.xml', 'world', 'ai'),
+    ('CNA Business', 'https://www.channelnewsasia.com/api/v1/rss-outbound-feed?_format=xml&category=6936', 'world', 'ai'),
+    ('Euronews Next', 'https://www.euronews.com/rss?level=vertical&name=next', 'world', 'ai'),
+    ('Silicon Republic', 'https://www.siliconrepublic.com/feed', 'world', 'ai'),
+    ('UKTN', 'https://www.uktech.news/feed', 'world', 'ai'),  # live
+    ('Irish Times Technology', 'https://www.irishtimes.com/arc/outboundfeeds/feed-technology/?outputType=xml', 'world', 'ai'),  # live
+    ('Ventureburn', 'https://ventureburn.com/feed/', 'world', 'ai'),
+    ('iTnews Australia', 'https://www.itnews.com.au/RSS/rss.ashx', 'world', 'ai'),
+    ('SmartCompany', 'https://www.smartcompany.com.au/feed/', 'world', 'ai'),  # live
+    ('BetaKit', 'https://betakit.com/feed/', 'world', 'ai'),
+    ('Globe and Mail Technology', 'https://www.theglobeandmail.com/arc/outboundfeeds/rss/category/business/technology/', 'world', 'ai'),
+    ('Wamda', 'https://www.wamda.com/feed', 'world', 'ai'),  # live
+    ('European Commission Press', 'https://ec.europa.eu/commission/presscorner/api/rss?language=en', 'world', 'ai'),
+    ('EU Digital Strategy', 'https://digital-strategy.ec.europa.eu/en/rss.xml', 'world', 'ai'),  # live
+    ('UK Government AI news', 'https://www.gov.uk/search/news-and-communications.atom?keywords=artificial+intelligence&order=updated-newest', 'world', ''),  # live
+    ('FTC Press Releases', 'https://www.ftc.gov/feeds/press-release.xml', 'world', 'ai'),  # live
+    ('NIST News', 'https://www.nist.gov/news-events/news/rss.xml', 'world', 'ai'),  # live
+    ('CSET Georgetown', 'https://cset.georgetown.edu/feed/', 'world', 'ai'),  # live
+    ('The Hill Technology', 'https://thehill.com/policy/technology/feed/', 'world', 'ai'),
+    ('Politico Technology', 'https://rss.politico.com/technology.xml', 'world', 'ai'),
+
+    # --- world_lang -> Global AI News (added 2026-10-03): the AI search in other
+    # languages, in each language's Google News edition. Read and summarised in English;
+    # the builder gives each story an English title (S(..., title=...)).
+    ('AI in German (via Google News)', 'https://news.google.com/rss/search?q=%28%22k%C3%BCnstliche+Intelligenz%22+OR+KI%29+when%3A1d&hl=de&gl=DE&ceid=DE:de', 'world_lang', 'top'),
+    ('AI in French (via Google News)', 'https://news.google.com/rss/search?q=%22intelligence+artificielle%22+when%3A1d&hl=fr&gl=FR&ceid=FR:fr', 'world_lang', 'top'),
+    ('AI in Spanish (via Google News)', 'https://news.google.com/rss/search?q=%22inteligencia+artificial%22+when%3A1d&hl=es&gl=ES&ceid=ES:es', 'world_lang', 'top'),
+    ('AI in LatAm Spanish (via Google News)', 'https://news.google.com/rss/search?q=%22inteligencia+artificial%22+when%3A1d&hl=es-419&gl=MX&ceid=MX:es-419', 'world_lang', 'top'),
+    ('AI in Portuguese (via Google News)', 'https://news.google.com/rss/search?q=%22intelig%C3%AAncia+artificial%22+when%3A1d&hl=pt-BR&gl=BR&ceid=BR:pt-419', 'world_lang', 'top'),
+    ('AI in Italian (via Google News)', 'https://news.google.com/rss/search?q=%22intelligenza+artificiale%22+when%3A1d&hl=it&gl=IT&ceid=IT:it', 'world_lang', 'top'),
+    ('AI in Dutch (via Google News)', 'https://news.google.com/rss/search?q=%28%22kunstmatige+intelligentie%22+OR+AI%29+when%3A1d&hl=nl&gl=NL&ceid=NL:nl', 'world_lang', 'top'),
+    ('AI in Polish (via Google News)', 'https://news.google.com/rss/search?q=%22sztuczna+inteligencja%22+when%3A1d&hl=pl&gl=PL&ceid=PL:pl', 'world_lang', 'top'),
+    ('AI in Turkish (via Google News)', 'https://news.google.com/rss/search?q=%22yapay+zeka%22+when%3A1d&hl=tr&gl=TR&ceid=TR:tr', 'world_lang', 'top'),
+    ('AI in Russian (via Google News)', 'https://news.google.com/rss/search?q=%22%D0%B8%D1%81%D0%BA%D1%83%D1%81%D1%81%D1%82%D0%B2%D0%B5%D0%BD%D0%BD%D1%8B%D0%B9+%D0%B8%D0%BD%D1%82%D0%B5%D0%BB%D0%BB%D0%B5%D0%BA%D1%82%22+when%3A1d&hl=ru&gl=RU&ceid=RU:ru', 'world_lang', 'top'),
+    ('AI in Arabic (via Google News)', 'https://news.google.com/rss/search?q=%22%D8%A7%D9%84%D8%B0%D9%83%D8%A7%D8%A1+%D8%A7%D9%84%D8%A7%D8%B5%D8%B7%D9%86%D8%A7%D8%B9%D9%8A%22+when%3A1d&hl=ar&gl=SA&ceid=SA:ar', 'world_lang', 'top'),
+    ('AI in Japanese (via Google News)', 'https://news.google.com/rss/search?q=%28%E4%BA%BA%E5%B7%A5%E7%9F%A5%E8%83%BD+OR+%E7%94%9F%E6%88%90AI%29+when%3A1d&hl=ja&gl=JP&ceid=JP:ja', 'world_lang', 'top'),
+    ('AI in Korean (via Google News)', 'https://news.google.com/rss/search?q=%EC%9D%B8%EA%B3%B5%EC%A7%80%EB%8A%A5+when%3A1d&hl=ko&gl=KR&ceid=KR:ko', 'world_lang', 'top'),
+    ('AI in Chinese TW (via Google News)', 'https://news.google.com/rss/search?q=%E4%BA%BA%E5%B7%A5%E6%99%BA%E6%85%A7+when%3A1d&hl=zh-TW&gl=TW&ceid=TW:zh-Hant', 'world_lang', 'top'),
+    ('AI in Chinese HK (via Google News)', 'https://news.google.com/rss/search?q=%E4%BA%BA%E5%B7%A5%E6%99%BA%E8%83%BD+when%3A1d&hl=zh-HK&gl=HK&ceid=HK:zh-Hant', 'world_lang', 'top'),
+    ('AI in Indonesian (via Google News)', 'https://news.google.com/rss/search?q=%22kecerdasan+buatan%22+when%3A1d&hl=id&gl=ID&ceid=ID:id', 'world_lang', 'top'),
+    ('AI in Vietnamese (via Google News)', 'https://news.google.com/rss/search?q=%22tr%C3%AD+tu%E1%BB%87+nh%C3%A2n+t%E1%BA%A1o%22+when%3A1d&hl=vi&gl=VN&ceid=VN:vi', 'world_lang', 'top'),
+    ('ITmedia AI+', 'https://rss.itmedia.co.jp/rss/2.0/aiplus.xml', 'world_lang', ''),  # Japanese
 
     # --- general -> Global AI News, and leads for every section
     ('The Verge AI', 'https://www.theverge.com/rss/ai-artificial-intelligence/index.xml', 'general', ''),
@@ -202,6 +320,43 @@ RSS = [
     ('Interconnects', 'https://www.interconnects.ai/feed', 'general', ''),  # live
     ('Ahead of AI', 'https://magazine.sebastianraschka.com/feed', 'general', ''),  # live
     ('Understanding AI', 'https://www.understandingai.org/feed', 'general', ''),  # live
+    # Added 2026-10-03: wire services and papers through Google News (their own pages
+    # block fetching, so fetch_articles.py reads the story from another outlet; the
+    # site: searches match far beyond AI, 4-20 in 100 on the first run, hence "ai"), and
+    # more mainstream, consumer-tech and newsletter outlets.
+    ('AI news (Google News topic)', 'https://news.google.com/rss/topics/CAAqIAgKIhpDQkFTRFFvSEwyMHZNRzFyZWhJQ1pXNG9BQVAB?hl=en-US&gl=US&ceid=US:en', 'general', ''),
+    ('Reuters AI (via Google News)', 'https://news.google.com/rss/search?q=site%3Areuters.com+%28AI+OR+%22artificial+intelligence%22%29+when%3A1d&hl=en-US&gl=US&ceid=US:en', 'general', 'ai'),
+    ('AP AI (via Google News)', 'https://news.google.com/rss/search?q=site%3Aapnews.com+%28AI+OR+%22artificial+intelligence%22%29+when%3A1d&hl=en-US&gl=US&ceid=US:en', 'general', 'ai'),
+    ('WSJ AI (via Google News)', 'https://news.google.com/rss/search?q=site%3Awsj.com+%28AI+OR+%22artificial+intelligence%22%29+when%3A1d&hl=en-US&gl=US&ceid=US:en', 'general', 'ai'),
+    ('Washington Post Technology', 'https://feeds.washingtonpost.com/rss/business/technology', 'general', 'ai'),
+    ('CBS News Technology', 'https://www.cbsnews.com/latest/rss/technology', 'general', 'ai'),
+    ('ABC News Technology', 'https://abcnews.go.com/abcnews/technologyheadlines', 'general', 'ai'),  # live
+    ('The Atlantic Technology', 'https://www.theatlantic.com/feed/channel/technology/', 'general', 'ai'),  # live
+    ('Vox Technology', 'https://www.vox.com/rss/technology/index.xml', 'general', 'ai'),
+    ('Time Tech', 'https://time.com/tech/feed/', 'general', 'ai'),
+    ('LA Times Business', 'https://www.latimes.com/business/rss2.0.xml', 'general', 'ai'),
+    ('The Independent Tech', 'https://www.independent.co.uk/tech/rss', 'general', 'ai'),
+    ('Sky News Technology', 'https://feeds.skynews.com/feeds/rss/technology.xml', 'general', 'ai'),  # live
+    ('The Economist Science and Technology', 'https://www.economist.com/science-and-technology/rss.xml', 'general', 'ai'),  # live
+    ('The Information', 'https://www.theinformation.com/feed', 'general', 'ai'),
+    ('Forbes Innovation', 'https://www.forbes.com/innovation/feed/', 'general', 'ai'),
+    ('CNET AI', 'https://www.cnet.com/rss/ai/', 'general', ''),
+    ('ZDNET', 'https://www.zdnet.com/news/rss.xml', 'general', 'ai'),
+    ('PCMag', 'https://www.pcmag.com/feeds/rss/latest', 'general', 'ai'),
+    ('PCWorld', 'https://www.pcworld.com/feed', 'general', 'ai'),
+    ('Mashable Tech', 'https://mashable.com/feeds/rss/tech', 'general', 'ai'),
+    ('9to5Mac', 'https://9to5mac.com/feed/', 'general', 'ai'),
+    ('MacRumors', 'https://feeds.macrumors.com/MacRumors-All', 'general', 'ai'),
+    ('Android Authority', 'https://www.androidauthority.com/feed/', 'general', 'ai'),
+    ('Android Police', 'https://www.androidpolice.com/feed/', 'general', 'ai'),
+    ('XDA', 'https://www.xda-developers.com/feed/', 'general', 'ai'),
+    ('Data Center Dynamics', 'https://www.datacenterdynamics.com/en/rss/', 'general', 'ai'),
+    ('EE Times', 'https://www.eetimes.com/feed/', 'general', 'ai'),
+    ('Daring Fireball', 'https://daringfireball.net/feeds/main', 'general', 'ai'),
+    ('Marginal Revolution', 'https://marginalrevolution.com/feed', 'general', 'ai'),
+    ('Gradient Flow', 'https://gradientflow.substack.com/feed', 'general', ''),  # live
+    ('Artificial Ignorance', 'https://www.ignorance.ai/feed', 'general', ''),  # live
+    ('Air Street Press', 'https://press.airstreet.com/feed', 'general', ''),  # live
 
     # --- company_blog -> Global AI News (AI companies other than the four with their own section)
     ('NVIDIA Blog', 'https://blogs.nvidia.com/feed/', 'company_blog', 'ai'),
@@ -209,6 +364,12 @@ RSS = [
     ('Microsoft Blog', 'https://blogs.microsoft.com/feed/', 'company_blog', 'ai'),  # live
     ('Meta Newsroom', 'https://about.fb.com/news/feed/', 'company_blog', 'ai'),  # live
     ('Meta Engineering', 'https://engineering.fb.com/feed/', 'company_blog', 'ai'),  # live
+    ('Microsoft Source', 'https://news.microsoft.com/source/feed/', 'company_blog', 'ai'),
+    ('Azure Blog', 'https://azure.microsoft.com/en-us/blog/feed/', 'company_blog', 'ai'),  # live
+    ('Amazon News', 'https://www.aboutamazon.com/news/rss', 'company_blog', 'ai'),
+    ('Apple Newsroom', 'https://www.apple.com/newsroom/rss-feed.rss', 'company_blog', 'ai'),  # live
+    ('Samsung Newsroom', 'https://news.samsung.com/global/feed', 'company_blog', 'ai'),
+    ('Together AI Blog', 'https://www.together.ai/blog/rss.xml', 'company_blog', ''),  # live
 
     # --- openai -> OpenAI (the existing "OpenAI Blog" feed moves here)
     ('OpenAI Blog', 'https://openai.com/blog/rss.xml', 'openai', ''),
@@ -233,6 +394,7 @@ RSS = [
     ('Demis Hassabis on X (via Google News)', 'https://news.google.com/rss/search?q=site:x.com%2Fdemishassabis&hl=en-US&gl=US&ceid=US:en', 'google', ''),  # live
     ('Google DeepMind YouTube', 'https://www.youtube.com/feeds/videos.xml?channel_id=UCP7jMXSY2xbc3KCAE0MHQ-A', 'google', ''),
     ('Google YouTube', 'https://www.youtube.com/feeds/videos.xml?channel_id=UCK8sQmJBp8GCxrOtXWBpyEA', 'google', 'ai'),  # live
+    ('9to5Google', 'https://9to5google.com/feed/', 'google', 'ai'),
 
     # --- anthropic_claude -> Anthropic & Claude Code (the two existing Google News searches stay)
     # anthropic.com/rss.xml returns 404 - proxy via Google News (same trick as the
@@ -267,6 +429,7 @@ RSS = [
     # Live but infrequent (roughly fortnightly) - carries local-model release notes.
     ('Ollama Blog', 'https://ollama.com/blog/rss.xml', 'open_model', ''),
     ('Mistral AI News', 'https://mistral.ai/rss.xml', 'open_model', ''),  # live
+    ('Open Models (via Bing News)', 'https://www.bing.com/news/search?q=open+source+AI+model&qft=interval%3d%227%22+sortbydate%3d%221%22&form=PTFTNR&format=rss', 'open_model', 'browser'),
 
     # --- closed_model -> Closed Models & Frontier APIs
     ('Closed Models (via Google News)', 'https://news.google.com/rss/search?q=(GPT+OR+Gemini+OR+%22Claude+Opus%22+OR+Grok)+(benchmark+OR+pricing+OR+leaderboard+OR+%22new+model%22)+when:1d&hl=en-US&gl=US&ceid=US:en', 'closed_model', ''),
@@ -295,6 +458,24 @@ RSS = [
     ('Y Combinator YouTube', 'https://www.youtube.com/feeds/videos.xml?channel_id=UCxIJaCMEptJjxmmQgGFsnCg', 'video', 'ai'),
     ('All-In Podcast YouTube', 'https://www.youtube.com/feeds/videos.xml?channel_id=UCESLZhusAkFfsNsApnjF_Cg', 'video', 'ai'),
     ('NVIDIA YouTube', 'https://www.youtube.com/feeds/videos.xml?channel_id=UCL-g3eGJi1omSDSz48AML-g', 'video', 'ai'),
+    # Added 2026-10-03: more channels, and podcasts (their show notes name the stories).
+    ('AI Daily Brief YouTube', 'https://www.youtube.com/feeds/videos.xml?channel_id=UCKelCK4ZaO6HeEI1KQjqzWA', 'video', ''),
+    ('bycloud YouTube', 'https://www.youtube.com/feeds/videos.xml?channel_id=UCgfe2ooZD3VJPB6aJAnuQng', 'video', ''),
+    ('Sam Witteveen YouTube', 'https://www.youtube.com/feeds/videos.xml?channel_id=UC55ODQSvARtgSyc8ThfiepQ', 'video', ''),
+    ('IBM Technology YouTube', 'https://www.youtube.com/feeds/videos.xml?channel_id=UCKWaEZ-_VweaEx1j62do_vQ', 'video', ''),
+    ('Fireship YouTube', 'https://www.youtube.com/feeds/videos.xml?channel_id=UCsBjURrPoezykLs9EqgamOA', 'video', 'ai'),
+    ('Theo YouTube', 'https://www.youtube.com/feeds/videos.xml?channel_id=UCbRP3c757lWg9M-U7TyEkXA', 'video', 'ai'),
+    ('Hugging Face YouTube', 'https://www.youtube.com/feeds/videos.xml?channel_id=UCHlNU7kIZhRgSbhHvFoy72w', 'video', ''),  # live
+    ('Microsoft Research YouTube', 'https://www.youtube.com/feeds/videos.xml?channel_id=UCCb9_Kn8F_Opb3UCGm-lILQ', 'video', 'ai'),  # live
+    ('Andrej Karpathy YouTube', 'https://www.youtube.com/feeds/videos.xml?channel_id=UCXUPKJO5MZQN11PqgIvyuvQ', 'video', ''),  # live
+    ('Bloomberg Technology YouTube', 'https://www.youtube.com/feeds/videos.xml?channel_id=UCrM7B7SL_g1edFOnmj-SDKg', 'video', 'ai'),
+    ('CNBC Television YouTube', 'https://www.youtube.com/feeds/videos.xml?channel_id=UCrp_UI8XtuYfpiqluWLD7Lw', 'video', 'ai'),
+    ('AI Daily Brief podcast', 'https://anchor.fm/s/f7cac464/podcast/rss', 'video', ''),
+    ('Hard Fork podcast', 'https://feeds.simplecast.com/l2i9YnTd', 'video', 'ai'),  # live
+    ('No Priors podcast', 'https://feeds.megaphone.fm/nopriors', 'video', ''),  # live
+    ('Decoder podcast', 'https://feeds.megaphone.fm/recodedecode', 'video', 'ai'),  # live
+    ('Practical AI podcast', 'https://changelog.com/practicalai/feed', 'video', ''),  # live
+    ('TWIML AI podcast', 'https://feeds.megaphone.fm/MLN2155636147', 'video', ''),  # live
 
     # --- social -> leads for any section
     ('Andrej Karpathy on X (via Google News)', 'https://news.google.com/rss/search?q=site:x.com%2Fkarpathy&hl=en-US&gl=US&ceid=US:en', 'social', ''),
@@ -303,6 +484,23 @@ RSS = [
     ('NVIDIA on X (via Google News)', 'https://news.google.com/rss/search?q=site:x.com%2Fnvidia&hl=en-US&gl=US&ceid=US:en', 'social', ''),
     ('Slashdot', 'https://rss.slashdot.org/Slashdot/slashdotMain', 'social', 'ai'),
     ('Lobsters AI', 'https://lobste.rs/t/ai.rss', 'social', ''),  # live
+
+    # --- forums -> leads for any section (added 2026-10-03). Community posts: weight the
+    # release or article a post links to over the post. Reddit ends RSS on 13 Nov 2026,
+    # so the four Reddit rows go dark then; Bluesky profile feeds carry no titles, so the
+    # scraper titles each post with its opening words.
+    ('r/singularity', 'https://www.reddit.com/r/singularity/.rss', 'forums', ''),
+    ('r/OpenAI', 'https://www.reddit.com/r/OpenAI/.rss', 'forums', ''),
+    ('r/ClaudeAI', 'https://www.reddit.com/r/ClaudeAI/.rss', 'forums', ''),
+    ('r/artificial', 'https://www.reddit.com/r/artificial/.rss', 'forums', ''),
+    ('r/MachineLearning', 'https://www.reddit.com/r/MachineLearning/.rss', 'forums', 'browser'),
+    ('Ethan Mollick on Bluesky', 'https://bsky.app/profile/emollick.bsky.social/rss', 'forums', 'ai'),
+    ('Nathan Lambert on Bluesky', 'https://bsky.app/profile/natolambert.bsky.social/rss', 'forums', 'ai'),
+    ('Casey Newton on Bluesky', 'https://bsky.app/profile/caseynewton.bsky.social/rss', 'forums', 'ai'),
+    ('Emily Bender on Bluesky', 'https://bsky.app/profile/emilymbender.bsky.social/rss', 'forums', 'ai'),
+    ('Melanie Mitchell on Bluesky', 'https://bsky.app/profile/melaniemitchell.bsky.social/rss', 'forums', 'ai'),  # live
+    ('David Ha on Bluesky', 'https://bsky.app/profile/hardmaru.bsky.social/rss', 'forums', 'ai'),  # live
+    ('Margaret Mitchell on Bluesky', 'https://bsky.app/profile/mmitchell.bsky.social/rss', 'forums', 'ai'),  # live
 ]
 
 # The non-RSS readers. Each reader takes (name, arg, cutoff_time) and returns the
@@ -353,8 +551,35 @@ EXTRA = [
 #   entries), Gadgets360 and NDTV Profit (403), VCCircle (500), Times of India Tech
 #   (newest Aug 2026), Moneycontrol (Apr 2026).
 #
+# Probed 2026-10-03 and rejected (the "search everywhere" pass; ~300 candidates):
+#   403/402/451 to bot and browser: NPR, USA Today, Telegraph, BigDATAwire, HPCwire,
+#     News18, Firstpost, Gadgets360, Euractiv, Techpoint Africa, MyBroadband,
+#     InnovationAus, Times of Israel, Gulf Business, Lawfare, Perplexity, AMD, Intel,
+#     Bangkok Post, and every github.com releases.atom feed (ollama, vllm,
+#     transformers, llama.cpp, gemini-cli, codex, claude-code, langchain).
+#   404: Newsweek, KrASIA, Taipei Times, Focus Taiwan, JoongAng Daily, Yonhap,
+#     Caixin, China Daily, Deccan Herald, France 24, CTech, Gulf News, Khaleej Times,
+#     Techeconomy, UK AISI, White House, OECD.AI, Center for AI Policy, Allen AI,
+#     EleutherAI, IBM Research, ElevenLabs, Modal, Pinecone, Meta AI blog, Qualcomm,
+#     Mistral changelog, anthropic.com news/engineering, claude.com blog, Turing
+#     Post, Superhuman AI, The Batch, Cognitive Revolution, TechTarget AI.
+#   No entries or undated: 36Kr, Nikkei Asia (undated), Sixth Tone (undated),
+#     Scroll, Financial Express, Analytics India Magazine, DW, LABS, Arab News,
+#     Tech Policy Press, Brookings, IAPP, Cohere, Stability AI, IBM Think, Baidu
+#     Research, DeepSeek news, Every, The Neuron, Google Developers Blog (undated).
+#   Stale: CNN tech (2025), Yahoo Finance, Global Times, Times of India Tech,
+#     Moneycontrol, Scientific American, Knowable, Replicate, W&B, Microsoft AI blog,
+#     Nathan Benaich, Davis Summarizes Papers, Om Malik, Benedict Evans, Hyperdimensional,
+#     Qwen blog (still 2025-09-22), Yannic Kilcher, Krebs.
+#   Noise or off-topic for the AI filter: Hacker Noon, Analytics Insight, Pakistan
+#     Dawn, Nautilus, heise and t3n (German "KI" escapes the English AI filter; the
+#     German Google News search covers them), Le Monde and El Pais (same reason),
+#     Mastodon hashtag feeds (random posts by anyone, newest first).
+#   Bluesky's search API answers 403 without a login; its profile RSS works.
+#
 # Search and social: Yahoo News RSS (empty or 404), DuckDuckGo HTML (no dates),
-#   Bluesky profile RSS (empty or 404), Reddit multi-subreddit URLs (429;
+#   Bluesky profile RSS (empty or 404 for some handles; working ones are in
+#   forums above), Reddit multi-subreddit URLs (429;
 #   r/LocalLLaMA alone works until 13 Nov 2026), hnrss.org (502 at times; the
 #   Algolia API in EXTRA is used), Hugging Face daily papers (days behind; arXiv
 #   covers them).
