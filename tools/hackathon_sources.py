@@ -201,6 +201,55 @@ def is_ai(*texts):
     return bool(AI_RE.search(" ".join(t for t in texts if t)))
 
 
+# ── Prize size ───────────────────────────────────────────────────────────────
+
+# rahul, 2026-10-03: "in PDF, give me hackathons with our top prizes first".
+# Rough rates, used only to put one prize ahead of another; the PDF prints the
+# organiser's own figure.
+TO_USD = {"$": 1.0, "usd": 1.0, "usdc": 1.0, "usdt": 1.0, "dollars": 1.0,
+          "€": 1.1, "eur": 1.1, "euros": 1.1, "£": 1.3, "gbp": 1.3, "pounds": 1.3,
+          "₹": 1 / 85, "inr": 1 / 85, "rs": 1 / 85, "rupees": 1 / 85}
+_SCALE = {"k": 1e3, "thousand": 1e3, "m": 1e6, "mn": 1e6, "million": 1e6,
+          "lakh": 1e5, "lakhs": 1e5, "crore": 1e7, "crores": 1e7, "cr": 1e7}
+# An amount with its currency on either side: "$138k", "₹ 1,00,000", "€10,680",
+# "Rs. 2 lakh", "20,000 EUR", "5,000 USDC", "10,000€". A number with no currency
+# ("19 cash prizes", "1st") is not money.
+_MONEY_RE = re.compile(
+    r"(?:(?P<pre>[$€£₹])|\b(?P<code>usd|eur|gbp|inr|rs)(?![a-z])\.?)?\s?"
+    r"(?<![\d.,])(?P<num>\d[\d,]*(?:\.\d+)?)"
+    r"(?:\s?(?P<scale>million|thousand|lakhs?|crores?|mn|cr|k|m)\b)?"
+    r"(?:\s?(?P<post>usdc|usdt|usd|eur|gbp|inr|dollars|euros|pounds|rupees)\b|(?P<postsym>[€£₹]))?",
+    re.I)
+# "$100k in AWS credits" is not cash, so it never outranks "$25k cash".
+_CREDITS_RE = re.compile(r"\s*(?:in\s+)?(?:[\w.+-]+\s+){0,2}credits?\b", re.I)
+
+
+def prize_usd(text):
+    """Rough US-dollar size of a prize line: its largest cash amount, 0 when none.
+
+    The largest, because a curated line reads "$138k cash total ($25k 1st)" and
+    the total is never smaller than any one prize in it.
+    """
+    text, best = str(text or ""), 0.0
+    for m in _MONEY_RE.finditer(text):
+        currency = m.group("pre") or m.group("code") or m.group("post") or m.group("postsym")
+        if not currency or _CREDITS_RE.match(text, m.end()):
+            continue
+        try:
+            value = float(m.group("num").rstrip(",.").replace(",", ""))
+        except ValueError:
+            continue
+        value *= _SCALE.get((m.group("scale") or "").lower(), 1)
+        best = max(best, value * TO_USD[currency.lower()])
+    return best
+
+
+def by_prize(stories):
+    """The AI Hackathons section in print order: biggest prize first. Stable, so
+    equal prizes and stories with no prize (last) keep the curator's order."""
+    return sorted(stories, key=lambda s: -prize_usd(s.get("prize")))
+
+
 def event(platform, key, name, url, deadline, deadline_kind, prize="", where="", ai=True,
           restricted=""):
     return {"platform": platform, "key": key, "name": " ".join((name or "").split()) or key,

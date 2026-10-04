@@ -409,6 +409,13 @@ Google News proxies return the same story from a dozen outlets, so pick the most
   pool and submission window. If it is not called a hackathon/competition/contest and awards no
   prize, it belongs in section 3. Sort by **prize size** after the eligibility filter, not by
   general relevance. Global, no geographic weighting.
+  - **Biggest prize first (rahul, 2026-10-03: "in PDF, give me hackathons with our top prizes
+    first").** `generate_pdf.render_edition()` prints the section in prize order whatever order the
+    builder wrote, using `hackathon_sources.prize_usd()`: the largest cash amount in `prize`, roughly
+    in dollars (`$`, `€`, `£`, `₹`, USD/EUR/INR/USDC, k/M/lakh/crore); amounts followed by "credits"
+    do not count. So write the cash total in `prize` ("$138k cash total ($25k 1st)"); a hackathon
+    with no `prize` prints last. When choosing among candidates, prefer the biggest verified cash
+    prizes. Cases in `test_hackathon_prizes.py`.
   - **The 7-day build rule (rahul, 2026-10-03): "7 days is for build time ... exclude within 7 days
     submissions deadline not registration deadline".** Print a hackathon only when its **submission**
     deadline is at least 7 days after the edition date (7 exactly is enough). A registration deadline
@@ -432,8 +439,8 @@ Google News proxies return the same story from a dozen outlets, so pick the most
     skip any that asks for an API): lablab.ai's open events, soonest end first, each followed by the
     prize, eligibility and deadline lines of its own page; Devpost's newest "AI" events outside the
     theme listing; then mlcontests.com (Kaggle, AIcrowd, DrivenData, Zindi, CodaLab, Codabench and
-    more), HackerEarth, Devfolio, Unstop, MLH, TAIKAI and Hackster, soonest deadline first, each
-    block ending with how many it hid as not AI or under 7 days. "submissions close" means the
+    more), HackerEarth, Devfolio, Unstop, MLH, TAIKAI and Hackster, biggest prize first (then
+    soonest deadline), each block ending with how many it hid as not AI or under 7 days. "submissions close" means the
     platform gives the submission deadline; "ends" means it gives only the event's end, the latest
     a submission can be due, so confirm the submission date on the event page before printing. Lines
     carry `printed mm-dd` / `rejected mm-dd: reason` as in `devpost.txt`. lablab prize lines often mix
@@ -769,6 +776,7 @@ stale jobs. The readers are pure functions over a `get`, tested offline in `test
 | A hackathon closing in under 7 days, or with only a registration deadline, reaching the PDF (2026-10-03) | `build_time_problem()` in `check_quality.py`, `test_build_window.py` |
 | A platform's listing changing shape and its block going quietly empty | fixtures per reader, `test_hackathon_platforms.py` |
 | The alert email re-sending a hackathon, or flooding on the first run | `test_hackathon_watch.py` |
+| A smaller prize printed above a bigger one in AI Hackathons, or "$100k in credits" outranking cash (2026-10-03) | `prize_usd()` / `by_prize()` in `hackathon_sources.py`, `test_hackathon_prizes.py` |
 
 ### History
 - **2026-10-04:** On rahul's "make a PDF which I can read end to end ... focus toward my getting [a]
@@ -778,6 +786,8 @@ stale jobs. The readers are pure functions over a `get`, tested offline in `test
   `tools/find_roles.py` (32 company boards on Greenhouse, Ashby and Lever, Hacker News "Who is
   hiring?", Himalayas; all keyless), run by `prep_run.py`; seven careers searches (393 RSS rows).
   Tests 521 → 596 in 22 files.
+- **2026-10-03 (later):** AI Hackathons prints biggest prize first, enforced when the PDF is drawn;
+  the candidate blocks in `hackathons.txt` and Devpost's newest list are in prize order too.
 - **2026-10-03:** On rahul's word that the five-line summaries were too thin ("a clear understanding,
   in layman's terms ... no matter how long it takes in lines") and his choice to keep 15 pages:
   summaries are full explanations of at least 1,000 characters with no ceiling, in five parts
