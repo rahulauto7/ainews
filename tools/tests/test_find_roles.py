@@ -96,6 +96,10 @@ def main():
         (r(location="Bengaluru, India", mode="onsite"), "on-site or hybrid in India"),
         (r(location="Gurugram", mode="hybrid"), "on-site or hybrid in India"),
         (r(location="Remote - India", mode="remote"), None),
+        (r(title="Forward Deployed Engineer - Bangalore, India", location="Remote (India)"),
+         "tied to an office in India"),
+        (r(title="Solutions Engineer, India (Remote)", location="Remote (India)"), None),
+        (r(title="Forward Deployed Engineer (Remote, Pune)", location="Remote (India)"), None),
         (r(location="London, UK", mode="onsite"), None),
     ]:
         cases += 1

@@ -97,6 +97,9 @@ SENIORITY_SKIP = re.compile(
 INDIA_RE = re.compile(
     r"\b(?:india|bengaluru|bangalore|mumbai|delhi|new delhi|gurgaon|gurugram|"
     r"hyderabad|pune|chennai|noida|kolkata|ahmedabad)\b", re.I)
+# A city in the title ("Forward Deployed Engineer - Bangalore, India") ties a role
+# to an Indian office even when a remote board lists it.
+INDIA_CITY_RE = re.compile(INDIA_RE.pattern.replace("india|", ""), re.I)
 # Roles from the open boards (Himalayas, Hacker News) must be AI work; the company
 # boards are all AI companies. A Forward Deployed title counts on its own.
 AI_RE = re.compile(r"\b(?:ai|a\.i\.|llms?|genai|generative|machine learning|ml|agents?|"
@@ -335,6 +338,8 @@ def keep(r, today):
             return f"posted {age} days ago"
     if r["mode"] != "remote" and INDIA_RE.search(r["location"]):
         return "on-site or hybrid in India"
+    if INDIA_CITY_RE.search(r["title"]) and not re.search(r"(?i)\bremote\b", r["title"]):
+        return "tied to an office in India"
     return None
 
 

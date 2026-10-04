@@ -385,7 +385,7 @@ Google News proxies return the same story from a dozen outlets, so pick the most
     kept when its title is in the FDE / Solutions family (Forward Deployed, Solutions Engineer /
     Architect / Consultant, Applied AI, Deployment, Customer or Sales Engineer), it is not a
     management or intern role, it was posted in the last 30 days, and it is not on-site or hybrid
-    in India. Roles from Hacker News and Himalayas must also be AI work. Ranked: **remote and open
+    in India (nor a "remote" role whose title names an Indian city, which ties it to that office). Roles from Hacker News and Himalayas must also be AI work. Ranked: **remote and open
     to India or worldwide first, then roles whose posting says the company sponsors visas** (and
     not only to another country: "we sponsor visas to Germany" does not count for a US job), then
     remote roles limited to another region, then on-site roles abroad that say nothing about visas;
@@ -785,7 +785,7 @@ stale jobs. The readers are pure functions over a `get`, tested offline in `test
   FDE & Solutions Jobs (17 sections) with hiring news and a daily open-roles table from
   `tools/find_roles.py` (32 company boards on Greenhouse, Ashby and Lever, Hacker News "Who is
   hiring?", Himalayas; all keyless), run by `prep_run.py`; seven careers searches (393 RSS rows).
-  Tests 521 → 596 in 22 files.
+  Tests 554 → 632 in 23 files.
 - **2026-10-03 (later):** AI Hackathons prints biggest prize first, enforced when the PDF is drawn;
   the candidate blocks in `hackathons.txt` and Devpost's newest list are in prize order too.
 - **2026-10-03:** On rahul's word that the five-line summaries were too thin ("a clear understanding,
