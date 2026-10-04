@@ -37,11 +37,17 @@ rejected     lands in analyzed_content.json as curation_log, and news_digest.py
              prints it tomorrow, so a rejected item is not re-investigated.
 
 Size: every summary is a full plain-language explanation of at least 1,000
-characters and as long as the story needs (rahul, 2026-10-03), so a section
-carries 2-4 stories, usually 3. Separate paragraphs with a blank line inside the
-''' quotes; the PDF keeps them. write_analyzed() prints the PDF's page count and,
-over 15 pages, the stories to drop to fit: drop stories, never shorten an
-explanation.
+characters and as long as the story needs (rahul, 2026-10-03). Each section
+carries up to three stories (rahul's card, 2026-10-04), picked for what helps
+most toward rahul's goal: a remote or visa-sponsored Forward Deployed / Solutions
+Engineer role at a global company. The careers section carries its open-roles
+table and zero to three stories (story_rule()).
+Separate paragraphs with a blank line inside the ''' quotes; the PDF keeps
+them. write_analyzed() prints the PDF's page count and, over 15 pages, the
+stories to drop to fit: drop stories, never shorten an explanation.
+
+    roles = open_roles()   # the careers table, from tools/find_roles.py's .tmp/roles.json
+    write_analyzed(SECTIONS, best_for=best_for, closed_best_for=closed, roles=roles)
 """
 
 import glob
@@ -65,11 +71,26 @@ OPPORTUNITY_KEYS = ("ai_hackathons", "product_showcase_opportunities")
 # lines on the page) a story cannot carry what happened, who everyone is, why it
 # happened and how it works. SUMMARY_MAX stays None: nothing caps a summary.
 SUMMARY_MIN, SUMMARY_MAX = 1000, None
-# The page limit (15, generate_pdf.PAGE_LIMIT) is met by carrying fewer stories,
-# never by shortening explanations. Measured with both model tables and stories
-# allowed to run on overleaf: three 2,000-character stories a section is 14 pages
-# on a weekday and 15 on a Thursday; four 1,500-character ones 14 and 15.
-STORIES_PER_SECTION = (2, 4)
+# How many stories a section carries. rahul, 2026-10-03: "I try to read [the] PDF
+# every day but [am] not able to finish [it], so make a PDF which I can read end
+# to end, also cover all [the] sections". Explanations stay full, so the length
+# is set by the story count. On the card put to rahul the answer was "Up to three"
+# (2026-10-04): up to three fully explained stories a section, inside the 15-page
+# limit (generate_pdf.PAGE_LIMIT, which blocks the send), and when a day runs long
+# fit_plan() drops stories rather than shortening any explanation. Measured with
+# all three tables: three 1,500-character stories a section is 12 pages on a
+# weekday and 13 on a Thursday; three of 2,000 reach 15 and 16 and need drops.
+# The careers section always has its open-roles table, and career news is not
+# daily, so its stories are optional.
+STORIES_PER_SECTION = (1, 3)
+SECTION_STORY_RULES = {
+    "fde_careers": (0, 3),
+}
+
+
+def story_rule(section_key):
+    """(fewest, most) stories the section carries."""
+    return SECTION_STORY_RULES.get(section_key, STORIES_PER_SECTION)
 
 _ARTS = None
 _DECODED = None
@@ -216,13 +237,36 @@ def carry_forward_best_for(before_date=None, section_key="open_model_landscape")
 
 # ── Output ────────────────────────────────────────────────────────────────────
 
+def open_roles(limit=10, roles_file=None):
+    """The careers section's open-roles table, from .tmp/roles.json (find_roles.py).
+
+    Returned in the standing-table shape the PDF already draws: a `best_for` list
+    whose rows are company / role / place / visa / when posted, each role linked
+    to its posting. None, with a warning, when find_roles.py has not run today.
+    """
+    import find_roles
+    path = roles_file or find_roles.ROLES_FILE
+    try:
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f)
+    except (OSError, ValueError):
+        print(f"  !! no open roles: run python3 tools/find_roles.py ({path} unreadable)")
+        return None
+    today = datetime.now().strftime("%Y-%m-%d")
+    if data.get("as_of") != today:
+        print(f"  !! open roles are from {data.get('as_of')}, not today: rerun tools/find_roles.py")
+    rows = find_roles.table_rows(data.get("roles") or [], limit)
+    return {"as_of": data.get("as_of"), "best_for": rows} if rows else None
+
+
 def write_analyzed(sections, best_for=None, closed_best_for=None, rejected=None,
-                   out_file=OUTPUT_FILE):
+                   out_file=OUTPUT_FILE, roles=None):
     """Write analyzed_content.json and print a compact check of the result.
 
     `best_for` / `closed_best_for` are the two standing tables - open-weight
     models and closed frontier APIs. Each is written under its own section key, so
     a section renders its own table and neither ages on the other's schedule.
+    `roles` is the careers section's open-roles table (open_roles()).
 
     `rejected` is a list of (name, reason) pairs for opportunities checked and
     turned down today. Prints counts and problems only - not every title.
@@ -237,6 +281,7 @@ def write_analyzed(sections, best_for=None, closed_best_for=None, rejected=None,
         "sections": sections,
         "section_labels": {k: SECTION_CONFIG[k]["label"] for k in SECTION_ORDER},
         "section_extras": {k: v for k, v in (
+            ("fde_careers", roles),
             ("open_model_landscape", best_for),
             ("closed_model_landscape", closed_best_for),
         ) if v},
@@ -258,7 +303,7 @@ def write_analyzed(sections, best_for=None, closed_best_for=None, rejected=None,
         total += len(stories)
         if key == "quantum_ai_research" and not stories:
             continue
-        lo, hi = STORIES_PER_SECTION
+        lo, hi = story_rule(key)
         if not lo <= len(stories) <= hi:
             problems.append(f"{key}: {len(stories)} stories (rule: {lo}-{hi})")
         for s in stories:
@@ -325,7 +370,7 @@ def fit_plan(edition, page_limit):
     Explanations are never shortened to fit (rahul, 2026-10-03), so the only
     lever is how many stories run. Drops go in a fixed order: the lowest-relevance
     story from the section carrying the most, one at a time, never taking a
-    section below STORIES_PER_SECTION[0] (or its last story). The order does not
+    section below its story_rule() floor (or its last story). The order does not
     depend on the layout, so the fewest drops that fit are found by bisecting it,
     a handful of renders rather than one per drop (a 128-story edition took
     minutes the slow way). Returns [] when the edition already fits, and every
@@ -337,10 +382,9 @@ def fit_plan(edition, page_limit):
         return []
     sections = edition.get("sections") or {}
     left = {k: list(range(len(sections.get(k) or []))) for k in SECTION_ORDER}
-    floor = max(STORIES_PER_SECTION[0], 1)
     order = []
     while True:
-        candidates = [k for k in SECTION_ORDER if len(left[k]) > floor]
+        candidates = [k for k in SECTION_ORDER if len(left[k]) > max(story_rule(k)[0], 1)]
         if not candidates:
             break
         most = max(len(left[k]) for k in candidates)

@@ -1,9 +1,12 @@
-"""Cases for the sixteen sections and the order they render in.
+"""Cases for the seventeen sections and the order they render in.
 
 The 2 Oct 2026 restructure gave each of the four top AI companies its own
 section (OpenAI, Google AI, Anthropic & Claude Code, xAI & Grok), split xAI out
 of the Musk section, and put the sections in Rahul's own order. The order below
-is his list, copied exactly; changing it is a decision for him, not a refactor.
+is that list, copied exactly; changing it is Rahul's decision, not a refactor.
+On 2026-10-03 Rahul asked for the PDF to focus on landing a remote or
+visa-sponsored Forward Deployed / Solutions Engineer role, so the careers
+section (open roles and hiring news) was added and leads the edition.
 
 The description line under each section header is drawn with cell(), which does
 not wrap, so a description wider than the 186 mm column runs past the margin.
@@ -21,6 +24,7 @@ from fpdf import FPDF
 from generate_pdf import SECTION_CONFIG, SECTION_ORDER, sanitize_text
 
 EXPECTED_ORDER = [
+    "fde_careers",                     # 0  Remote FDE & Solutions Jobs
     "ai_hackathons",                   # 1  AI Hackathons
     "product_showcase_opportunities",  # 2  AI Grants, Fellowships & Programs
     "ai_self_improvement_rsi",         # 3  AI Self-Improvement (RSI)
@@ -52,7 +56,7 @@ def main():
 
     cases += 1
     check(failures, SECTION_ORDER == EXPECTED_ORDER,
-          f"SECTION_ORDER is not Rahul's sixteen in his order: {SECTION_ORDER!r}")
+          f"SECTION_ORDER is not Rahul's seventeen in Rahul's order: {SECTION_ORDER!r}")
 
     cases += 1
     check(failures, set(SECTION_ORDER) == set(SECTION_CONFIG),
@@ -79,6 +83,15 @@ def main():
     cases += 1
     check(failures, (SECTION_CONFIG.get("elon_musk_ai_vision") or {}).get("label") == "Elon Musk on AI",
           "the Musk section's label must be 'Elon Musk on AI'")
+
+    # The careers section: its open-roles table is drawn by the standing-table code.
+    careers = SECTION_CONFIG.get("fde_careers") or {}
+    cases += 2
+    check(failures, "forward deployed" in careers.get("desc", "").lower()
+          and "visa" in careers.get("desc", "").lower(),
+          f"the careers section must say it covers FDE roles, remote or by visa: {careers!r}")
+    check(failures, careers.get("table_heading"),
+          "the careers section needs a heading for its open-roles table")
 
     for f in failures:
         print("FAIL:", f)

@@ -494,7 +494,7 @@ EXTRA_READERS = {"hn": read_hn, "hf_models": read_hf_models, "yt_search": read_y
 # an Indian outlet's OpenAI story stays Indian.
 
 POOL_CATEGORIES = {"general", "company_blog", "video", "social", "showcase"}
-CATEGORY_PRIORITY = ["opportunity", "quantum", "elon_musk", "xai_grok", "openai", "anthropic_claude",
+CATEGORY_PRIORITY = ["opportunity", "careers", "quantum", "elon_musk", "xai_grok", "openai", "anthropic_claude",
                      "google", "open_model", "closed_model", "indian", "rsi", "problems",
                      "automation", "business", "world", "world_lang"]
 _ROUTES = [  # first match wins; Google is last because its name appears in other companies' stories

@@ -30,9 +30,11 @@ import builder_helpers
 from generate_pdf import PAGE_LIMIT, SECTION_CONFIG, SECTION_ORDER, render_edition
 from verify_edition import page_problem
 
-# The planning figure in builder_helpers: three 2,000-character stories a section
-# fit 15 pages on a Thursday, when all sixteen sections run.
-PLAN_STORIES, PLAN_CHARS = 3, 2000
+# The planning figure in builder_helpers: up to three stories a section (rahul's
+# card, 2026-10-04); three 1,500-character explanations a section fit 15 pages on
+# a Thursday, when all seventeen sections run, with the open-roles table. Three of
+# 2,000 run over, and fit_plan() drops stories (case 9).
+PLAN_STORIES, PLAN_CHARS = 3, 1500
 # Cut to length at a word.
 TEXT = ("OpenAI released a new reasoning model on Thursday that it says solves harder maths and "
         "coding problems while costing less to run than the one before it. The company said "
@@ -71,8 +73,15 @@ def edition(per_section, chars, quantum=True):
          "why": WHY}
         for u in ("Coding", "Reasoning and maths", "Long documents", "Everyday chat",
                   "Small and local")]}
+    # find_roles.table_rows() shape: ten rows, the most the builder asks for.
+    roles = {"as_of": "2026-10-02", "best_for": [
+        {"use_case": f"Company {i}", "model": "Forward Deployed Engineer, Enterprise",
+         "maker": "Remote, worldwide", "access": "sponsors visas" if i % 2 else "",
+         "why": "Posted 2 Oct on Greenhouse.", "url": f"https://example.com/jobs/{i}"}
+        for i in range(10)]}
     return {"sections": sections,
-            "section_extras": {"open_model_landscape": table, "closed_model_landscape": table}}
+            "section_extras": {"open_model_landscape": table, "closed_model_landscape": table,
+                               "fde_careers": roles}}
 
 
 def read(pdf):
@@ -91,14 +100,15 @@ def main():
     check(failures, PAGE_LIMIT == 15, f"PAGE_LIMIT is {PAGE_LIMIT}; rahul asked for 15 pages max")
 
     # ── 1. A full Thursday edition at the planning figure fits ───────────────
-    # Sixteen sections (quantum runs on Thursdays), three 2,000-character
-    # explanations each, and both model tables.
+    # Seventeen sections (quantum runs on Thursdays), three 1,500-character
+    # explanations each, both model tables and the open-roles table.
     full = edition(PLAN_STORIES, PLAN_CHARS)
     reader = read(render_edition(full))
     pages = [pg.extract_text() for pg in reader.pages]
     cases += 1
     check(failures, len(pages) <= PAGE_LIMIT,
-          f"a 16-section edition of three 2,000-character stories ran to {len(pages)} pages")
+          f"a {len(SECTION_ORDER)}-section edition of {PLAN_STORIES} {PLAN_CHARS:,}-character "
+          f"stories ran to {len(pages)} pages")
 
     # ── 2. Every story is in it ──────────────────────────────────────────────
     whole = squash("".join(pages))
@@ -124,7 +134,9 @@ def main():
     # block - its table where it has one, else its first story - must be there.
     orphans = []
     for key, num in zip(SECTION_ORDER, numbers):
-        if key in full["section_extras"]:
+        if key == "fde_careers":
+            first = "openroles"
+        elif key in full["section_extras"]:
             first = "best" + ("open" if key.startswith("open") else "closed") + "model"
         else:
             first = squash(full["sections"][key][0]["title"])[:30]
@@ -186,7 +198,8 @@ def main():
     cases += 1
     weekday = len(read(render_edition(edition(PLAN_STORIES, PLAN_CHARS, quantum=False))).pages)
     check(failures, weekday < PAGE_LIMIT,
-          f"15 sections at the planning figure took {weekday} pages, no room to spare")
+          f"{len(SECTION_ORDER) - 1} sections at the planning figure took {weekday} pages, "
+          "no room to spare")
 
     # ── 8. Over the limit: reported by the builder, blocked at send ──────────
     over = edition(8, 1000)
@@ -216,7 +229,8 @@ def main():
     check(failures, "to fit, drop:" in printed,
           f"the builder must name the stories to drop, printed:\n{printed[:600]}")
 
-    # ── 9. The fit plan drops stories, lowest relevance first, never below two ─
+    # ── 9. The fit plan drops stories, lowest relevance first, never below a ──
+    # section's floor (story_rule()) or its last story.
     plan_ed = edition(4, 2000)
     for key, stories in plan_ed["sections"].items():
         stories[-1]["relevance"] = 2  # the weakest story in every section
@@ -228,9 +242,11 @@ def main():
     check(failures, drops, "four 2,000-character stories a section must need a fit plan")
     check(failures, render_edition(plan_ed).page_no() <= PAGE_LIMIT,
           f"after the fit plan's {len(drops)} drops the edition still runs over")
-    check(failures, min(left.values()) >= builder_helpers.STORIES_PER_SECTION[0],
+    check(failures, all(n >= max(builder_helpers.story_rule(k)[0], 1) for k, n in left.items()),
           f"the fit plan took a section below its floor: {left}")
-    check(failures, all(s.get("relevance") == 2 for _, s in drops),
+    weak = len(plan_ed["sections"])  # one relevance-2 story per section
+    check(failures, all(s.get("relevance") == 2 for _, s in drops[:weak])
+          and all(s.get("relevance") != 2 for _, s in drops[weak:]),
           "the fit plan must drop the lowest-relevance stories first")
     cases += 1
     check(failures, builder_helpers.fit_plan(edition(2, 1000), PAGE_LIMIT) == [],

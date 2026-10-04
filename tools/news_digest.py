@@ -42,6 +42,7 @@ SNIPPET_MAX = 140
 # the order the builder is written. Each label names, after "->", the section the
 # group feeds: this list is also the category-to-section map.
 CATEGORY_ORDER = [
+    ("careers", "FDE and Solutions Engineer jobs, AI hiring, work visas, remote work -> Remote FDE & Solutions Jobs"),
     ("opportunity", "Opportunity feeds -> AI Hackathons / AI Grants, Fellowships & Programs"),
     ("rsi", "Self-improvement, safety, alignment -> AI Self-Improvement (RSI)"),
     ("ai_research", "Research: arXiv titles, lab and university feeds -> AI Self-Improvement (RSI)"),

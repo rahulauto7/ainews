@@ -40,6 +40,18 @@ RSS = [
     ('AI Grants (via Google News)', 'https://news.google.com/rss/search?q=(%22AI+grant%22+OR+%22AI+grants%22+OR+%22AI+fund%22)+(apply+OR+applications+OR+deadline)+when:30d&hl=en-US&gl=US&ceid=US:en', 'opportunity', ''),
     ('AI Hackathons (via Bing News)', 'https://www.bing.com/news/search?q=AI+hackathon&format=rss', 'opportunity', 'browser'),
 
+    # --- careers -> Remote FDE & Solutions Jobs (2026-10-03). rahul's goal is a remote or
+    # visa-sponsored Forward Deployed / Solutions Engineer role at a global company: news
+    # about those roles, AI hiring, work visas and remote work. The section's open-roles
+    # table comes from tools/find_roles.py, not from these feeds.
+    ('Forward deployed engineers (via Google News)', 'https://news.google.com/rss/search?q=%22forward+deployed+engineer%22+OR+%22forward+deployed+engineers%22+OR+%22forward-deployed+engineer%22+OR+%22forward-deployed+engineers%22+OR+%22forward+deployed+engineering%22+when%3A1d&hl=en-US&gl=US&ceid=US:en', 'careers', ''),
+    ('Solutions engineers in AI (via Google News)', 'https://news.google.com/rss/search?q=%28%22solutions+engineer%22+OR+%22solutions+engineers%22+OR+%22solutions+architect%22+OR+%22sales+engineer%22+OR+%22customer+engineer%22%29+%28AI+OR+%22artificial+intelligence%22%29+when%3A1d&hl=en-US&gl=US&ceid=US:en', 'careers', ''),
+    ('AI deployment jobs (via Google News)', 'https://news.google.com/rss/search?q=%28%22applied+AI+engineer%22+OR+%22deployment+engineer%22+OR+%22AI+deployment%22+OR+%22deployment+strategist%22%29+%28hiring+OR+jobs+OR+team+OR+engineers%29+when%3A1d&hl=en-US&gl=US&ceid=US:en', 'careers', ''),
+    ('Tech work visas (via Google News)', 'https://news.google.com/rss/search?q=%28%22H-1B%22+OR+%22skilled+worker+visa%22+OR+%22Global+Talent+visa%22+OR+%22O-1+visa%22+OR+%22Blue+Card%22+OR+%22tech+visa%22%29+%28tech+OR+AI+OR+engineers+OR+software%29+when%3A1d&hl=en-US&gl=US&ceid=US:en', 'careers', ''),
+    ('Remote tech hiring (via Google News)', 'https://news.google.com/rss/search?q=%28%22remote+work%22+OR+%22remote+jobs%22+OR+%22remote+hiring%22+OR+%22return+to+office%22+OR+%22work+from+anywhere%22%29+%28tech+OR+AI+OR+software+OR+engineers%29+when%3A1d&hl=en-US&gl=US&ceid=US:en', 'careers', ''),
+    ('AI talent market (via Google News)', 'https://news.google.com/rss/search?q=%28AI+OR+%22artificial+intelligence%22%29+%28%22talent+war%22+OR+%22hiring+spree%22+OR+%22AI+engineers%22+OR+%22AI+jobs%22%29+%28salary+OR+hiring+OR+pay%29+when%3A1d&hl=en-US&gl=US&ceid=US:en', 'careers', ''),
+    ('Forward deployed engineers (via Bing News)', 'https://www.bing.com/news/search?q=%22forward+deployed+engineer%22&format=rss', 'careers', 'browser'),
+
     # --- rsi -> AI Self-Improvement (RSI)
     ('AI Self-Improvement (via Google News)', 'https://news.google.com/rss/search?q=(%22recursive+self-improvement%22+OR+%22self-improving+AI%22+OR+%22AI+alignment%22+OR+superintelligence+OR+AGI)+when:1d&hl=en-US&gl=US&ceid=US:en', 'rsi', ''),
     ('Alignment Forum', 'https://www.alignmentforum.org/feed.xml', 'rsi', ''),

@@ -32,6 +32,7 @@ from generate_pdf import SECTION_ORDER
 # The category-to-section map of plan-2.md Task 5. "video" and "social" are leads
 # for any section, so they feed none on their own.
 SECTIONS_FED_BY = {
+    "careers": ["fde_careers"],
     "opportunity": ["ai_hackathons", "product_showcase_opportunities"],
     "rsi": ["ai_self_improvement_rsi"],
     "ai_research": ["ai_self_improvement_rsi"],
