@@ -1,5 +1,11 @@
 {
- "failing": {},
+ "failing": {
+  "Unstop": {
+   "error": "HTTPError: 403 Client Error: Forbidden for url: https://unstop.com/api/public/opportunity/search-result?opportunity=hackathons&per_page=30&oppstatus=open&searchTerm=AI",
+   "since": "2026-10-04T02:44:46.002108+00:00",
+   "warned": false
+  }
+ },
  "platforms": {
   "Devfolio": "2026-10-04",
   "Devpost": "2026-10-04",
