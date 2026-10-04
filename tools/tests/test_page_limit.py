@@ -76,8 +76,9 @@ def edition(per_section, chars, quantum=True):
     # find_roles.table_rows() shape: ten rows, the most the builder asks for.
     roles = {"as_of": "2026-10-02", "best_for": [
         {"use_case": f"Company {i}", "model": "Forward Deployed Engineer, Enterprise",
-         "maker": "Remote, worldwide", "access": "sponsors visas" if i % 2 else "",
-         "why": "Posted 2 Oct on Greenhouse.", "url": f"https://example.com/jobs/{i}"}
+         "maker": "Remote, worldwide",
+         "why": ("Sponsors visas. " if i % 2 else "") + "Posted 2 Oct on Greenhouse.",
+         "url": f"https://example.com/jobs/{i}"}
         for i in range(10)]}
     return {"sections": sections,
             "section_extras": {"open_model_landscape": table, "closed_model_landscape": table,

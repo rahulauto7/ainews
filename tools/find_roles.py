@@ -384,9 +384,20 @@ def _ordinal(day):
         return 0
 
 
+def short_place(location):
+    """The first of several offices a board lists, plus how many more.
+
+    The PDF prints role, place and visa note on one line and cuts what overflows,
+    so "San Francisco, CA | New York City, NY" pushed "sponsors visas" off the
+    line on 2026-10-04. Only "|" and ";" split places; commas sit inside them.
+    """
+    places = [p for p in re.split(r"\s*[|;]\s*", location) if p]
+    return f"{places[0]} +{len(places) - 1} more" if len(places) > 1 else location
+
+
 def where(r):
     """The place column: where the job is and how it is worked."""
-    location = r["location"] or "Location not stated"
+    location = short_place(r["location"] or "Location not stated")
     if r["mode"] == "remote":
         return location if re.search(r"(?i)\bremote\b", location) else f"Remote ({location})"
     if r["mode"] == "hybrid":
@@ -395,7 +406,7 @@ def where(r):
 
 
 def visa_note(r):
-    """The visa column. A scope elsewhere still prints ("Germany only"), so the
+    """The visa note. A scope elsewhere still prints ("Germany only"), so the
     reader sees why a sponsoring role abroad ranks lower."""
     if r.get("visa") is True:
         return f"sponsors visas ({r['visa_scope']} only)" if r.get("visa_scope") else "sponsors visas"
@@ -438,8 +449,10 @@ def pick(ranked, limit=10, per_company=2):
 def table_rows(ranked, limit=10, per_company=2):
     """Rows for the PDF's standing-table layout.
 
-    use_case is the company, model the role (linked to the posting), maker where
-    it is and access the visa position; why says when and where it was posted.
+    use_case is the company, model the role (linked to the posting) and maker
+    where it is. The visa position opens the why line, before when and where it
+    was posted: on the role's own line a long title cut it off (2026-10-04), and
+    for a role outside India it is the reason the role is listed at all.
     """
     rows = []
     for r in pick(ranked, limit, per_company):
@@ -450,9 +463,10 @@ def table_rows(ranked, limit=10, per_company=2):
             posted = f"{day.day} {day:%b}"
         except ValueError:
             posted = "date not given"
+        visa = visa_note(r)
+        visa = f"{visa[:1].upper()}{visa[1:]}. " if visa else ""
         rows.append({"use_case": r["company"], "model": r["title"], "maker": where(r),
-                     "access": visa_note(r), "why": f"Posted {posted} on {on}.",
-                     "url": r["url"]})
+                     "why": f"{visa}Posted {posted} on {on}.", "url": r["url"]})
     return rows
 
 

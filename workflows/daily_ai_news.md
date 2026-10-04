@@ -364,7 +364,9 @@ instead and the renderer skips dates there.
   renders as plain news.
 - `fde_careers`: its `section_extras` block is the open-roles table, in the same `best_for` shape:
   `use_case` the company, `model` the role (the row links to `url`, the posting), `maker` where it is
-  and how it is worked, `access` the visa position, `why` when and where it was posted.
+  and how it is worked (several offices print as the first "+N more"), `why` the visa position, then
+  when and where it was posted. The visa note sits in `why` because a long role name cut it off the
+  role's own line.
   `open_roles()` writes it; never by hand.
 
 ---
@@ -785,7 +787,7 @@ stale jobs. The readers are pure functions over a `get`, tested offline in `test
   FDE & Solutions Jobs (17 sections) with hiring news and a daily open-roles table from
   `tools/find_roles.py` (32 company boards on Greenhouse, Ashby and Lever, Hacker News "Who is
   hiring?", Himalayas; all keyless), run by `prep_run.py`; seven careers searches (393 RSS rows).
-  Tests 554 → 632 in 23 files.
+  Tests 554 → 635 in 23 files.
 - **2026-10-03 (later):** AI Hackathons prints biggest prize first, enforced when the PDF is drawn;
   the candidate blocks in `hackathons.txt` and Devpost's newest list are in prize order too.
 - **2026-10-03:** On rahul's word that the five-line summaries were too thin ("a clear understanding,

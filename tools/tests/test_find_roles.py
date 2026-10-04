@@ -156,7 +156,7 @@ def main():
     check(failures, sum(c.startswith("Visa") for c in companies) == 3,
           f"every visa-sponsoring role must get a seat when remote roles are plenty: {companies}")
     check(failures, companies.count("Remote 0") == 2, f"two roles a company at most: {companies}")
-    check(failures, set(rows[0]) == {"use_case", "model", "maker", "access", "why", "url"},
+    check(failures, set(rows[0]) == {"use_case", "model", "maker", "why", "url"},
           f"row keys: {sorted(rows[0])}")
 
     one = fr.table_rows([r(company="Anthropic", title="Forward Deployed Engineer",
@@ -164,13 +164,22 @@ def main():
                            url="https://job-boards.greenhouse.io/anthropic/jobs/1",
                            source="greenhouse:anthropic")])[0]
     cases += 4
-    check(failures, one["why"] == "Posted 3 Oct on Anthropic's careers page.", f"why: {one['why']!r}")
-    check(failures, one["maker"] == "London, UK" and one["access"] == "sponsors visas",
-          f"place and visa: {one['maker']!r}, {one['access']!r}")
+    check(failures, one["why"] == "Sponsors visas. Posted 3 Oct on Anthropic's careers page.",
+          f"the visa position opens the why line: {one['why']!r}")
+    check(failures, one["maker"] == "London, UK", f"place: {one['maker']!r}")
     check(failures, one["url"].endswith("/jobs/1"), "the row links to the posting")
     hn = fr.table_rows([r(source="hn", posted=None, location="Remote (Worldwide)")])[0]
-    check(failures, hn["why"] == 'Posted date not given on Hacker News "Who is hiring?".'
-          and hn["access"] == "", f"an HN remote row: {hn!r}")
+    check(failures, hn["why"] == 'Posted date not given on Hacker News "Who is hiring?".',
+          f"a remote row has no visa note: {hn!r}")
+    cases += 3
+    many = fr.table_rows([r(location="San Francisco, CA | New York City, NY", mode="onsite",
+                            visa=True)])[0]
+    check(failures, many["maker"] == "San Francisco, CA +1 more",
+          f"several offices print as the first plus a count: {many['maker']!r}")
+    check(failures, fr.where(r(location="Remote - California; Remote - Colorado; Remote - Oregon"))
+          == "Remote - California +2 more", "';' splits places too")
+    check(failures, fr.short_place("Toronto, Ontario, Canada") == "Toronto, Ontario, Canada",
+          "commas inside one place are kept")
     cases += 2
     check(failures, fr.visa_note(r(mode="onsite", visa=True, scope="Germany"))
           == "sponsors visas (Germany only)", "a scoped visa note names the country")
@@ -305,7 +314,7 @@ def main():
             if "/A" in a.get_object() and "/URI" in a.get_object()["/A"]}
     cases += 3
     check(failures, "OPEN ROLES" in text, "the careers table has its heading")
-    check(failures, "Visa 0" in text and "sponsors visas" in text,
+    check(failures, "Visa 0" in text and "Sponsors visas" in text,
           "the careers table prints the company and its visa position")
     check(failures, {row["url"] for row in table["best_for"]} <= uris,
           "every role in the table links to its posting")
