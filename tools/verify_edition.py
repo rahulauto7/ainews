@@ -70,7 +70,8 @@ def source_text(data):
                        "eligibility", "opportunity_type", "apply_url", "who_affected")]
     for block in (data.get("section_extras") or {}).values():
         for row in (block or {}).get("best_for") or []:
-            parts += [str(v) for v in row.values()]
+            # An open role's url is its link target, not printed (same as above).
+            parts += [str(v) for k, v in row.items() if k != "url"]
     return "\n".join(parts)
 
 

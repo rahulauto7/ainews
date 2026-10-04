@@ -1,11 +1,22 @@
 # Daily AI News Pipeline — Master Workflow
 
 ## Objective
-Generate and deliver a daily AI news PDF covering **16 sections** to Gmail by 7:00 AM IST.
-Channel focus is **AI automation**, but the summaries themselves are written as plain, self-contained
-news explanations — see the **Plain-Language News Rule**.
+Generate and deliver a daily AI news PDF covering **17 sections** to Gmail by 7:00 AM IST, short
+enough that rahul reads it end to end, and aimed at rahul's goal: **a remote or visa-sponsored
+Forward Deployed Engineer or Solutions Engineer role at a global (non-Indian) company.** The
+summaries themselves are plain, self-contained news explanations — see the **Plain-Language News
+Rule** — and the goal shapes which stories are picked, not what the summaries say (see **Picking
+Stories for rahul's Goal**).
 
-**Quantum + AI is weekly (Thursdays only).** On Fri–Wed the pipeline runs 15 sections.
+**A PDF rahul can finish, on the way to an FDE job.** rahul, 2026-10-03: "I try to read [the] PDF
+every day but [am] not able to finish [it], so make a PDF which I can read end to end, also cover all
+[the] sections ... and focus toward my getting [a] remote AI job as forward deployed eng or solution
+engineer in global companies, not [an] Indian company, which work via remote and via visa." So every
+section stays, the edition opens with **Remote FDE & Solutions Jobs** (hiring news plus a daily table
+of open roles that are remote or come with a visa), and every section carries **up to three** fully
+explained stories (rahul's card, 2026-10-04: "Up to three").
+
+**Quantum + AI is weekly (Thursdays only).** On Fri–Wed the pipeline runs 16 sections.
 `QUANTUM_WEEKDAY = 3` in `scrape_rss_feeds.py` is authoritative; `prep_run.py` prints which way today
 falls, so it never has to be worked out by hand.
 
@@ -14,9 +25,11 @@ understanding, in layman's terms, a news summary, no matter how long it takes in
 400–800 character summaries of 2026-10-02 gave him five lines a story and sent him elsewhere to
 understand them. Asked the same day whether to keep the page limit, he chose **max 15 pages**. So:
 **every summary is a full plain-language explanation of at least 1,000 characters with no upper
-limit** (see the Plain-Language News Rule), and the page limit is met by carrying **fewer stories,
-2–4 a section, usually 3**, never by shortening an explanation. Three 2,000-character stories a
-section is 14 pages on a weekday and 15 on a Thursday. Page 1 opens with a short masthead and a
+limit** (see the Plain-Language News Rule), and the page limit is met by carrying **up to three
+stories a section** and dropping stories, never by shortening an explanation. Three
+1,500-character stories a section, with the three tables, is 12 pages on a weekday and 13 on a
+Thursday; three 2,000-character stories reach 15 and 16, and the builder names the stories to drop.
+Page 1 opens with a short masthead and a
 contents list (each entry links to its section and names its page), the sections flow on from each
 other, a long story runs on overleaf like a newspaper column, and story URLs sit behind the titles.
 `write_analyzed()` prints the page count while the builder is open and, over the limit, names the
@@ -80,29 +93,32 @@ python3 tools/verify_edition.py --send    # ~10s — every check, the backup, th
 
 ### Step 1 — `python3 tools/prep_run.py`
 Runs the scrape to completion (nothing is detached, so nothing needs polling), then the digest,
-Devpost, the carry-forward recheck and the other hackathon platforms **in parallel with the test
-suite**, and prints one brief: today's date and whether Quantum is in, the 16 section keys in render
-order, the last three editions on disk for the duplicate check, and the test result as one line.
+Devpost, the carry-forward recheck, the other hackathon platforms and the open FDE / Solutions roles
+(`find_roles.py`) **in parallel with the test suite**, and prints one brief: today's date and whether
+Quantum is in, the 17 section keys in render order, the last three editions on disk for the duplicate check, and the test result as one line.
 
-The scrape reads every source in the registry, `tools/feed_sources.py`: 386 RSS and Atom feeds plus
+The scrape reads every source in the registry, `tools/feed_sources.py`: 393 RSS and Atom feeds plus
 four non-RSS readers (Hacker News, Hugging Face new models, two YouTube searches), all keyless
 (rahul, 2026-10-03: "search everywhere on the internet ... if they are asking for any API, don't use
 that platform"). That is mainstream, wire, trade, science and regional press; Google News searches in
 14 English-language country editions and in 17 other languages; Bing News; YouTube channels and
-podcasts; Reddit and Bluesky. Hosts are fetched in parallel; the 80 Google News searches share one
-host and run in turn, about two minutes. A feed that answers 403, 429 or 503 is retried once with the
+podcasts; Reddit and Bluesky; and six careers searches (Forward Deployed and Solutions Engineer
+hiring, AI deployment jobs, tech work visas, remote tech hiring, the AI talent market). Hosts are
+fetched in parallel; the 86 Google News searches share one host and run in turn, about two minutes. A feed that answers 403, 429 or 503 is retried once with the
 browser User-Agent. `.tmp/rss_scrape.log` ends with `Sources: N read, M returned articles` and a
 `none from:` line.
 
 Outputs: `.tmp/rss_articles.json`, `.tmp/digest.md`, `.tmp/devpost.txt`, `.tmp/recheck.txt`,
-`.tmp/hackathons.txt`.
+`.tmp/hackathons.txt`, and `.tmp/roles.txt` with `.tmp/roles.json` (the open roles, ranked; see
+`fde_careers` under Section-Specific Rules). A role board that could not be read shows as
+`!! unread:` on the `roles` line; the rest still fill the table.
 
 - `--no-scrape` reuses the scrape on disk. A scrape under 6 hours old is reused automatically, so a
   second run the same morning does not re-hit 200+ sources; the next day's run always re-scrapes.
 - If the scrape fails, it stops there — the scrape is the only input source.
 
 ### Step 2 — Curate (agent-driven; the only step that needs a session)
-1. **Read `.tmp/digest.md`.** One line per article, grouped in the order of the 16 sections (each
+1. **Read `.tmp/digest.md`.** One line per article, grouped in the order of the 17 sections (each
    group's heading names its section after `->`), biggest story first and direct feeds before search
    proxies, `PRINTED mm-dd` on anything from the last three editions, `{also: ...}` on a story that
    fits more than one group, gate-passing opportunities, and yesterday's opportunities, `best_for`
@@ -128,7 +144,7 @@ Outputs: `.tmp/rss_articles.json`, `.tmp/digest.md`, `.tmp/devpost.txt`, `.tmp/r
    `X POST` flag now means the read failed and the feed headline is all there is. It is not cached, so
    running the index again retries it.
 3. **`.tmp/devpost.txt`, `.tmp/hackathons.txt` and `.tmp/recheck.txt`** are already on disk from
-   step 1, for sections 1–2.
+   step 1, for sections 2–3. **`.tmp/roles.txt`** shows the open roles the careers table will carry.
    `python3 tools/find_opportunities.py check URL...` is the only one that runs on demand, for an
    opportunity neither file covers.
 4. **Write `.tmp/build_analyzed_<DATE>.py`** against `tools/builder_helpers.py` (`S`, `O`,
@@ -139,7 +155,9 @@ Outputs: `.tmp/rss_articles.json`, `.tmp/digest.md`, `.tmp/devpost.txt`, `.tmp/r
    count its pages, and prints the problems. Over 15 pages it prints `to fit, drop:` with the
    lowest-relevance stories from the fullest sections; drop those (or others of your choosing), never
    shorten an explanation. Write a long summary in two or three paragraphs, separated by a blank
-   line inside the `'''` quotes; the PDF prints the break. `rejected=[(name, reason)]` feeds tomorrow's digest so a rejected item is not
+   line inside the `'''` quotes; the PDF prints the break. Pass the careers table with
+   `roles = open_roles()` and `write_analyzed(..., roles=roles)`; it is built from `.tmp/roles.json`
+   every run and never carried forward or hand-edited. `rejected=[(name, reason)]` feeds tomorrow's digest so a rejected item is not
    re-investigated.
 
 ### Step 3 — `python3 tools/verify_edition.py --send`
@@ -184,35 +202,41 @@ needs a browser.
 
 ---
 
-## The 16 PDF Sections
-In render order, Rahul's list of 2026-10-02. `prep_run.py` prints the keys, so they are never guessed:
+## The 17 PDF Sections
+In render order: Rahul's list of 2026-10-02, led since 2026-10-03 by the careers section.
+`prep_run.py` prints the keys, so they are never guessed:
 
-1. **AI Hackathons** — high-prize AI hackathons and competitions with entry deadlines, globally
+1. **Remote FDE & Solutions Jobs** (`fde_careers`) — a table of open Forward Deployed and Solutions
+   Engineer roles at global companies that are remote or come with a visa, plus hiring news
+2. **AI Hackathons** — high-prize AI hackathons and competitions with entry deadlines, globally
    scoped, open to professionals and founders, whose **submission deadline is at least 7 days away**
-2. **AI Grants, Fellowships & Programs** — grants, fellowships, accelerators, incubators,
+3. **AI Grants, Fellowships & Programs** — grants, fellowships, accelerators, incubators,
    residencies and cohort programmes
-3. **AI Self-Improvement (RSI)** — recursive self-improvement, AGI progress, alignment research
-4. **Quantum + AI** — *weekly, Thursdays only* — quantum breakthroughs where AI is genuinely involved
-5. **Unaddressed AI Problems** — real pain points nobody is solving — market gaps
-6. **AI Automation & Business** — AI automation news, agentic tooling, market demand
-7. **AI Business Opportunities** — emerging opportunities — India & world
-8. **Indian AI Industry** — India-specific AI news, policy, startups, government
-9. **Global AI News** — worldwide AI: US, EU, China, Japan, Korea, Middle East
-10. **OpenAI** — OpenAI and ChatGPT: models, products, research, deals, people and policy
-11. **Google AI** — Google, Gemini and DeepMind: models, products, research and company moves
-12. **Anthropic & Claude Code** — Claude models, Claude Code, Agent SDK, Anthropic company & safety news
-13. **xAI & Grok** — xAI the company and its Grok models: releases, features, funding, deals, disputes
-14. **Open Models & Open Weights** — open-weight releases, licences & benchmarks, plus a standing
+4. **AI Self-Improvement (RSI)** — recursive self-improvement, AGI progress, alignment research
+5. **Quantum + AI** — *weekly, Thursdays only* — quantum breakthroughs where AI is genuinely involved
+6. **Unaddressed AI Problems** — real pain points nobody is solving — market gaps
+7. **AI Automation & Business** — AI automation news, agentic tooling, market demand
+8. **AI Business Opportunities** — emerging opportunities — India & world
+9. **Indian AI Industry** — India-specific AI news, policy, startups, government
+10. **Global AI News** — worldwide AI: US, EU, China, Japan, Korea, Middle East
+11. **OpenAI** — OpenAI and ChatGPT: models, products, research, deals, people and policy
+12. **Google AI** — Google, Gemini and DeepMind: models, products, research and company moves
+13. **Anthropic & Claude Code** — Claude models, Claude Code, Agent SDK, Anthropic company & safety news
+14. **xAI & Grok** — xAI the company and its Grok models: releases, features, funding, deals, disputes
+15. **Open Models & Open Weights** — open-weight releases, licences & benchmarks, plus a standing
     "best open model for what" table
-15. **Closed Models & Frontier APIs** — proprietary frontier models: releases, pricing & benchmarks,
+16. **Closed Models & Frontier APIs** — proprietary frontier models: releases, pricing & benchmarks,
     plus a standing "best closed model for what" table
-16. **Elon Musk on AI** — Musk's own point of view on AI, from his posts and from across the web
+17. **Elon Musk on AI** — Musk's own point of view on AI, from his posts and from across the web
 
-**Routing rule: a story prints once.** Company news goes to that company's section (10–13). A
+**Routing rule: a story prints once.** Company news goes to that company's section (11–14). A
 cross-vendor comparison, benchmark or price table goes to Closed Models; an open-weight release goes
 to Open Models whoever made it. What Musk himself says goes to Elon Musk on AI; xAI company and
 product news goes to xAI & Grok. Global AI News takes the rest: governments, Meta, Microsoft, NVIDIA,
-Apple, Chinese labs. The scraper pre-sorts the digest the same way (a pooled headline naming OpenAI,
+Apple, Chinese labs. A story about hiring for Forward Deployed or Solutions roles, how those jobs
+work, the AI hiring market, work visas or remote hiring goes to Remote FDE & Solutions Jobs, even when
+it names a company (OpenAI hiring FDEs is a careers story; an OpenAI product is OpenAI's). The scraper
+pre-sorts the digest the same way (a pooled headline naming OpenAI,
 Google, Anthropic, xAI or Musk moves into that group), but the curator decides.
 
 ---
@@ -248,6 +272,25 @@ is..." framing, or suggestions about what to build. Removed 2026-09-03 on user i
 summaries had become strategy essays that assumed context the reader did not have, and the news
 itself got lost.
 
+### Picking Stories for rahul's Goal
+rahul's goal (2026-10-03) is a **remote or visa-sponsored Forward Deployed Engineer (FDE) or Solutions
+Engineer role at a global company**, not an Indian one. Every section stays, and each still covers its
+own beat; the goal decides **which** up-to-three stories a section carries. When two stories are
+equally big, pick the one an FDE or Solutions Engineer at a global AI company would be expected to
+know:
+- what enterprises are deploying and buying (agents, copilots, platforms), and what went wrong when
+  they deployed it;
+- products, protocols and tools an FDE works with (Claude Code and the Agent SDK, MCP, evaluation,
+  retrieval, fine-tuning, inference platforms), and changes to them;
+- the companies that hire FDEs and Solutions Engineers: their launches, big customer deals, funding,
+  new offices abroad and hiring pushes;
+- hiring, remote-work and work-visa news, which goes to Remote FDE & Solutions Jobs.
+
+The focus comes from **story choice, the careers section and its roles table only**. Summaries stay
+news explanations under the Plain-Language News Rule: no "why it matters for you", no career advice,
+no "you could apply". Indian AI Industry stays (rahul listed it); hiring at Indian companies does not
+go into the careers section.
+
 ### Summary Quality Rules
 - **Explanatory, not a headline restatement.** Explain the *mechanism*. A reader who never opens the
   link should understand both what happened and why.
@@ -261,8 +304,9 @@ itself got lost.
   summary? Never spend characters on advice. The PDF prints every summary whole; no ellipses, no
   mid-sentence cutoffs. `write_analyzed()` flags a summary under 1,000 characters, and
   `check_quality` blocks the send on one (`short_summary`).
-- **Fifteen pages is the limit; pick, don't squeeze.** 2–4 stories per section, usually 3, the ones
-  that matter most. When the edition runs over, drop stories; never shorten an explanation.
+- **Fifteen pages is the limit; pick, don't squeeze.** Up to three stories per section (rahul's card,
+  2026-10-04), the ones that matter most toward rahul's goal (see **Picking Stories for rahul's
+  Goal**). When the edition runs over, drop stories; never shorten an explanation.
   A section runs short only when nothing else inside its freshness window qualifies. Finish every
   section; no placeholder stubs in trailing sections.
 - **Do not invent facts.** Many headlines postdate the model's knowledge. Ground claims in what the
@@ -271,7 +315,7 @@ itself got lost.
 
 ---
 
-## Curator Profile (applies to sections 1 & 2)
+## Curator Profile (applies to sections 2 & 3)
 Only include items where **both team members** are eligible:
 
 - Team A: employed at a company (working professional, adult, no PhD)
@@ -284,7 +328,7 @@ Only include items where **both team members** are eligible:
 the registrant is a working professional), or age/gender/geographic restrictions that exclude either
 member. Region-locked programmes (Kenya-only, Nigeria-only, Kurdistan-only) are out.
 
-**Near-deadline rule (section 2 only):** programmes whose deadline is tomorrow or later today MUST be
+**Near-deadline rule (section 3 only):** programmes whose deadline is tomorrow or later today MUST be
 included — this outranks the three-day-repeat rule. The reader wants imminent deadlines, not silent
 filtering. **Hackathons follow the opposite rule** (rahul, 2026-10-03, see `ai_hackathons` below): one
 whose submission deadline is under 7 days away is left out, because there is no time left to build.
@@ -306,7 +350,7 @@ whose submission deadline is under 7 days away is left out, because there is no 
 ```
 
 `published_date` is required on every news story and is copied from the source article by `S()`;
-`write_analyzed()` rejects an edition missing it. Opportunity sections (1 and 2) carry a deadline
+`write_analyzed()` rejects an edition missing it. Opportunity sections (2 and 3) carry a deadline
 instead and the renderer skips dates there.
 
 ### Section-Specific Extra Fields
@@ -318,13 +362,44 @@ instead and the renderer skips dates there.
   ("23 Oct 2026"), and the 7-day build rule is checked against it.
 - `open_model_landscape`: owns the `section_extras` block above. Optional — omit it and the section
   renders as plain news.
+- `fde_careers`: its `section_extras` block is the open-roles table, in the same `best_for` shape:
+  `use_case` the company, `model` the role (the row links to `url`, the posting), `maker` where it is
+  and how it is worked (several offices print as the first "+N more"), `why` the visa position, then
+  when and where it was posted. The visa note sits in `why` because a long role name cut it off the
+  role's own line.
+  `open_roles()` writes it; never by hand.
 
 ---
 
 ## Section-Specific Rules
-**All sections:** 2–4 stories, usually 3, sorted by relevance (highest first).
+**All sections:** up to three stories (at least one, except Remote FDE & Solutions Jobs, whose news
+is optional), sorted by relevance (highest first).
 Deduplicate across sources — the
 Google News proxies return the same story from a dozen outlets, so pick the most substantive one.
+
+- **`fde_careers`** (label "Remote FDE & Solutions Jobs") — leads the edition (rahul, 2026-10-03).
+  Two parts:
+  - **The open-roles table**, from `.tmp/roles.json` via `open_roles()`. `tools/find_roles.py` reads
+    keyless sources only: the public Greenhouse, Ashby and Lever boards of 32 global AI companies
+    (`COMPANY_BOARDS`: Anthropic, OpenAI, Cohere, Scale AI, Databricks, Palantir, Glean, Sierra,
+    Decagon, Harvey and others), the month's Hacker News "Who is hiring?" thread (posts say REMOTE and
+    VISA outright), and Himalayas (remote-only, with the countries each role is open to). A role is
+    kept when its title is in the FDE / Solutions family (Forward Deployed, Solutions Engineer /
+    Architect / Consultant, Applied AI, Deployment, Customer or Sales Engineer), it is not a
+    management or intern role, it was posted in the last 30 days, and it is not on-site or hybrid
+    in India (nor a "remote" role whose title names an Indian city, which ties it to that office). Roles from Hacker News and Himalayas must also be AI work. Ranked: **remote and open
+    to India or worldwide first, then roles whose posting says the company sponsors visas** (and
+    not only to another country: "we sponsor visas to Germany" does not count for a US job), then
+    remote roles limited to another region, then on-site roles abroad that say nothing about visas;
+    newest first within each. The table shows ten: five seats for remote-and-open roles and four
+    for visa-sponsoring ones whatever the day's mix, two roles a company at most. "visa not stated"
+    means the posting does not say, not that the company refuses. The table is rebuilt every run;
+    never carry it forward or edit a row by hand (a role closes in days).
+  - **Zero to three news stories**, from the digest's careers group (six Google News searches on a
+    one-day window, and Bing News): hiring for FDE and Solutions roles and how those jobs work, the
+    AI hiring market at global companies, work-visa rules (H-1B, UK Global Talent and Skilled Worker,
+    EU Blue Card, Canada and Australia tech streams), and remote hiring. A day without one is fine;
+    the table still prints. Not: hiring at Indian companies, layoffs with no AI angle, résumé tips.
 
 - **`quantum_ai_research`** — *Thursdays only, and the one section on a **7-day** rule* rather than
   24h (see **The 24-Hour Rule**), because it is weekly and each issue covers the whole week since the
@@ -334,7 +409,7 @@ Google News proxies return the same story from a dozen outlets, so pick the most
 
 - **`ai_hackathons`** — hackathons, coding contests and time-boxed competitions with a defined prize
   pool and submission window. If it is not called a hackathon/competition/contest and awards no
-  prize, it belongs in section 2. Sort by **prize size** after the eligibility filter, not by
+  prize, it belongs in section 3. Sort by **prize size** after the eligibility filter, not by
   general relevance. Global, no geographic weighting.
   - **Biggest prize first (rahul, 2026-10-03: "in PDF, give me hackathons with our top prizes
     first").** `generate_pdf.render_edition()` prints the section in prize order whatever order the
@@ -416,7 +491,7 @@ Google News proxies return the same story from a dozen outlets, so pick the most
     model name.
 
 - **`ai_business_opportunities`** — the market-thesis section: emerging business openings, not things
-  to apply to. Anything with an entry deadline belongs in section 2. Be specific about India.
+  to apply to. Anything with an entry deadline belongs in section 3. Be specific about India.
 
 - **`openai_news`** — OpenAI and ChatGPT: models, products, research, deals, people and policy.
   Sources: OpenAI's blog and YouTube, Google News and Bing News searches, and the X searches for
@@ -490,6 +565,10 @@ no session:
   cases in `tools/tests/test_fit_title.py`
 - No URL under a story → by design since 2026-10-02: the title is the link, and the line it took
   went to the page limit
+- No open-roles table in the careers section → `.tmp/roles.json` is missing or empty, and
+  `open_roles()` printed `!! no open roles`. Run `python3 tools/find_roles.py`; its `!! label: error`
+  lines name the boards it could not read. A company whose board moved shows as an error or 0 roles:
+  re-probe its slug on Greenhouse, Ashby or Lever and fix its `COMPANY_BOARDS` row
 - PDF over 15 pages → `verify_edition.py` stops the run; `write_analyzed()` already printed the count
   and the stories to drop (`to fit, drop:`). Drop stories; never shorten an explanation or edit the
   layout to squeeze
@@ -509,11 +588,28 @@ when the key sits in `.env` (X API, YouTube Data API, NewsAPI). Every source tes
 listed at the end of `feed_sources.py`; check there before probing one again. `test_sources.py` checks
 names, https, the keyless rule and that every section is fed.
 
+**A company for the roles table** goes in `COMPANY_BOARDS` in `tools/find_roles.py` as
+`(name, board, slug)`, where board is `greenhouse`, `ashby` or `lever` (the public posting APIs, no
+key). Probe it first: the board must answer with jobs and at least one title `TITLE_RE` matches.
+Remotive was tried and dropped (2026-10-03): its free feed ignores the search and returns the same 16
+stale jobs. The readers are pure functions over a `get`, tested offline in `test_find_roles.py`.
+
 ---
 
 ## Lessons Learned
 
 ### Still live — these change what you do
+- **2026-10-04: a PDF rahul can finish, aimed at an FDE job.** rahul could not finish the daily PDF
+  and asked for one read end to end that still covers every section and focuses on landing a remote
+  or visa-sponsored Forward Deployed / Solutions Engineer role at a global company. Up to three
+  stories a section (rahul's card answer), picked for that goal; the careers section leads with a
+  daily table of open roles. Keep the goal in story choice, never in advice inside a summary. In
+  `find_roles.py`: Greenhouse's job list carries no description, so the visa wording comes from each
+  posting's own page (the four newest on-site roles per company, to keep the run short); a posting
+  that sponsors visas only to one country (n8n: "We can sponsor visas to Germany") must not mark its
+  US roles as sponsored; Himalayas' worldwide filter needed an AI check on title and company, or the
+  table filled with non-AI sales roles, and a region in the title ("Solutions Engineer, EMEA")
+  overrides its empty "worldwide" list.
 - **2026-10-03: summaries are full explanations; the edition drops stories to fit.** Rahul found the
   400–800 character summaries too thin to understand without looking elsewhere, and kept the
   15-page limit. Summaries are now at least 1,000 characters with no ceiling, written to the five
@@ -685,6 +781,13 @@ names, https, the keyless rule and that every section is fed.
 | A smaller prize printed above a bigger one in AI Hackathons, or "$100k in credits" outranking cash (2026-10-03) | `prize_usd()` / `by_prize()` in `hackathon_sources.py`, `test_hackathon_prizes.py` |
 
 ### History
+- **2026-10-04:** On rahul's "make a PDF which I can read end to end ... focus toward my getting [a]
+  remote AI job as forward deployed eng or solution engineer in global companies" and the card answer
+  "Up to three": sections carry up to three stories, picked for that goal; new first section Remote
+  FDE & Solutions Jobs (17 sections) with hiring news and a daily open-roles table from
+  `tools/find_roles.py` (32 company boards on Greenhouse, Ashby and Lever, Hacker News "Who is
+  hiring?", Himalayas; all keyless), run by `prep_run.py`; seven careers searches (393 RSS rows).
+  Tests 554 → 635 in 23 files.
 - **2026-10-03 (later):** AI Hackathons prints biggest prize first, enforced when the PDF is drawn;
   the candidate blocks in `hackathons.txt` and Devpost's newest list are in prize order too.
 - **2026-10-03:** On rahul's word that the five-line summaries were too thin ("a clear understanding,

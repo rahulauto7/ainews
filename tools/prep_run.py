@@ -14,10 +14,11 @@ polling - and prints one compact brief:
   - the test suite result as one line
   - the scrape, then the digest, Devpost, the carry-forward recheck and the
     other hackathon platforms (lablab.ai, mlcontests, HackerEarth, Devfolio,
-    Unstop, MLH, TAIKAI, Hackster), in parallel
+    Unstop, MLH, TAIKAI, Hackster), and the open FDE / Solutions roles, in parallel
 
 Outputs land where they always do: .tmp/rss_articles.json, .tmp/digest.md,
-.tmp/devpost.txt, .tmp/recheck.txt, and now .tmp/hackathons.txt.
+.tmp/devpost.txt, .tmp/recheck.txt, .tmp/hackathons.txt, and .tmp/roles.txt with
+.tmp/roles.json (open FDE / Solutions roles for the careers section).
 
 Usage:
   python3 tools/prep_run.py               # full prep
@@ -158,11 +159,14 @@ def main():
          os.path.join(web_text.TMP_DIR, "recheck.txt")),
         ("hackathons", [os.path.join(TOOLS_DIR, "find_opportunities.py"), "platforms"],
          os.path.join(web_text.TMP_DIR, "hackathons.txt")),
+        # The careers section's open roles (writes .tmp/roles.json for open_roles()).
+        ("roles", [os.path.join(TOOLS_DIR, "find_roles.py")],
+         os.path.join(web_text.TMP_DIR, "roles.txt")),
     ]
 
     from verify_edition import run_tests
 
-    with ThreadPoolExecutor(max_workers=5) as ex:
+    with ThreadPoolExecutor(max_workers=6) as ex:
         tests = None if args.skip_tests else ex.submit(run_tests)
         results = list(ex.map(lambda t: _run(t[0], t[1], t[2]), tasks))
 

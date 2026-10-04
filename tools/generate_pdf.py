@@ -59,6 +59,16 @@ STORY_FILL = (245, 247, 250)
 
 # ── Section Config ────────────────────────────────────────────────────────────
 SECTION_CONFIG = {
+    # rahul's goal (2026-10-03): a remote or visa-sponsored Forward Deployed or
+    # Solutions Engineer role at a global company. Its table is the day's open
+    # roles (tools/find_roles.py), drawn by the standing-table code.
+    "fde_careers": {
+        "label": "Remote FDE & Solutions Jobs",
+        "icon": "\u2692",
+        "color": (0, 121, 107),   # Dark teal
+        "desc": "Forward Deployed & Solutions Engineer roles at global companies, remote or with a visa - hiring news and open roles",
+        "table_heading": "OPEN ROLES - REMOTE OR WITH A VISA",
+    },
     "ai_hackathons": {
         "label": "AI Hackathons",
         "icon": "\u26a1",
@@ -162,8 +172,11 @@ SECTION_CONFIG = {
 
 # Rendering order: Rahul's list of 2026-10-02, with the four company sections
 # (OpenAI, Google AI, Anthropic & Claude Code, xAI & Grok) between Global AI News
-# and the two model tables. Changing it is his decision, not a refactor.
+# and the two model tables. Changing it is rahul's decision, not a refactor. The
+# careers section leads since 2026-10-03, when rahul asked for the PDF to focus on
+# landing a remote Forward Deployed or Solutions Engineer job.
 SECTION_ORDER = [
+    "fde_careers",                     # 0  Remote FDE & Solutions Jobs
     "ai_hackathons",                   # 1  AI Hackathons
     "product_showcase_opportunities",  # 2  AI Grants, Fellowships & Programs
     "ai_self_improvement_rsi",         # 3  AI Self-Improvement (RSI)
@@ -566,9 +579,12 @@ def build_best_for_box(pdf, y, color, extras, heading="BEST MODEL RIGHT NOW"):
         pdf.set_xy(16, row_y)
         pdf.multi_cell(label_w, 4.6, sanitize_text(entry["use_case"]), align="L")
 
+        # One line, cut between words if it is long; a row with a url (an open
+        # role) links to it.
         pdf.set_text_color(r, g, b)
         pdf.set_xy(50, row_y)
-        pdf.cell(why_w, 4.6, sanitize_text(_model_line(entry)))
+        pdf.cell(why_w, 4.6, _fit_title(pdf, sanitize_text(_model_line(entry)), why_w),
+                 link=entry.get("url") or "")
 
         why = sanitize_text(entry.get("why", ""))
         if why:
