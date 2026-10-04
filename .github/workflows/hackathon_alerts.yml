@@ -36,6 +36,7 @@ on:
       - "tools/hackathon_watch.py"
       - "tools/find_opportunities.py"
       - "tools/check_quality.py"
+      - "tools/generate_pdf.py"
       - "tools/web_text.py"
       - "tools/tests/test_hackathon_*.py"
       - "tools/tests/test_build_window.py"
@@ -132,7 +133,8 @@ jobs:
         shell: bash   # -eo pipefail: a failing test fails the step
         run: |
           for t in tools/tests/test_hackathon_platforms.py tools/tests/test_hackathon_watch.py \
-                   tools/tests/test_build_window.py tools/tests/test_check_quality.py; do
+                   tools/tests/test_hackathon_prizes.py tools/tests/test_build_window.py \
+                   tools/tests/test_check_quality.py; do
             echo "== $t"
             python "$t" | tail -5
           done

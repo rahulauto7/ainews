@@ -25,7 +25,8 @@ Usage:
       (open events, soonest end first, each event page checked), Devpost's
       newest "AI" events that the theme listing above does not show, then
       mlcontests.com (Kaggle, AIcrowd, DrivenData, Zindi, ...), HackerEarth,
-      Devfolio, Unstop, MLH, TAIKAI and Hackster. One platform failing prints
+      Devfolio, Unstop, MLH, TAIKAI and Hackster, each biggest prize first
+      (hackathon_sources.prize_usd). One platform failing prints
       "!! <platform>: <error>" and the others still print. prep_run.py writes
       this to .tmp/hackathons.txt.
 
@@ -82,14 +83,8 @@ def history():
     return printed, rejected
 
 
-# Rough conversion, used only to sort and filter; the printed figure is Devpost's own.
-_TO_USD = {"$": 1.0, "€": 1.1, "£": 1.3, "₹": 1 / 85}
+# Devpost events below this (hs.prize_usd, a rough conversion) are hidden.
 MIN_USD = 1000
-
-
-def _usd(prize_text):
-    m = re.match(r"\s*([$€£₹])\s*([\d,]+)", prize_text)
-    return float(m.group(2).replace(",", "")) * _TO_USD[m.group(1)] if m else 0.0
 
 
 def _marks(url, name, printed, rejected):
@@ -145,8 +140,8 @@ def devpost(pages, show_all=False):
                                  "order_by": "prize-amount"}, pages)
     soon = [h for h in rows if _too_soon(h["_due"], today)]
     rows_ok = [h for h in rows if not _too_soon(h["_due"], today)]
-    shown = [h for h in rows_ok if show_all or (h["_cash"] and _usd(h["_prize"]) >= MIN_USD)]
-    shown.sort(key=lambda h: -_usd(h["_prize"]))
+    shown = [h for h in rows_ok if show_all or (h["_cash"] and hs.prize_usd(h["_prize"]) >= MIN_USD)]
+    shown.sort(key=lambda h: -hs.prize_usd(h["_prize"]))
 
     print(f"Devpost: {len(rows)} of {total} open/upcoming Machine Learning/AI hackathons; "
           f"{len(soon)} hidden (submissions close in under {MIN_BUILD_DAYS} days), "
@@ -254,7 +249,8 @@ def devpost_newest(printed, rejected, pages=3):
     new = [h for h in rows
            if DEVPOST_THEME not in {t.get("name") for t in h.get("themes") or []}]
     soon = [h for h in new if _too_soon(h["_due"], today)]
-    print(f"Devpost newest: {len(rows)} of {total} open/upcoming matching 'AI', newest first; "
+    new.sort(key=lambda h: -hs.prize_usd(h["_prize"]))
+    print(f"Devpost newest: {len(rows)} of {total} open/upcoming matching 'AI', biggest prize first; "
           f"{len(new)} are outside the {DEVPOST_THEME} theme listing, {len(soon)} of them hidden "
           f"(submissions close in under {MIN_BUILD_DAYS} days)")
     for h in new:
@@ -274,12 +270,14 @@ def event_line(e, today, printed, rejected):
 
 def platform_block(name, read, printed, rejected):
     """Print one hackathon_sources platform: AI events with 7+ days to build,
-    soonest deadline first, and a count of what was hidden and why."""
+    biggest prize first (then soonest deadline), and a count of what was hidden
+    and why."""
     today = hs.today_ist()
     events = read(today)
     ai = [e for e in events if e["ai"]]
     soon = [e for e in ai if _too_soon(e["deadline"], today)]
-    shown = sorted((e for e in ai if e not in soon), key=lambda e: (e["deadline"] is None, e["deadline"]))
+    shown = sorted((e for e in ai if e not in soon),
+                   key=lambda e: (-hs.prize_usd(e["prize"]), e["deadline"] is None, e["deadline"]))
     print(f"{name}: {len(shown)} open AI hackathons with {MIN_BUILD_DAYS}+ days to build; hidden: "
           f"{len(events) - len(ai)} not about AI, {len(soon)} closing in under {MIN_BUILD_DAYS} days")
     for e in shown:
