@@ -1,4 +1,4 @@
-"""Cases for the fifteen-page edition.
+"""Cases for the seventeen-page edition (fifteen until 2026-10-07).
 
 Rahul, 2026-10-02: "I am unable to read the full AI news PDF", then "make it max
 15 pages". The edition had a cover page and a page per section, so sixteen
@@ -98,7 +98,7 @@ def main():
     failures, cases = [], 0
 
     cases += 1
-    check(failures, PAGE_LIMIT == 15, f"PAGE_LIMIT is {PAGE_LIMIT}; rahul asked for 15 pages max")
+    check(failures, PAGE_LIMIT == 17, f"PAGE_LIMIT is {PAGE_LIMIT}; rahul asked for 17 pages max")
 
     # ── 1. A full Thursday edition at the planning figure fits ───────────────
     # Seventeen sections (quantum runs on Thursdays), three 1,500-character

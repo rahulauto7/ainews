@@ -20,16 +20,17 @@ explained stories (rahul's card, 2026-10-04: "Up to three").
 `QUANTUM_WEEKDAY = 3` in `scrape_rss_feeds.py` is authoritative; `prep_run.py` prints which way today
 falls, so it never has to be worked out by hand.
 
-**Every story explained in full, fifteen pages at most.** Rahul, 2026-10-03: "I want a clear
+**Every story explained in full, seventeen pages at most.** Rahul, 2026-10-03: "I want a clear
 understanding, in layman's terms, a news summary, no matter how long it takes in lines", because the
 400–800 character summaries of 2026-10-02 gave him five lines a story and sent him elsewhere to
-understand them. Asked the same day whether to keep the page limit, he chose **max 15 pages**. So:
+understand them. Asked the same day whether to keep the page limit, he chose **max 15 pages**; on 2026-10-07 he added two pages for the closing summary, so the
+limit is now **max 17 pages**. So:
 **every summary is a full plain-language explanation of at least 1,000 characters with no upper
 limit** (see the Plain-Language News Rule), and the page limit is met by carrying **up to three
 stories a section** and dropping stories, never by shortening an explanation. Three
 1,500-character stories a section, with the three tables and the closing summary, is 14 pages on a
-weekday and 15 on a Thursday; three 2,000-character stories reach 17 and 18, and the builder names
-the stories to drop.
+weekday and 15 on a Thursday; three 2,000-character stories reach 17 and 18, so a long Thursday runs
+one over and the builder names the stories to drop.
 Page 1 opens with a short masthead and a
 contents list (each entry links to its section and names its page), the sections flow on from each
 other, a long story runs on overleaf like a newspaper column, and story URLs sit behind the titles.
@@ -153,7 +154,7 @@ Outputs: `.tmp/rss_articles.json`, `.tmp/digest.md`, `.tmp/devpost.txt`, `.tmp/r
    builder to copy boilerplate.** Reference source articles **by index** into `rss_articles.json` so
    title/url/source stay faithful to what was scraped; never hand-type a URL. `write_analyzed()`
    validates section counts, summary lengths, missing URLs and `published_date`, renders the PDF to
-   count its pages, and prints the problems. Over 15 pages it prints `to fit, drop:` with the
+   count its pages, and prints the problems. Over 17 pages it prints `to fit, drop:` with the
    lowest-relevance stories from the fullest sections; drop those (or others of your choosing), never
    shorten an explanation. Write a long summary in two or three paragraphs, separated by a blank
    line inside the `'''` quotes; the PDF prints the break. Pass the careers table with
@@ -237,8 +238,8 @@ summary of every section, so I can read whatever I left reading from the summary
 section's name, every story's title in bold and the **first sentence of its summary**, at most two
 lines, and each line links back to the full story. So **the first sentence of every summary must say
 the news on its own** — the Plain-Language rule already asks for this; here it is also what Rahul reads
-when he runs out of time. The summary counts toward the 15 pages (about 1.5–2 pages at three stories a
-section), so a Thursday at the planning figure now fills all 15.
+when he runs out of time. The summary counts toward the 17 pages (about 1.5–2 pages at three stories a
+section), so a Thursday at the planning figure fills 15 of the 17.
 
 **Routing rule: a story prints once.** Company news goes to that company's section (4–7). A
 cross-vendor comparison, benchmark or price table goes to Closed Models; an open-weight release goes
@@ -315,7 +316,7 @@ go into the careers section.
   summary? Never spend characters on advice. The PDF prints every summary whole; no ellipses, no
   mid-sentence cutoffs. `write_analyzed()` flags a summary under 1,000 characters, and
   `check_quality` blocks the send on one (`short_summary`).
-- **Fifteen pages is the limit; pick, don't squeeze.** Up to three stories per section (rahul's card,
+- **Seventeen pages is the limit; pick, don't squeeze.** Up to three stories per section (rahul's card,
   2026-10-04), the ones that matter most toward rahul's goal (see **Picking Stories for rahul's
   Goal**). When the edition runs over, drop stories; never shorten an explanation.
   A section runs short only when nothing else inside its freshness window qualifies. Finish every
@@ -580,7 +581,7 @@ no session:
   `open_roles()` printed `!! no open roles`. Run `python3 tools/find_roles.py`; its `!! label: error`
   lines name the boards it could not read. A company whose board moved shows as an error or 0 roles:
   re-probe its slug on Greenhouse, Ashby or Lever and fix its `COMPANY_BOARDS` row
-- PDF over 15 pages → `verify_edition.py` stops the run; `write_analyzed()` already printed the count
+- PDF over 17 pages → `verify_edition.py` stops the run; `write_analyzed()` already printed the count
   and the stories to drop (`to fit, drop:`). Drop stories; never shorten an explanation or edit the
   layout to squeeze
 - Tests "collect nothing" → they are plain scripts, **not** pytest. `verify_edition.py` runs them;

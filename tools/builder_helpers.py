@@ -43,7 +43,7 @@ most toward rahul's goal: a remote or visa-sponsored Forward Deployed / Solution
 Engineer role at a global company. The careers section carries its open-roles
 table and zero to three stories (story_rule()).
 Separate paragraphs with a blank line inside the ''' quotes; the PDF keeps
-them. write_analyzed() prints the PDF's page count and, over 15 pages, the
+them. write_analyzed() prints the PDF's page count and, over PAGE_LIMIT pages, the
 stories to drop to fit: drop stories, never shorten an explanation.
 
     roles = open_roles()   # the careers table, from tools/find_roles.py's .tmp/roles.json
@@ -75,7 +75,7 @@ SUMMARY_MIN, SUMMARY_MAX = 1000, None
 # every day but [am] not able to finish [it], so make a PDF which I can read end
 # to end, also cover all [the] sections". Explanations stay full, so the length
 # is set by the story count. On the card put to rahul the answer was "Up to three"
-# (2026-10-04): up to three fully explained stories a section, inside the 15-page
+# (2026-10-04): up to three fully explained stories a section, inside the page
 # limit (generate_pdf.PAGE_LIMIT, which blocks the send), and when a day runs long
 # fit_plan() drops stories rather than shortening any explanation. Measured with
 # all three tables: three 1,500-character stories a section is 12 pages on a
