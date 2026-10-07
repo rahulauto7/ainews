@@ -27,8 +27,9 @@ understand them. Asked the same day whether to keep the page limit, he chose **m
 **every summary is a full plain-language explanation of at least 1,000 characters with no upper
 limit** (see the Plain-Language News Rule), and the page limit is met by carrying **up to three
 stories a section** and dropping stories, never by shortening an explanation. Three
-1,500-character stories a section, with the three tables, is 12 pages on a weekday and 13 on a
-Thursday; three 2,000-character stories reach 15 and 16, and the builder names the stories to drop.
+1,500-character stories a section, with the three tables and the closing summary, is 14 pages on a
+weekday and 15 on a Thursday; three 2,000-character stories reach 17 and 18, and the builder names
+the stories to drop.
 Page 1 opens with a short masthead and a
 contents list (each entry links to its section and names its page), the sections flow on from each
 other, a long story runs on overleaf like a newspaper column, and story URLs sit behind the titles.
@@ -203,8 +204,9 @@ needs a browser.
 ---
 
 ## The 17 PDF Sections
-In render order: Rahul's list of 2026-10-02, led since 2026-10-03 by the careers section.
-`prep_run.py` prints the keys, so they are never guessed:
+In render order: Rahul's ranking of 2026-10-07 (jobs, hackathons, grants, then OpenAI, Anthropic,
+Grok, Gemini, the two model tables, and the rest). `prep_run.py` prints the keys, so they are never
+guessed. A **Summary of Every Section** closes the PDF (see below):
 
 1. **Remote FDE & Solutions Jobs** (`fde_careers`) — a table of open Forward Deployed and Solutions
    Engineer roles at global companies that are remote or come with a visa, plus hiring news
@@ -212,24 +214,33 @@ In render order: Rahul's list of 2026-10-02, led since 2026-10-03 by the careers
    scoped, open to professionals and founders, whose **submission deadline is at least 7 days away**
 3. **AI Grants, Fellowships & Programs** — grants, fellowships, accelerators, incubators,
    residencies and cohort programmes
-4. **AI Self-Improvement (RSI)** — recursive self-improvement, AGI progress, alignment research
-5. **Quantum + AI** — *weekly, Thursdays only* — quantum breakthroughs where AI is genuinely involved
-6. **Unaddressed AI Problems** — real pain points nobody is solving — market gaps
-7. **AI Automation & Business** — AI automation news, agentic tooling, market demand
-8. **AI Business Opportunities** — emerging opportunities — India & world
-9. **Indian AI Industry** — India-specific AI news, policy, startups, government
+4. **OpenAI** — OpenAI and ChatGPT: models, products, research, deals, people and policy
+5. **Anthropic & Claude Code** — Claude models, Claude Code, Agent SDK, Anthropic company & safety news
+6. **xAI & Grok** — xAI the company and its Grok models: releases, features, funding, deals, disputes
+7. **Google AI** — Google, Gemini and DeepMind: models, products, research and company moves
+8. **Open Models & Open Weights** — open-weight releases, licences & benchmarks, plus a standing
+   "best open model for what" table
+9. **Closed Models & Frontier APIs** — proprietary frontier models: releases, pricing & benchmarks,
+   plus a standing "best closed model for what" table
 10. **Global AI News** — worldwide AI: US, EU, China, Japan, Korea, Middle East
-11. **OpenAI** — OpenAI and ChatGPT: models, products, research, deals, people and policy
-12. **Google AI** — Google, Gemini and DeepMind: models, products, research and company moves
-13. **Anthropic & Claude Code** — Claude models, Claude Code, Agent SDK, Anthropic company & safety news
-14. **xAI & Grok** — xAI the company and its Grok models: releases, features, funding, deals, disputes
-15. **Open Models & Open Weights** — open-weight releases, licences & benchmarks, plus a standing
-    "best open model for what" table
-16. **Closed Models & Frontier APIs** — proprietary frontier models: releases, pricing & benchmarks,
-    plus a standing "best closed model for what" table
-17. **Elon Musk on AI** — Musk's own point of view on AI, from his posts and from across the web
+11. **Unaddressed AI Problems** — real pain points nobody is solving — market gaps
+12. **AI Automation & Business** — AI automation news, agentic tooling, market demand
+13. **AI Business Opportunities** — emerging opportunities — India & world
+14. **Elon Musk on AI** — Musk's own point of view on AI, from his posts and from across the web
+15. **Indian AI Industry** — India-specific AI news, policy, startups, government
+16. **AI Self-Improvement (RSI)** — recursive self-improvement, AGI progress, alignment research
+17. **Quantum + AI** — *weekly, Thursdays only* — quantum breakthroughs where AI is genuinely involved
 
-**Routing rule: a story prints once.** Company news goes to that company's section (11–14). A
+**Summary of Every Section (closes the PDF).** Rahul, 2026-10-07: "write a section at the end about a
+summary of every section, so I can read whatever I left reading from the summary section."
+`generate_pdf.build_recap()` draws it from the stories themselves, nothing extra to write: under each
+section's name, every story's title in bold and the **first sentence of its summary**, at most two
+lines, and each line links back to the full story. So **the first sentence of every summary must say
+the news on its own** — the Plain-Language rule already asks for this; here it is also what Rahul reads
+when he runs out of time. The summary counts toward the 15 pages (about 1.5–2 pages at three stories a
+section), so a Thursday at the planning figure now fills all 15.
+
+**Routing rule: a story prints once.** Company news goes to that company's section (4–7). A
 cross-vendor comparison, benchmark or price table goes to Closed Models; an open-weight release goes
 to Open Models whoever made it. What Musk himself says goes to Elon Musk on AI; xAI company and
 product news goes to xAI & Grok. Global AI News takes the rest: governments, Meta, Microsoft, NVIDIA,

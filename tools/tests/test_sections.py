@@ -7,6 +7,9 @@ is that list, copied exactly; changing it is Rahul's decision, not a refactor.
 On 2026-10-03 Rahul asked for the PDF to focus on landing a remote or
 visa-sponsored Forward Deployed / Solutions Engineer role, so the careers
 section (open roles and hiring news) was added and leads the edition.
+On 2026-10-07 Rahul re-ranked them: jobs, hackathons, grants, OpenAI, Anthropic,
+Grok, Gemini, open models, closed models, global, unaddressed problems,
+automation, business opportunities, Elon Musk, Indian AI, RSI, quantum.
 
 The description line under each section header is drawn with cell(), which does
 not wrap, so a description wider than the 186 mm column runs past the margin.
@@ -27,20 +30,20 @@ EXPECTED_ORDER = [
     "fde_careers",                     # 0  Remote FDE & Solutions Jobs
     "ai_hackathons",                   # 1  AI Hackathons
     "product_showcase_opportunities",  # 2  AI Grants, Fellowships & Programs
-    "ai_self_improvement_rsi",         # 3  AI Self-Improvement (RSI)
-    "quantum_ai_research",             # 4  Quantum + AI (Thursdays only)
-    "unaddressed_ai_problems",         # 5  Unaddressed AI Problems
-    "ai_business_automation",          # 6  AI Automation & Business
-    "ai_business_opportunities",       # 7  AI Business Opportunities
-    "indian_ai_industry",              # 8  Indian AI Industry
+    "openai_news",                     # 3  OpenAI
+    "anthropic_claude_news",           # 4  Anthropic & Claude Code
+    "xai_grok_news",                   # 5  xAI & Grok
+    "google_ai_news",                  # 6  Google AI (Gemini)
+    "open_model_landscape",            # 7  Open Models & Open Weights
+    "closed_model_landscape",          # 8  Closed Models & Frontier APIs
     "global_ai_news",                  # 9  Global AI News
-    "openai_news",                     # 10 OpenAI
-    "google_ai_news",                  # 11 Google AI
-    "anthropic_claude_news",           # 12 Anthropic & Claude Code
-    "xai_grok_news",                   # 13 xAI & Grok
-    "open_model_landscape",            # 14 Open Models & Open Weights
-    "closed_model_landscape",          # 15 Closed Models & Frontier APIs
-    "elon_musk_ai_vision",             # 16 Elon Musk on AI
+    "unaddressed_ai_problems",         # 10 Unaddressed AI Problems
+    "ai_business_automation",          # 11 AI Automation & Business
+    "ai_business_opportunities",       # 12 AI Business Opportunities
+    "elon_musk_ai_vision",             # 13 Elon Musk on AI
+    "indian_ai_industry",              # 14 Indian AI Industry
+    "ai_self_improvement_rsi",         # 15 AI Self-Improvement (RSI)
+    "quantum_ai_research",             # 16 Quantum + AI (Thursdays only)
 ]
 
 DESC_MAX_MM = 186

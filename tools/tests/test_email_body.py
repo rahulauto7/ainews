@@ -62,7 +62,7 @@ def main():
     check(failures, summary["sections"][0] == ("AI Hackathons", 6),
           f"first section: {summary['sections'][0]!r}")
     check(failures, [n for n, _ in summary["sections"]] ==
-          ["AI Hackathons", "Quantum + AI", "Global AI News"],
+          ["AI Hackathons", "Global AI News", "Quantum + AI"],
           f"render order wrong: {[n for n, _ in summary['sections']]!r}")
 
     # A section with no stories today (Quantum on a non-Thursday) is not listed.

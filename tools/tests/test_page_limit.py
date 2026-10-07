@@ -174,11 +174,35 @@ def main():
         a = annot.get_object()
         if "/Dest" in a:
             dests.append(index.get(a["/Dest"][0].idnum))
-    # Two links per entry (the label and the page number), in contents order.
+    # Two links per entry (the label and the page number), in contents order;
+    # the summary at the end closes the list.
     targets = dests[::2]
     cases += 1
-    check(failures, targets == [int(n) for n in numbers],
+    check(failures, targets[:-1] == [int(n) for n in numbers],
           f"contents links land on {targets}, the list says {numbers}")
+
+    # ── 5b. The summary of every section closes the edition ──────────────────
+    # rahul, 2026-10-07: a summary at the end, to read whatever was left unread.
+    # Every story is in it, under its section, and each links back to its story.
+    from generate_pdf import RECAP_LABEL
+    recap_page = next((n for n, t in enumerate(pages) if RECAP_LABEL.upper() in t), None)
+    cases += 1
+    check(failures, recap_page is not None and RECAP_LABEL in page1
+          and targets[-1] == recap_page + 1,
+          f"the summary must be listed on page 1 and linked to its page, {recap_page}")
+    recap = squash("".join(pages[recap_page:]).split(RECAP_LABEL.upper(), 1)[-1]) \
+        if recap_page is not None else ""
+    missing = [s["title"] for v in full["sections"].values() for s in v
+               if squash(s["title"])[:30] not in recap]
+    cases += 1
+    check(failures, not missing, f"{len(missing)} stories missing from the summary")
+    jumps = [index.get(a.get_object()["/Dest"][0].idnum)
+             for pg in reader.pages[recap_page or 0:] for a in pg.get("/Annots") or []
+             if "/Dest" in a.get_object()]
+    cases += 1
+    check(failures, recap_page is not None and jumps and all(j and j <= recap_page + 1 for j in jumps)
+          and len(jumps) >= sum(len(v) for v in full["sections"].values()),
+          f"every summary line must link back to its story, got {len(jumps)} links")
 
     # ── 6. Titles stay clickable now the URL line is gone ────────────────────
     uris = {a.get_object()["/A"]["/URI"] for pg in reader.pages for a in pg.get("/Annots") or []

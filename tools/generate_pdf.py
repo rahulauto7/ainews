@@ -17,6 +17,7 @@ Features:
 
 import json
 import os
+import re
 import sys
 import unicodedata
 from datetime import datetime
@@ -170,29 +171,27 @@ SECTION_CONFIG = {
     },
 }
 
-# Rendering order: Rahul's list of 2026-10-02, with the four company sections
-# (OpenAI, Google AI, Anthropic & Claude Code, xAI & Grok) between Global AI News
-# and the two model tables. Changing it is rahul's decision, not a refactor. The
-# careers section leads since 2026-10-03, when rahul asked for the PDF to focus on
-# landing a remote Forward Deployed or Solutions Engineer job.
+# Rendering order: Rahul's ranking of 2026-10-07. Jobs, then the two things he
+# can enter (hackathons, grants), then the four company sections, the two model
+# tables, and the rest. Changing it is rahul's decision, not a refactor.
 SECTION_ORDER = [
     "fde_careers",                     # 0  Remote FDE & Solutions Jobs
     "ai_hackathons",                   # 1  AI Hackathons
     "product_showcase_opportunities",  # 2  AI Grants, Fellowships & Programs
-    "ai_self_improvement_rsi",         # 3  AI Self-Improvement (RSI)
-    "quantum_ai_research",             # 4  Quantum + AI (Thursdays only)
-    "unaddressed_ai_problems",         # 5  Unaddressed AI Problems
-    "ai_business_automation",          # 6  AI Automation & Business
-    "ai_business_opportunities",       # 7  AI Business Opportunities
-    "indian_ai_industry",              # 8  Indian AI Industry
+    "openai_news",                     # 3  OpenAI
+    "anthropic_claude_news",           # 4  Anthropic & Claude Code
+    "xai_grok_news",                   # 5  xAI & Grok
+    "google_ai_news",                  # 6  Google AI (Gemini)
+    "open_model_landscape",            # 7  Open Models & Open Weights
+    "closed_model_landscape",          # 8  Closed Models & Frontier APIs
     "global_ai_news",                  # 9  Global AI News
-    "openai_news",                     # 10 OpenAI
-    "google_ai_news",                  # 11 Google AI
-    "anthropic_claude_news",           # 12 Anthropic & Claude Code
-    "xai_grok_news",                   # 13 xAI & Grok
-    "open_model_landscape",            # 14 Open Models & Open Weights
-    "closed_model_landscape",          # 15 Closed Models & Frontier APIs
-    "elon_musk_ai_vision",             # 16 Elon Musk on AI
+    "unaddressed_ai_problems",         # 10 Unaddressed AI Problems
+    "ai_business_automation",          # 11 AI Automation & Business
+    "ai_business_opportunities",       # 12 AI Business Opportunities
+    "elon_musk_ai_vision",             # 13 Elon Musk on AI
+    "indian_ai_industry",              # 14 Indian AI Industry
+    "ai_self_improvement_rsi",         # 15 AI Self-Improvement (RSI)
+    "quantum_ai_research",             # 16 Quantum + AI (Thursdays only)
 ]
 
 
@@ -339,17 +338,21 @@ def build_masthead(pdf, sections_data, rendered, links, pages=None):
     y += 6
 
     # Numbered down the left column, then down the right, so the order reads the
-    # same as the pages that follow.
-    rows = (len(rendered) + 1) // 2
+    # same as the pages that follow. The summary at the end closes the list.
+    entries = rendered + [RECAP_KEY]
+    rows = (len(entries) + 1) // 2
     pdf.set_font("Helvetica", "", 8)
-    for i, key in enumerate(rendered):
+    for i, key in enumerate(entries):
         col, row = divmod(i, rows)
         x, ry = 12 + col * 95, y + row * 5
-        r, g, b = SECTION_CONFIG[key]["color"]
+        if key == RECAP_KEY:
+            r, g, b, name, count = *RECAP_COLOR, RECAP_LABEL, 0
+        else:
+            r, g, b = SECTION_CONFIG[key]["color"]
+            name, count = SECTION_CONFIG[key]["label"], len(sections_data.get(key) or [])
         pdf.set_fill_color(r, g, b)
         pdf.rect(x, ry + 0.8, 2.5, 3.4, "F")
-        count = len(sections_data.get(key) or [])
-        label = f"{i + 1}. {SECTION_CONFIG[key]['label']}" + (f"  ({count})" if count else "")
+        label = f"{i + 1}. {name}" + (f"  ({count})" if count else "")
         pdf.set_text_color(50, 50, 50)
         pdf.set_xy(x + 4, ry)
         pdf.cell(76, 5, sanitize_text(label), link=links[key])
@@ -415,12 +418,14 @@ def _lines_before_break(y, lines):
     return k if k >= MIN_LINES_BEFORE_BREAK else 0
 
 
-def build_section(pdf, section_key, stories, extras=None, link=None):
+def build_section(pdf, section_key, stories, extras=None, link=None, story_links=None):
     """Draw one section where the page currently stands: header, table, stories.
 
     `extras` is the section's entry from `section_extras` in analyzed_content.json.
     Sections that carry no extras pass None. `link` is the contents entry's
-    internal link, pointed here. Returns the page the section's header landed on.
+    internal link, pointed here; `story_links`, one internal link per story, are
+    pointed at each story so the summary at the end can jump back to it. Returns
+    the page the section's header landed on.
 
     Sections flow on from the one before; the header moves overleaf only when it
     and the section's first block would not fit under it together, so a header
@@ -498,6 +503,8 @@ def build_section(pdf, section_key, stories, extras=None, link=None):
                 y = pdf.get_y()
                 if y + block_h > PAGE_BOTTOM:
                     split = _lines_before_break(y, lines)
+        if story_links:
+            pdf.set_link(story_links[idx], y=y, page=pdf.page_no())
 
         # Alternating background, sized to the measured block; the part of a
         # split story that runs on overleaf is drawn by header() on that page.
@@ -756,6 +763,130 @@ def _meta_parts(section_key, story):
     return parts
 
 
+# ── Summary of every section ─────────────────────────────────────────────────
+# Rahul, 2026-10-07: "write a section at the end about a summary of every
+# section, so I can read whatever I left reading from the summary section". Every
+# story gets its title and the gist of its explanation, at most RECAP_MAX_LINES
+# lines, and the title links back to the full story.
+RECAP_KEY = "_summary"
+RECAP_LABEL = "Summary of Every Section"
+RECAP_COLOR = (26, 26, 46)  # The masthead's navy
+RECAP_DESC = "The gist of every story above, in edition order - tap a story to jump back to it"
+RECAP_LH = 3.4
+RECAP_MAX_LINES = 2
+RECAP_X, RECAP_W = 16, 182
+RECAP_LABEL_H = 5.5
+
+# A sentence ends at . ! or ? after a lowercase letter, digit, quote or bracket,
+# and before a capital: "U.S." and "3.5" do not end one.
+_SENTENCE_END = re.compile(r"""(?<=[a-z0-9)%"'])[.!?]["')]?\s+(?=["'(]?[A-Z0-9])""")
+
+
+def _recap_text(story):
+    """'**Title** - first sentence', sized to at most RECAP_MAX_LINES lines.
+
+    The title is bold (fpdf markdown); the markdown markers are taken out of the
+    text itself so a title cannot switch the styling. The gist is the summary's
+    first sentence, cut between words when it would run past the line budget.
+    """
+    def plain(text):
+        text = sanitize_text(text or "").replace("**", "")
+        return re.sub(r"(_|-)\1+", r"\1", text).strip()
+
+    title = plain(story.get("title", "Untitled"))
+    summary = plain(story.get("summary", ""))
+    match = _SENTENCE_END.search(summary, 40)
+    gist = summary[:match.start() + 1] if match else summary
+    return f"**{title}** - {gist}" if gist else f"**{title}**"
+
+
+def _recap_lines(pdf, text):
+    pdf.set_font("Helvetica", "", 7.5)
+    pdf.set_x(RECAP_X)
+    h = pdf.multi_cell(RECAP_W, RECAP_LH, text, markdown=True, dry_run=True, output="HEIGHT")
+    return round(h / RECAP_LH)
+
+
+def _fit_recap(pdf, text):
+    """Cut `text` between words until it fits RECAP_MAX_LINES lines."""
+    if _recap_lines(pdf, text) <= RECAP_MAX_LINES:
+        return text
+    words = text.split(" ")
+    while len(words) > 2 and _recap_lines(pdf, " ".join(words) + "...") > RECAP_MAX_LINES:
+        words.pop()
+    cut = " ".join(words).rstrip(" -|:,;")
+    # A cut inside the bold title leaves it open; close it.
+    return cut + ("**" if cut.count("**") % 2 else "") + "..."
+
+
+def build_recap(pdf, sections_data, rendered, story_links, link=None):
+    """The closing section: one or two lines per story, under its section's name.
+
+    Flows on from the last section, like every other one. Returns the page its
+    header landed on.
+    """
+    y = pdf.get_y()
+    if y > 20:
+        y += 2
+    if y + SECTION_HEAD_H + RECAP_LABEL_H + RECAP_MAX_LINES * RECAP_LH > PAGE_BOTTOM:
+        pdf.add_page()
+        y = pdf.get_y()
+    if link is not None:
+        pdf.set_link(link, y=y, page=pdf.page_no())
+    page = pdf.page_no()
+
+    pdf.set_fill_color(*RECAP_COLOR)
+    pdf.rect(10, y, 190, 7, "F")
+    pdf.set_font("Helvetica", "B", 10.5)
+    pdf.set_text_color(255, 255, 255)
+    pdf.set_xy(13, y + 0.5)
+    pdf.cell(184, 6, RECAP_LABEL.upper())
+    y += 8
+    pdf.set_font("Helvetica", "I", 7)
+    pdf.set_text_color(100, 100, 100)
+    pdf.set_xy(12, y)
+    pdf.cell(186, 4, RECAP_DESC)
+    y += 6
+
+    for key in rendered:
+        stories = sections_data.get(key) or []
+        if not stories:
+            continue  # a table-only section has nothing to recap
+        config = SECTION_CONFIG[key]
+        texts = [_fit_recap(pdf, _recap_text(s)) for s in stories]
+        heights = [_recap_lines(pdf, t) * RECAP_LH + 1 for t in texts]
+        # The section's name never sits alone at the foot of a page.
+        if y + RECAP_LABEL_H + heights[0] > PAGE_BOTTOM:
+            pdf.add_page()
+            y = pdf.get_y()
+        pdf.set_fill_color(*config["color"])
+        pdf.rect(12, y + 0.9, 2.5, 3.4, "F")
+        pdf.set_font("Helvetica", "B", 8.5)
+        pdf.set_text_color(*config["color"])
+        pdf.set_xy(16, y)
+        pdf.cell(180, 5, sanitize_text(config["label"]), link=story_links[key][0])
+        y += RECAP_LABEL_H
+
+        for text, h, target in zip(texts, heights, story_links[key]):
+            if y + h > PAGE_BOTTOM:
+                pdf.add_page()
+                y = pdf.get_y()
+            pdf.set_font("Helvetica", "", 7.5)
+            pdf.set_text_color(*config["color"])
+            pdf.set_xy(13, y)
+            pdf.cell(3, RECAP_LH, "-")
+            pdf.set_text_color(60, 60, 60)
+            pdf.set_xy(RECAP_X, y)
+            pdf.multi_cell(RECAP_W, RECAP_LH, text, markdown=True)
+            pdf.link(RECAP_X, y, RECAP_W, h - 1, target)
+            y += h
+        y += 1
+
+    pdf.set_text_color(0, 0, 0)
+    pdf.set_y(y)
+    return page
+
+
 def render_edition(data, passes=2):
     """Draw the whole edition and return the FPDF object, not yet saved.
 
@@ -781,11 +912,15 @@ def render_edition(data, passes=2):
         pdf.alias_nb_pages()
         pdf.set_auto_page_break(auto=True, margin=15)
         pdf.add_page()
-        links = {k: pdf.add_link() for k in rendered}
+        links = {k: pdf.add_link() for k in rendered + [RECAP_KEY]}
+        story_links = {k: [pdf.add_link() for _ in sections_data.get(k) or []]
+                       for k in rendered}
         pdf.set_y(build_masthead(pdf, sections_data, rendered, links, pages))
         pages = {k: build_section(pdf, k, sections_data.get(k, []),
-                                  section_extras.get(k), links[k])
+                                  section_extras.get(k), links[k], story_links[k])
                  for k in rendered}
+        pages[RECAP_KEY] = build_recap(pdf, sections_data, rendered, story_links,
+                                       links[RECAP_KEY])
     return pdf
 
 

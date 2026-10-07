@@ -38,31 +38,31 @@ OUT_FILE = os.path.join(web_text.TMP_DIR, "digest.md")
 TITLE_MAX = 120
 SNIPPET_MAX = 140
 
-# Order follows the PDF's sixteen sections, so the digest reads top to bottom in
+# Order follows the PDF's seventeen sections, so the digest reads top to bottom in
 # the order the builder is written. Each label names, after "->", the section the
 # group feeds: this list is also the category-to-section map.
 CATEGORY_ORDER = [
     ("careers", "FDE and Solutions Engineer jobs, AI hiring, work visas, remote work -> Remote FDE & Solutions Jobs"),
     ("opportunity", "Opportunity feeds -> AI Hackathons / AI Grants, Fellowships & Programs"),
-    ("rsi", "Self-improvement, safety, alignment -> AI Self-Improvement (RSI)"),
-    ("ai_research", "Research: arXiv titles, lab and university feeds -> AI Self-Improvement (RSI)"),
-    ("quantum", "Quantum, Thursdays -> Quantum + AI"),
-    ("problems", "AI failures and gaps -> Unaddressed AI Problems"),
-    ("automation", "Automation, agents, enterprise AI -> AI Automation & Business"),
-    ("business", "Funding, startups, markets -> AI Business Opportunities"),
-    ("showcase", "Product Hunt -> AI Business Opportunities"),
-    ("indian", "Indian publishers -> Indian AI Industry"),
+    ("openai", "OpenAI -> OpenAI"),
+    ("anthropic_claude", "Anthropic and Claude -> Anthropic & Claude Code"),
+    ("xai_grok", "xAI and Grok -> xAI & Grok"),
+    ("google", "Google, Gemini, DeepMind -> Google AI"),
+    ("open_model", "Open models -> Open Models & Open Weights"),
+    ("closed_model", "Closed models -> Closed Models & Frontier APIs"),
     ("world", "Regional editions and outlets worldwide, policy and regulators -> Global AI News"),
     ("world_lang", "Non-English press (summarise in English, English title) -> Global AI News"),
     ("general", "General AI news -> Global AI News"),
     ("company_blog", "Other AI companies' own blogs -> Global AI News"),
-    ("openai", "OpenAI -> OpenAI"),
-    ("google", "Google, Gemini, DeepMind -> Google AI"),
-    ("anthropic_claude", "Anthropic and Claude -> Anthropic & Claude Code"),
-    ("xai_grok", "xAI and Grok -> xAI & Grok"),
-    ("open_model", "Open models -> Open Models & Open Weights"),
-    ("closed_model", "Closed models -> Closed Models & Frontier APIs"),
+    ("problems", "AI failures and gaps -> Unaddressed AI Problems"),
+    ("automation", "Automation, agents, enterprise AI -> AI Automation & Business"),
+    ("business", "Funding, startups, markets -> AI Business Opportunities"),
+    ("showcase", "Product Hunt -> AI Business Opportunities"),
     ("elon_musk", "Elon Musk in his own words -> Elon Musk on AI"),
+    ("indian", "Indian publishers -> Indian AI Industry"),
+    ("rsi", "Self-improvement, safety, alignment -> AI Self-Improvement (RSI)"),
+    ("ai_research", "Research: arXiv titles, lab and university feeds -> AI Self-Improvement (RSI)"),
+    ("quantum", "Quantum, Thursdays -> Quantum + AI"),
     ("video", "YouTube and podcasts: leads for any section"),
     ("social", "X posts, Hacker News, Lobsters: leads for any section"),
     ("forums", "Reddit and Bluesky: leads for any section"),
