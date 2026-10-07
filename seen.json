@@ -1,11 +1,5 @@
 {
- "failing": {
-  "Devpost": {
-   "error": "HTTPError: 503 Server Error: Service Temporarily Unavailable for url: https://devpost.com/api/hackathons?status%5B%5D=open&status%5B%5D=upcoming&order_by=recently-added&themes%5B%5D=Machine+Learning%2",
-   "since": "2026-10-07T07:19:41.974953+00:00",
-   "warned": false
-  }
- },
+ "failing": {},
  "platforms": {
   "Devfolio": "2026-10-04",
   "Devpost": "2026-10-04",
