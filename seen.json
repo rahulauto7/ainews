@@ -1,8 +1,8 @@
 {
  "failing": {
-  "Devfolio": {
-   "error": "ReadTimeout: HTTPSConnectionPool(host='devfolio.co', port=443): Read timed out. (read timeout=25)",
-   "since": "2026-10-07T00:49:27.628402+00:00",
+  "Devpost": {
+   "error": "HTTPError: 503 Server Error: Service Temporarily Unavailable for url: https://devpost.com/api/hackathons?status%5B%5D=open&status%5B%5D=upcoming&order_by=recently-added&themes%5B%5D=Machine+Learning%2",
+   "since": "2026-10-07T07:19:41.974953+00:00",
    "warned": false
   }
  },
