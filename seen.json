@@ -1,5 +1,11 @@
 {
- "failing": {},
+ "failing": {
+  "Devfolio": {
+   "error": "ReadTimeout: HTTPSConnectionPool(host='devfolio.co', port=443): Read timed out. (read timeout=25)",
+   "since": "2026-10-07T00:49:27.628402+00:00",
+   "warned": false
+  }
+ },
  "platforms": {
   "Devfolio": "2026-10-04",
   "Devpost": "2026-10-04",
