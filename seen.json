@@ -442,6 +442,12 @@
    "first_seen": "2026-10-04",
    "name": "VORTEX 2K26 – Global AI Innovation Hackathon",
    "platform": "Unstop"
+  },
+  "unstop:1767524": {
+   "deadline": "2026-10-23",
+   "first_seen": "2026-10-08",
+   "name": "Commit for Good | AI × Open Source × Public Good",
+   "platform": "Unstop"
   }
  },
  "version": 1
