@@ -305,6 +305,18 @@
    "name": "Write a Research Paper on Coding Agents",
    "platform": "mlcontests"
   },
+  "mlcontests:kaggle.com/competitions/misconception-detection-in-k-12-student-math-workings/overview": {
+   "deadline": "2026-11-17",
+   "first_seen": "2026-10-09",
+   "name": "Detect root misconceptions in K–12 math solutions",
+   "platform": "mlcontests"
+  },
+  "mlcontests:kaggle.com/competitions/nfl-big-data-bowl-2027": {
+   "deadline": "2027-01-06",
+   "first_seen": "2026-10-09",
+   "name": "NFL Big Data Bowl 2027",
+   "platform": "mlcontests"
+  },
   "mlcontests:kaggle.com/competitions/rsna-knee-abnormality-detection": {
    "deadline": "2026-10-22",
    "first_seen": "2026-10-04",
@@ -357,6 +369,12 @@
    "deadline": "2026-11-15",
    "first_seen": "2026-10-04",
    "name": "Predict Price Movements from Limit Order Book Data",
+   "platform": "mlcontests"
+  },
+  "mlcontests:xiuwenz2.github.io/sapc2-website": {
+   "deadline": "2026-10-24",
+   "first_seen": "2026-10-09",
+   "name": "Automated Speech Recognition Under Diverse Speech Patterns",
    "platform": "mlcontests"
   },
   "mlcontests:zindi.africa/competitions/caribbean-voices-hackathon": {
@@ -441,6 +459,12 @@
    "deadline": "2026-10-15",
    "first_seen": "2026-10-04",
    "name": "VORTEX 2K26 – Global AI Innovation Hackathon",
+   "platform": "Unstop"
+  },
+  "unstop:1765191": {
+   "deadline": "2026-10-21",
+   "first_seen": "2026-10-09",
+   "name": "Build with AI: ABC (Anybody Can Code)",
    "platform": "Unstop"
   },
   "unstop:1767524": {
