@@ -156,9 +156,10 @@ Outputs: `.tmp/rss_articles.json`, `.tmp/digest.md`, `.tmp/devpost.txt`, `.tmp/r
    validates section counts, summary lengths, missing URLs and `published_date`, renders the PDF to
    count its pages, and prints the problems. Over 17 pages it prints `to fit, drop:` with the
    lowest-relevance stories from the fullest sections; drop those (or others of your choosing), never
-   shorten an explanation. Write a long summary in two or three paragraphs, separated by a blank
-   line inside the `'''` quotes; the PDF prints the break. Pass the careers table with
-   `roles = open_roles()` and `write_analyzed(..., roles=roles)`; it is built from `.tmp/roles.json`
+   shorten an explanation. Write each summary in short paragraphs, one job each (usually four; see
+   the Plain-Language News Rule), separated by a blank line inside the `'''` quotes; the PDF prints
+   the break. Pass the careers table with `roles = open_roles()` and
+   `write_analyzed(..., roles=roles)`; it is built from `.tmp/roles.json`
    every run and never carried forward or hand-edited. `rejected=[(name, reason)]` feeds tomorrow's digest so a rejected item is not
    re-investigated.
 
@@ -260,7 +261,8 @@ can follow, **as fully as the story needs, however many lines that takes**. The 
 elsewhere. They are news explanations, not strategy notes, and they carry no advice.
 
 **How to apply** — every summary does these five things, woven into flowing prose with **no headings
-or bold labels inside the summary**, in two or three paragraphs when it runs long:
+or bold labels inside the summary**, in short paragraphs that each do one job (the 2026-10-08
+model below):
 1. **Say what happened.** Lead with the actual event, not with its implications.
 2. **Explain every name and term at first mention.** Who a person is, what a company does, what a
    product or technical term means — inline, in a clause or in brackets. Assume the reader has never
@@ -278,6 +280,22 @@ or bold labels inside the summary**, in two or three paragraphs when it runs lon
 common words, active voice. Read the whole article first (`fetch_articles.py` prints 5,000
 characters, and reads another outlet when the publisher blocks it), so the explanation comes from
 the reporting rather than from the headline.
+
+**The model to copy is the 2026-10-08 edition** (rahul, 2026-10-09: "yesterday pdf explanation is
+good"; `editions/analyzed_content_2026-10-08.bak.json` on the archive branch). Read two or three of
+its summaries before writing. Its summaries were shorter than the three editions before it (1,575
+characters on average against about 1,780) yet easier to read, and the difference can be measured:
+- **Four short paragraphs, one job each**, where the editions before it had three dense ones: what
+  happened and who did it; why it happened; how it works; then the numbers in context, what comes
+  next and what is still unknown.
+- **Sentences of about 18 words**, against 21–23 before. One idea per sentence.
+- **A term gets its own short sentence** ("Tokens are the small chunks of text AI models read and
+  write."), rather than a bracket in the middle of a long sentence that is already explaining
+  something else.
+- **A concrete example or an everyday comparison** where the mechanism is explained ("like being
+  lent a professional kitchen and a set of free recipes, then judged on the meal").
+- Most of its stories took 1,300–1,900 characters. The 1,000-character floor stands, and there is
+  still no ceiling.
 
 **Do NOT include**: `Automation angle:` hooks, "why it matters for you" blocks, "the opportunity
 is..." framing, or suggestions about what to build. Removed 2026-09-03 on user instruction —
@@ -611,6 +629,15 @@ stale jobs. The readers are pure functions over a `get`, tested offline in `test
 ## Lessons Learned
 
 ### Still live — these change what you do
+- **2026-10-09: date the event, not the article.** Four of the day's strongest candidates were
+  Wednesday events in Thursday-dated articles: SpaceX's $40B Nvidia chip loan (Bloomberg/FT,
+  Wednesday), Grok Bot's native X search, Automation Anywhere buying Boost.ai, and Character.AI's
+  Kentucky filing. Each article passed the 24h gate on its own timestamp, but the news was over a
+  day old. Read the fetched text for when the event happened ("on Wednesday", a date) and reject a
+  story whose event falls before the window; the rejection log says why, so tomorrow's run does not
+  re-check it. The same run showed that `fetch_articles.py`'s "found by search" fallback can return
+  a different story (The Information's subscriber survey came back as PPC Land's Ecosia piece), so
+  check that the text matches the headline before writing from it.
 - **2026-10-04: a PDF rahul can finish, aimed at an FDE job.** rahul could not finish the daily PDF
   and asked for one read end to end that still covers every section and focuses on landing a remote
   or visa-sponsored Forward Deployed / Solutions Engineer role at a global company. Up to three
@@ -793,6 +820,14 @@ stale jobs. The readers are pure functions over a `get`, tested offline in `test
 | A smaller prize printed above a bigger one in AI Hackathons, or "$100k in credits" outranking cash (2026-10-03) | `prize_usd()` / `by_prize()` in `hackathon_sources.py`, `test_hackathon_prizes.py` |
 
 ### History
+- **2026-10-09:** Friday, quantum out. The 05:18 IST routine run stopped on the account's weekly
+  usage limit, so the edition was built by hand in a cloud session on rahul's request, with the
+  2026-10-08 edition as the model for the explanations (see the Plain-Language News Rule). Shipped
+  32 stories in 16 sections, 13 pages, 0 errors and 0 warnings on the first verify; oldest story
+  17.3h. Summaries averaged 1,611 characters in 4.0 paragraphs at 16 words a sentence (10-08: 1,575,
+  4.1 and 18). The scrape read 397 sources for 1,913 articles. Not archived or emailed from the
+  session; the PDF went to rahul directly. Rested Virtual Embryo, YC and EF Bangalore; returned
+  Amazon, PayPal, AIxBio, a16z speedrun and Techstars AI Health.
 - **2026-10-04:** On rahul's "make a PDF which I can read end to end ... focus toward my getting [a]
   remote AI job as forward deployed eng or solution engineer in global companies" and the card answer
   "Up to three": sections carry up to three stories, picked for that goal; new first section Remote
