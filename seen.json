@@ -185,6 +185,12 @@
    "name": "Reality Check(Meet-up)",
    "platform": "Devpost"
   },
+  "devpost:31681": {
+   "deadline": "2027-01-23",
+   "first_seen": "2026-10-12",
+   "name": "GSD Hackathon - Get Shit Done",
+   "platform": "Devpost"
+  },
   "hackster:infineon-boss-battle": {
    "deadline": "2027-01-04",
    "first_seen": "2026-10-04",
@@ -483,6 +489,12 @@
    "deadline": "2026-10-30",
    "first_seen": "2026-10-12",
    "name": "CodewithChat AI Dev Challenge: Build, Launch & Monetize with Vibe Coding",
+   "platform": "Unstop"
+  },
+  "unstop:1769121": {
+   "deadline": "2026-12-06",
+   "first_seen": "2026-10-12",
+   "name": "Homingo Hack Days: Online AI Hackathon",
    "platform": "Unstop"
   }
  },
