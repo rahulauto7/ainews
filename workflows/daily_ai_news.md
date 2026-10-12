@@ -571,7 +571,9 @@ no session:
      event the organiser paying the trip (rahul, later on 2026-10-12: "It may be hybrid, but
      sponsorships for hybrid (like onsite) will be required, like flight, visa": the page must say
      flights or travel are covered, reimbursed or sponsored, or offer travel grants; "at your own
-     expense" or "not covered" fails; the email quotes that sentence and any visa help),
+     expense" or "not covered" fails; and, rahul later the same day, "If they don't say, 'We will
+     provide a visa' ... just skip it": the page must also offer visa help (support, sponsorship,
+     assistance or invitation letters); the email quotes both sentences),
      an open sign-up (registration period not over, no "registration closed"), and rules that let
      rahul enter: an Indian citizen in India working at IOCL, a state-owned company, or (rahul,
      later on 2026-10-12) a startup founder with no job. Out: students only (Devpost's "Students

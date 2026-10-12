@@ -19,9 +19,10 @@ for:
   cash       the prize money, in rough US dollars (hackathon_sources.prize_usd).
              Devpost's listing figure counts swag and credits, so its page's
              "$45,000 in cash" wins. At least MIN_CASH_USD.
-  format     online, or in person / hybrid only when the organiser pays the
-             travel (flights, travel grants or reimbursement); visa help is
-             shown when the page offers it. When the listing does not say,
+  format     online, or in person / hybrid only when the page says both that
+             the organiser pays the travel (flights, travel grants or
+             reimbursement) and that it helps with the visa (rahul: "If they
+             don't say ... 'We will provide a visa' ... just skip it"). When the listing does not say,
              a page that never says online, virtual or remote counts as in
              person.
   sign-up    "registration closed", or a registration period that has ended.
@@ -263,6 +264,9 @@ def check(e, text, today=None):
     travel, visa = travel_support(text) if in_person else ("", "")
     if in_person and not travel:
         reasons.append("in person or hybrid, and the page offers no paid travel (flights or travel grant)")
+    # rahul, 2026-10-12: "If they don't say ... 'We will provide a visa' ... just skip it."
+    if in_person and not visa:
+        reasons.append("in person or hybrid, and the page offers no visa help")
     reg = e.get("reg_closes") or registration_closes(text, today)
     if reg and reg < today:
         reasons.append(f"registration closed {reg:%d %b}")

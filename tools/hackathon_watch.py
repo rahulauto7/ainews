@@ -20,8 +20,8 @@ sign-up has not closed, its submission deadline leaves 7+ days to build (or is
 not listed), and its listed prize is not known to be under $5,000. The page
 check (hackathon_check.py) reads the event's own page and rules for the cash
 prize, an online format (or, for an in-person or hybrid event, the organiser
-paying the travel: rahul, later on 2026-10-12, "It may be hybrid, but
-sponsorships ... will be required, like flight, visa"), an open sign-up and who
+paying the travel and promising visa help: rahul, later on 2026-10-12, "It may
+be hybrid, but sponsorships ... will be required, like flight, visa"), an open sign-up and who
 may enter (an Indian citizen working at state-owned IOCL, or a startup founder
 with no job). Only events that pass are emailed, biggest cash prize first, each
 once; the seen-list is a JSON file the workflow keeps on the
@@ -271,7 +271,7 @@ def _lines(e, result, today):
     if result.get("in_person"):
         where = f" ({e['where']})" if e.get("where") and e["where"].lower() not in ("online", e["platform"].lower()) else ""
         lines.append(f"In person or hybrid{where}. Travel paid: \"{result['travel']}\"")
-        lines.append(f"Visa help: \"{result['visa']}\"" if result.get("visa") else "Visa help: not mentioned, ask the organiser")
+        lines.append(f"Visa help: \"{result['visa']}\"")
     lines += [f"Note: {n}" for n in result.get("notes") or []]
     lines.append(f"Who can enter: {result['who']}" if result.get("who")
                  else "Who can enter: the page sets no limit we could find, check the rules")
@@ -305,7 +305,8 @@ AI Hackathon Alerts</span></div>
 FOOTER = (f"Checked every hour on {len(WATCHED)} sites: "
           + ", ".join(name if name != "mlcontests" else "mlcontests.com (Kaggle, DrivenData, CodaLab"
                       " and more)" for name, _ in WATCHED)
-          + f". Only AI hackathons that are online, or in person / hybrid with travel paid by the organiser, "
+          + f". Only AI hackathons that are online, or in person / hybrid with travel paid and visa help "
+          "promised by the organiser, "
           f"with at least {money(hc.MIN_CASH_USD)} in cash prizes, sign-up "
           f"still open, {hs.MIN_BUILD_DAYS}+ days before the submission deadline, and rules that let an "
           "Indian working professional or startup founder enter (no students-only or country-limited "

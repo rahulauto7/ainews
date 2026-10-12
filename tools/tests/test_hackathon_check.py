@@ -123,8 +123,11 @@ def main():
     check(failures, got["in_person"] and "Flights and accommodation are covered" in got["travel"],
           f"travel evidence: {got['travel']!r}")
     check(failures, "invitation letters" in got["visa"], f"visa evidence: {got['visa']!r}")
-    expect("hybrid with travel grants", ev(online=None), "A hybrid hackathon in Berlin with a venue on site. "
-           "Open to all. Travel grants available for international teams.", True)
+    expect("hybrid with travel grants and visa support", ev(online=None), "A hybrid hackathon in Berlin with a "
+           "venue on site. Open to all. Travel grants available for international teams. Visa support is offered.",
+           True)
+    expect("in person, flights paid but no visa word", ev(online=False), "Held in Singapore. Open to all. "
+           "Flights are covered for all finalists.", False, "no visa help")
     expect("in person, travel at own expense", ev(online=False), "Held in London. Open to all. "
            "Participants are responsible for travel costs and travel is not covered.", False, "no paid travel")
     expect("in person, nothing about travel", ev(online=False), "Held in Bengaluru. Open to all. Free food.",
