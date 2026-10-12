@@ -327,7 +327,7 @@ def alert_email(passed, today, first=False):
     if first:
         subject = f"Hackathon alerts, now cash and eligibility checked: {len(passed)} open"
         intro = ("From now on you only get AI hackathons with real cash prizes that you can sign up for and "
-                 "enter, online or with travel paid. These {len(passed)} pass today, biggest cash prize first:")
+                 f"enter, online or with travel paid. These {len(passed)} pass today, biggest cash prize first:")
     text = intro + "\n\n" + "\n\n".join(event_text(e, r, today) for e, r in passed) + "\n\n" + FOOTER
     body = _page(f'<p style="font-size:14px;color:#333;">{intro}</p>',
                  "".join(event_html(e, r, today) for e, r in passed), FOOTER)
