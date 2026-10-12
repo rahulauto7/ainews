@@ -88,8 +88,10 @@ def main():
     expect("India excluded in prose", ev(), "Online. Residents of India and Pakistan are not eligible.",
            False, "India excluded")
     expect("Indiana is not India", ev(), "Online. Residents of Indiana are not eligible for the travel grant.", True)
-    expect("government staff excluded", ev(), "Online. Employees of any government or state-owned enterprise are "
-           "not eligible to participate.", False, "state-owned")
+    got = expect("government staff excluded: enter as a founder", ev(), "Online. Employees of any government "
+                 "or state-owned enterprise are not eligible to participate.", True)
+    cases += 1
+    check(failures, got["notes"] and "founder" in got["notes"][0], f"founder note: {got['notes']}")
     expect("one company's staff", ev(), "Online. This challenge is open only to employees of Acme Corp.",
            False, "staff or members")
     expect("Devpost menu is not a staff-only rule", ev("Devpost"),

@@ -573,10 +573,11 @@ no session:
      flights or travel are covered, reimbursed or sponsored, or offer travel grants; "at your own
      expense" or "not covered" fails; the email quotes that sentence and any visa help),
      an open sign-up (registration period not over, no "registration closed"), and rules that let
-     rahul enter: an Indian citizen in India working at IOCL, a state-owned company. Out: students
-     only (Devpost's "Students only" tag included; a student-only *award* is fine), limited to
-     residents of countries that do not include India, India excluded, government or state-owned
-     company staff excluded, only for one company's staff or members.
+     rahul enter: an Indian citizen in India working at IOCL, a state-owned company, or (rahul,
+     later on 2026-10-12) a startup founder with no job. Out: students only (Devpost's "Students
+     only" tag included; a student-only *award* is fine), limited to residents of countries that do
+     not include India, India excluded, only for one company's staff or members. An event that
+     excludes government or state-owned company staff passes with a note to enter as the founder.
   Only events that pass both are emailed, **biggest cash prize first**, each showing the cash, the
   submission deadline and days to build, "Sign up by" (or "open, no closing date listed"), who can
   enter, and the link. Up to 60 pages are read a run, biggest listed prize first; the rest wait for

@@ -25,12 +25,15 @@ for:
              a page that never says online, virtual or remote counts as in
              person.
   sign-up    "registration closed", or a registration period that has ended.
-  who        rahul is an Indian citizen living in India and a working
-             professional at IOCL, a state-owned company. Out: students-only
+  who        rahul is an Indian citizen living in India who can enter either
+             as a working professional at IOCL, a state-owned company, or
+             (rahul, 2026-10-12: "Who don't do any job, etc., just founder at
+             a startup") as a startup founder with no job. Out: students-only
              events, events limited to residents of countries that do not
-             include India, events that exclude India, events that exclude
-             government or state-owned company employees, and events only for
-             one company's staff or members.
+             include India, events that exclude India, and events only for one
+             company's staff or members. An event that excludes government or
+             state-owned company staff passes, with a note to enter as the
+             founder rather than as an IOCL employee.
 
 Checks are deliberately strict: an event whose page says "open to students and
 professionals" passes, one that says only "students" does not. A page that
@@ -247,7 +250,7 @@ def who_can_enter(text):
 
 
 def check(e, text, today=None):
-    """{"ok", "reasons", "cash_usd", "reg_closes", "who", "in_person", "travel", "visa"} for one event."""
+    """{"ok", "reasons", "cash_usd", "reg_closes", "who", "in_person", "travel", "visa", "notes"} for one event."""
     today = today or hs.today_ist()
     reasons = []
     cash = cash_usd(e, text)
@@ -265,11 +268,16 @@ def check(e, text, today=None):
         reasons.append(f"registration closed {reg:%d %b}")
     elif _REG_CLOSED.search(text):
         reasons.append("registration closed")
+    notes = []
     for reason, evidence in who_problems(text):
-        reasons.append(f"{reason}: \"{evidence}\"")
+        if reason.startswith("government"):
+            notes.append(f"Government and PSU staff are excluded, so enter as your startup's founder, "
+                         f"not as an IOCL employee: \"{evidence}\"")
+        else:
+            reasons.append(f"{reason}: \"{evidence}\"")
     return {"ok": not reasons, "reasons": reasons, "cash_usd": cash,
             "reg_closes": reg if reg and reg >= today else None, "who": who_can_enter(text),
-            "in_person": in_person, "travel": travel, "visa": visa}
+            "in_person": in_person, "travel": travel, "visa": visa, "notes": notes}
 
 
 def as_dict(result):
