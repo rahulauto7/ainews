@@ -600,6 +600,11 @@ no session:
   run emails every hackathon that passes. An event is recorded only after its email went out, so a
   failed send is retried next hour. Entries are forgotten 30 days after their deadline. To start over
   (one email listing everything that passes now), delete that branch.
+- **The watch job installs its own packages** (`requests beautifulsoup4 lxml`), not `requirements.txt`.
+  The page check parses pages with lxml through `web_text.py`; the first live run after the 2026-10-12
+  change lacked lxml, so every page but Kaggle's and Zindi's JSON counted as unreadable and only 10 of
+  the 27 qualifying hackathons were mailed. The PR dry run installs `requirements.txt` and cannot
+  catch this, so add any new import to the watch job's install line too.
 - **A platform that cannot be read for 24 hours** gets one email saying so, and another when it is
   back. Shorter failures only show as warnings in the Actions run.
 - **On a pull request** that touches the watcher the workflow runs the hackathon tests and a dry run
