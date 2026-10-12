@@ -121,7 +121,9 @@ def main():
     for name in ("Closing Soon", "Climate Data", "Invite Only", "Campus", "Tiny Prize", "Sign-up Over",
                  "University", "US Residents"):
         check(failures, name not in text, f"{name} must not be mailed:\n{text}")
-    cases += 7
+    cases += 8
+    check(failures, "These 4 pass today" in text and "{" not in text and "{" not in world.sent[0]["html"],
+          f"the first email's intro names the count, no unfilled placeholders:\n{text[:300]}")
     check(failures, text.index("ARC") < text.index("Qloo") < text.index("AMD"),
           "the email lists the biggest cash prize first")
     cases += 1
