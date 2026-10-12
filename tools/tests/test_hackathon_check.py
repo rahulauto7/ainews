@@ -111,7 +111,25 @@ def main():
     expect("unknown, venue and no online option", ev(online=None),
            "Open to all. Venue: Lisbon Congress Centre. In-person event.", False, "in person")
     expect("unknown, nothing said", ev(online=None), "Maratona de inovação. Open to all.", False,
-           "not stated to be online")
+           "no paid travel")
+
+    # ── In person or hybrid: only with the trip paid (rahul, 2026-10-12) ─────
+    got = expect("in person with flights covered", ev(online=False),
+                 "Held in Singapore. Open to all. Flights and accommodation are covered for all finalists. "
+                 "We provide visa invitation letters.", True)
+    cases += 2
+    check(failures, got["in_person"] and "Flights and accommodation are covered" in got["travel"],
+          f"travel evidence: {got['travel']!r}")
+    check(failures, "invitation letters" in got["visa"], f"visa evidence: {got['visa']!r}")
+    expect("hybrid with travel grants", ev(online=None), "A hybrid hackathon in Berlin with a venue on site. "
+           "Open to all. Travel grants available for international teams.", True)
+    expect("in person, travel at own expense", ev(online=False), "Held in London. Open to all. "
+           "Participants are responsible for travel costs and travel is not covered.", False, "no paid travel")
+    expect("in person, nothing about travel", ev(online=False), "Held in Bengaluru. Open to all. Free food.",
+           False, "no paid travel")
+    got = expect("online needs no travel", ev(), "Online. Open to all.", True)
+    cases += 1
+    check(failures, not got["in_person"] and not got["travel"], f"online event: {got}")
     expect("unknown, page says virtual", ev(online=None), "A fully virtual hackathon. Open to all.", True)
 
     # ── Sign-up ──────────────────────────────────────────────────────────────

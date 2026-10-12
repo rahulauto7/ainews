@@ -89,7 +89,8 @@ def main():
         ev("Devpost", "soon", "Closing Soon AI Hack", 6),                   # under 7 days to build
         ev("Devpost", "nonai", "Climate Data Jam", 20, ai=False),           # not AI
         ev("Devpost", "invite", "Invite Only AI Hack", 20, restricted="invite-only"),
-        ev("Devfolio", "campus", "Campus AI Hack", 20, online=False),       # in person
+        ev("Devfolio", "campus", "Campus AI Hack", 20, online=False),       # in person, no travel paid
+        ev("Devfolio", "flyin", "Fly-in AI Summit Hack", 20, online=False, prize="$8,000"),  # travel paid
         ev("Unstop", "tiny", "Tiny Prize AI Sprint", 20, prize="₹50,000"),  # about $600
         ev("Devfolio", "regshut", "Sign-up Over AI Hack", 20, reg_closes=TODAY - timedelta(days=1)),
         ev("MLH", "uni", "University AI Hack", 20, prize=""),               # page: students only
@@ -97,7 +98,10 @@ def main():
     ]
     pages = {"mlh:uni": "Online. This hackathon is open only to currently enrolled university students. "
                         "Prize pool: $20,000 in cash.",
-             "taikai:us": "Online. The challenge is open only to legal residents of the United States."}
+             "taikai:us": "Online. The challenge is open only to legal residents of the United States.",
+             "devfolio:campus": "Held at our campus in Pune. Open to all. Prizes worth $10,000.",
+             "devfolio:flyin": "Held in Dubai. Open to all. Prize pool $8,000. Flights are covered for every "
+                               "selected team. Visa assistance is provided."}
     world = World(list(base), pages=dict(pages))
 
     # ── 1. A dry run prints, sends nothing and writes nothing ────────────────
@@ -111,8 +115,8 @@ def main():
     cases += 6
     check(failures, rc == 0, f"first run exit code {rc}")
     check(failures, len(world.sent) == 1
-          and world.sent[0]["subject"] == "Hackathon alerts, now cash and eligibility checked: 3 open",
-          f"first run sends one email naming 3 hackathons: {[m['subject'] for m in world.sent]}")
+          and world.sent[0]["subject"] == "Hackathon alerts, now cash and eligibility checked: 4 open",
+          f"first run sends one email naming 4 hackathons: {[m['subject'] for m in world.sent]}")
     text = world.sent[0]["text"] if world.sent else ""
     for name in ("Closing Soon", "Climate Data", "Invite Only", "Campus", "Tiny Prize", "Sign-up Over",
                  "University", "US Residents"):
@@ -120,18 +124,22 @@ def main():
     cases += 7
     check(failures, text.index("ARC") < text.index("Qloo") < text.index("AMD"),
           "the email lists the biggest cash prize first")
+    cases += 1
+    check(failures, 'Travel paid: "Flights are covered for every selected team."' in text
+          and 'Visa help: "Visa assistance is provided."' in text and "Campus" not in text,
+          f"an in-person event is mailed only with paid travel, and says so:\n{text}")
     check(failures, "Cash prizes about $850,000" in text and "Sign-up open now" in text
           and "27 days to build" in text, f"each entry shows cash, sign-up and build time:\n{text}")
-    check(failures, sorted(world.fetched) == ["devpost:qloo", "lablab.ai:amd", "mlcontests:arc", "mlh:uni",
-                                              "taikai:us"],
+    check(failures, sorted(world.fetched) == ["devfolio:campus", "devfolio:flyin", "devpost:qloo", "lablab.ai:amd",
+                                              "mlcontests:arc", "mlh:uni", "taikai:us"],
           f"only events the listing allows have their page read: {sorted(world.fetched)}")
     saved = json.load(open(state))
     check(failures, saved["version"] == hw.STATE_VERSION and sorted(saved["platforms"]) == sorted(ALL)
-          and sorted(saved["seen"]) == ["devpost:qloo", "lablab.ai:amd", "mlcontests:arc"],
+          and sorted(saved["seen"]) == ["devfolio:flyin", "devpost:qloo", "lablab.ai:amd", "mlcontests:arc"],
           f"state after the first run: platforms={sorted(saved['platforms'])} seen={sorted(saved['seen'])}")
     check(failures, saved["seen"].get("mlcontests:arc", {}).get("cash_usd") == 850_000,
           f"seen records keep the cash: {saved['seen'].get('mlcontests:arc')}")
-    check(failures, sorted(saved["checked"]) == ["mlh:uni", "taikai:us"]
+    check(failures, sorted(saved["checked"]) == ["devfolio:campus", "mlh:uni", "taikai:us"]
           and "students only" in saved["checked"]["mlh:uni"]["reasons"][0],
           f"rejections are remembered with their reasons: {saved['checked']}")
 
@@ -146,7 +154,7 @@ def main():
     # ...a week later the rejected pages are read again (rules change).
     run(world, state, now=NOW + timedelta(days=hw.RECHECK_AFTER_DAYS + 1))
     cases += 1
-    check(failures, sorted(world.fetched) == ["mlh:uni", "taikai:us"],
+    check(failures, sorted(world.fetched) == ["devfolio:campus", "mlh:uni", "taikai:us"],
           f"rejected pages are re-read after a week: {world.fetched}")
 
     # ── 4. A new hackathon is announced: one alert, then never again ─────────
@@ -296,7 +304,7 @@ def main():
     world5 = World(list(base), pages=dict(pages))
     run(world5, old)
     cases += 2
-    check(failures, len(world5.sent) == 1 and world5.sent[0]["subject"].endswith(": 3 open"),
+    check(failures, len(world5.sent) == 1 and world5.sent[0]["subject"].endswith(": 4 open"),
           f"an old state file sends the full checked list once: {[m['subject'] for m in world5.sent]}")
     check(failures, json.load(open(old))["version"] == hw.STATE_VERSION, "the old state file is replaced")
 

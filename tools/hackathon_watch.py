@@ -15,11 +15,13 @@ it, I can sign up, and that the registration date is not in the past."
 
 Each run reads the platforms in hackathon_sources.py (all but HackerEarth,
 which refuses GitHub's servers; see NOT_FROM_GITHUB). A listing goes on to a
-page check when it is an AI hackathon, not invite-only, not in person, its
+page check when it is an AI hackathon, not invite-only, its
 sign-up has not closed, its submission deadline leaves 7+ days to build (or is
 not listed), and its listed prize is not known to be under $5,000. The page
 check (hackathon_check.py) reads the event's own page and rules for the cash
-prize, an online format, an open sign-up and who may enter (an Indian citizen
+prize, an online format (or, for an in-person or hybrid event, the organiser
+paying the travel: rahul, later on 2026-10-12, "It may be hybrid, but
+sponsorships ... will be required, like flight, visa"), an open sign-up and who may enter (an Indian citizen
 working at state-owned IOCL). Only events that pass are emailed, biggest cash
 prize first, each once; the seen-list is a JSON file the workflow keeps on the
 `hackathon-alerts-state` branch. A rejection is remembered for a week, so the
@@ -133,8 +135,6 @@ def listing_problem(e, today):
         return "not AI"
     if e["restricted"]:
         return e["restricted"]
-    if e.get("online") is False:
-        return "in person or hybrid"
     if e["deadline"] is not None and not hs.has_build_time(e["deadline"], today):
         return f"under {hs.MIN_BUILD_DAYS} days to build"
     if e.get("reg_closes") and e["reg_closes"] < today:
@@ -267,6 +267,10 @@ def _lines(e, result, today):
     if e["prize"] and hs.prize_usd(e["prize"]) != result["cash_usd"]:
         prize += f" (listed: {e['prize']})"
     lines = [prize, _due_text(e, today), _signup_text(e, result)]
+    if result.get("in_person"):
+        where = f" ({e['where']})" if e.get("where") and e["where"].lower() not in ("online", e["platform"].lower()) else ""
+        lines.append(f"In person or hybrid{where}. Travel paid: \"{result['travel']}\"")
+        lines.append(f"Visa help: \"{result['visa']}\"" if result.get("visa") else "Visa help: not mentioned, ask the organiser")
     lines.append(f"Who can enter: {result['who']}" if result.get("who")
                  else "Who can enter: the page sets no limit we could find, check the rules")
     return lines
@@ -299,7 +303,8 @@ AI Hackathon Alerts</span></div>
 FOOTER = (f"Checked every hour on {len(WATCHED)} sites: "
           + ", ".join(name if name != "mlcontests" else "mlcontests.com (Kaggle, DrivenData, CodaLab"
                       " and more)" for name, _ in WATCHED)
-          + f". Only online AI hackathons with at least {money(hc.MIN_CASH_USD)} in cash prizes, sign-up "
+          + f". Only AI hackathons that are online, or in person / hybrid with travel paid by the organiser, "
+          f"with at least {money(hc.MIN_CASH_USD)} in cash prizes, sign-up "
           f"still open, {hs.MIN_BUILD_DAYS}+ days before the submission deadline, and rules that let an "
           "Indian working professional at a state-owned company enter (no students-only, country-limited "
           "or government-staff-excluded events). Eligibility is read from each event's own page; confirm "
@@ -318,8 +323,8 @@ def alert_email(passed, today, first=False):
         intro = f"{len(passed)} new AI hackathons you can enter, biggest cash prize first:"
     if first:
         subject = f"Hackathon alerts, now cash and eligibility checked: {len(passed)} open"
-        intro = ("From now on you only get online AI hackathons with real cash prizes that you can sign up "
-                 f"for and enter. These {len(passed)} pass today, biggest cash prize first:")
+        intro = ("From now on you only get AI hackathons with real cash prizes that you can sign up for and "
+                 "enter, online or with travel paid. These {len(passed)} pass today, biggest cash prize first:")
     text = intro + "\n\n" + "\n\n".join(event_text(e, r, today) for e, r in passed) + "\n\n" + FOOTER
     body = _page(f'<p style="font-size:14px;color:#333;">{intro}</p>',
                  "".join(event_html(e, r, today) for e, r in passed), FOOTER)

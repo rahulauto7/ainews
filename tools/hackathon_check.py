@@ -5,10 +5,12 @@ rahul, 2026-10-12: "Only give me cash-based price hackathons, like hackathons
 with more than $5,000 in prizes. And online hackathons and check eligibility as
 well before sending mail, like Indian working professional in IOCL ... make sure
 that when you send it, I can sign up, and that the registration date is not in
-the past."
+the past." Later the same day: "the actor doesn't have to be completely online.
+It may be hybrid, but sponsorships for hybrid (like onsite) will be required,
+like flight, visa, etc."
 
 So before an alert goes out, hackathon_watch.py hands each candidate that
-passed the listing's own facts (AI, online or not stated, registration not
+passed the listing's own facts (AI, not invite-only, registration not
 closed, 7+ days to build) to check(), which reads the event's page (Devpost: the
 page and its /rules; Zindi and Kaggle: their public JSON, which carries the
 rules) and looks
@@ -17,8 +19,11 @@ for:
   cash       the prize money, in rough US dollars (hackathon_sources.prize_usd).
              Devpost's listing figure counts swag and credits, so its page's
              "$45,000 in cash" wins. At least MIN_CASH_USD.
-  online     an in-person or hybrid event is out; when the listing does not say,
-             the page has to say online, virtual or remote.
+  format     online, or in person / hybrid only when the organiser pays the
+             travel (flights, travel grants or reimbursement); visa help is
+             shown when the page offers it. When the listing does not say,
+             a page that never says online, virtual or remote counts as in
+             person.
   sign-up    "registration closed", or a registration period that has ended.
   who        rahul is an Indian citizen living in India and a working
              professional at IOCL, a state-owned company. Out: students-only
@@ -71,6 +76,20 @@ _STAFF_ONLY = re.compile(r"\b(?:only|exclusively)\s+(?:open\s+)?(?:to|for)\s+(?:
                          r"(?:employees|staff|members|customers)\s+of\b", re.I)
 _IN_PERSON = re.compile(r"\b(in[- ]person|on[- ]site|onsite|offline|venue|hybrid|presencial)\b", re.I)
 _ONLINE = re.compile(r"\b(online|virtual|remote(ly)?|remoto)\b", re.I)
+# The organiser paying the trip: what makes an in-person or hybrid event worth it.
+_TRAVEL_PAID = re.compile(
+    r"\b(?:travel\s+(?:stipends?|grants?|support|reimburse\w*|bursar(?:y|ies)|assistance|allowance|"
+    r"scholarships?|subsid(?:y|ies))|"
+    r"(?:flights?|airfare|air\s*tickets?|travel|trip)(?:\s+(?:costs?|expenses|tickets?))?"
+    r"(?:\s*(?:,|and|&)\s*(?:accommodation|hotels?|lodging|stay)(?:\s+costs?)?)?\s+"
+    r"(?:are\s+|is\s+|will\s+be\s+)?(?:fully\s+)?(?:covered|provided|paid|reimbursed|sponsored|booked)|"
+    r"(?:fully[- ])?(?:sponsored|funded|paid|covered|free)\s+(?:round[- ]trip\s+)?(?:travel|trip|flights?|airfare)|"
+    r"(?:cover|covers|covering|pay|pays|reimburse|reimburses)\s+(?:all\s+|your\s+|the\s+)?"
+    r"(?:travel|flights?|airfare|round[- ]trip))\b", re.I)
+_VISA_HELP = re.compile(r"\b(?:visa\s+(?:support|sponsorship|assistance|help|fees?\s+(?:are\s+)?(?:covered|paid|"
+                        r"reimbursed))|invitation\s+letters?)\b", re.I)
+_NOT_PAID = re.compile(r"\b(?:not|no|own\s+(?:expense|cost)|at\s+(?:their|your)\s+own|responsible\s+for|"
+                       r"unable\s+to|cannot|can't|won't|will\s+not)\b", re.I)
 _REG_CLOSED = re.compile(r"\b(registrations?\s+(?:is\s+|are\s+|has\s+|have\s+)?(?:now\s+)?closed|"
                          r"registration\s+(?:has\s+)?ended|no longer accepting (?:registrations|participants))\b",
                          re.I)
@@ -192,6 +211,19 @@ def who_problems(text):
     return out
 
 
+def _support(pattern, text):
+    for sentence in _sentences(text):
+        if pattern.search(sentence) and not _NOT_PAID.search(sentence):
+            return " ".join(sentence.split())[:200]
+    return ""
+
+
+def travel_support(text):
+    """(travel, visa): the page's sentences saying the organiser pays the trip
+    and helps with the visa, or "" for each."""
+    return _support(_TRAVEL_PAID, text), _support(_VISA_HELP, text)
+
+
 def registration_closes(text, today):
     """The end of a stated registration period, or None."""
     m = _REG_PERIOD.search(text)
@@ -215,20 +247,19 @@ def who_can_enter(text):
 
 
 def check(e, text, today=None):
-    """{"ok", "reasons", "cash_usd", "reg_closes", "who"} for one event."""
+    """{"ok", "reasons", "cash_usd", "reg_closes", "who", "in_person", "travel", "visa"} for one event."""
     today = today or hs.today_ist()
     reasons = []
     cash = cash_usd(e, text)
     if cash < MIN_CASH_USD:
         reasons.append(f"cash prize under ${MIN_CASH_USD:,}" + (f" (about ${cash:,.0f})" if cash else " (none found)"))
-    if e.get("online") is False:
-        reasons.append("in person or hybrid")
-    elif e.get("online") is None:
+    in_person = e.get("online") is False
+    if e.get("online") is None:
         head = text[:3000]
-        if _IN_PERSON.search(head) and not _ONLINE.search(head):
-            reasons.append("in person (the page names a venue and no online option)")
-        elif not _ONLINE.search(text):
-            reasons.append("not stated to be online")
+        in_person = bool(_IN_PERSON.search(head) and not _ONLINE.search(head)) or not _ONLINE.search(text)
+    travel, visa = travel_support(text) if in_person else ("", "")
+    if in_person and not travel:
+        reasons.append("in person or hybrid, and the page offers no paid travel (flights or travel grant)")
     reg = e.get("reg_closes") or registration_closes(text, today)
     if reg and reg < today:
         reasons.append(f"registration closed {reg:%d %b}")
@@ -237,7 +268,8 @@ def check(e, text, today=None):
     for reason, evidence in who_problems(text):
         reasons.append(f"{reason}: \"{evidence}\"")
     return {"ok": not reasons, "reasons": reasons, "cash_usd": cash,
-            "reg_closes": reg if reg and reg >= today else None, "who": who_can_enter(text)}
+            "reg_closes": reg if reg and reg >= today else None, "who": who_can_enter(text),
+            "in_person": in_person, "travel": travel, "visa": visa}
 
 
 def as_dict(result):

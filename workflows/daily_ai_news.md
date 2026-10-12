@@ -561,13 +561,17 @@ no session:
   $5,000 in prizes. And online hackathons and check eligibility ... like Indian working professional
   in IOCL ... the highest price first ... make sure ... I can sign up, and that the registration date
   is not in the past"). Two steps:
-  1. **The listing** must show an AI hackathon, not invite-only, not in person, sign-up not closed,
+  1. **The listing** must show an AI hackathon, not invite-only, sign-up not closed,
      7+ days before the submission deadline (or no deadline listed, mailed marked "not listed"), and a
      listed prize that is not under $5,000.
   2. **The event's own page** is read by `tools/hackathon_check.py` (Devpost: the page and its /rules;
      Zindi and Kaggle: their public JSON, which needs only the session cookie the page sets). It must
      show at least **$5,000 in cash** in rough US dollars (Devpost: its own "$X in cash" figure, since
-     its listed total counts swag and credits), an online format (stated by the listing or the page),
+     its listed total counts swag and credits), an online format, or for an in-person or hybrid
+     event the organiser paying the trip (rahul, later on 2026-10-12: "It may be hybrid, but
+     sponsorships for hybrid (like onsite) will be required, like flight, visa": the page must say
+     flights or travel are covered, reimbursed or sponsored, or offer travel grants; "at your own
+     expense" or "not covered" fails; the email quotes that sentence and any visa help),
      an open sign-up (registration period not over, no "registration closed"), and rules that let
      rahul enter: an Indian citizen in India working at IOCL, a state-owned company. Out: students
      only (Devpost's "Students only" tag included; a student-only *award* is fine), limited to
@@ -843,8 +847,8 @@ stale jobs. The readers are pure functions over a `get`, tested offline in `test
 | A smaller prize printed above a bigger one in AI Hackathons, or "$100k in credits" outranking cash (2026-10-03) | `prize_usd()` / `by_prize()` in `hackathon_sources.py`, `test_hackathon_prizes.py` |
 
 ### History
-- **2026-10-12:** Hackathon alerts only mail online AI hackathons with $5,000+ in cash that rahul can
-  sign up for and enter (Indian working professional at state-owned IOCL), biggest cash prize first.
+- **2026-10-12:** Hackathon alerts only mail AI hackathons with $5,000+ in cash that rahul can
+  sign up for and enter, online or in person / hybrid with the travel paid (Indian working professional at state-owned IOCL), biggest cash prize first.
   New `tools/hackathon_check.py` reads each event's page and rules before it is mailed. Zindi and
   AIcrowd joined the platforms, Devpost is searched for six AI terms instead of one theme, and Kaggle
   rules are read through its public page JSON. The PDF is unchanged. See **Hackathon Alerts**.

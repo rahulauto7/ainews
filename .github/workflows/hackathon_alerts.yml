@@ -6,7 +6,8 @@
 # AIcrowd; HackerEarth refuses GitHub's servers, so it is in the daily PDF list
 # only). Each AI hackathon whose listing allows it then has its own page and
 # rules read by tools/hackathon_check.py, and only those with at least $5,000 in
-# cash, held online, with sign-up still open, 7+ days before the submission
+# cash, held online (or in person / hybrid with the travel paid), with sign-up
+# still open, 7+ days before the submission
 # deadline, and rules that let an Indian working professional at a state-owned
 # company enter are mailed, biggest cash prize first, each once. The seen-list
 # is kept on the hackathon-alerts-state branch, so main stays clean, and changes
