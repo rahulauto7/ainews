@@ -1,502 +1,107 @@
 {
- "failing": {},
- "platforms": {
-  "Devfolio": "2026-10-04",
-  "Devpost": "2026-10-04",
-  "Hackster": "2026-10-04",
-  "MLH": "2026-10-04",
-  "TAIKAI": "2026-10-04",
-  "Unstop": "2026-10-04",
-  "lablab.ai": "2026-10-04",
-  "mlcontests": "2026-10-04"
- },
- "seen": {
-  "devfolio:codestorm-futureforge": {
-   "deadline": "2026-10-15",
-   "first_seen": "2026-10-04",
-   "name": "CodeStorm 2026: FutureForge",
-   "platform": "Devfolio"
-  },
-  "devfolio:genarrative-clash": {
-   "deadline": "2026-11-21",
-   "first_seen": "2026-10-04",
-   "name": "GeNarrative Clash",
-   "platform": "Devfolio"
-  },
-  "devfolio:hacker-house-goa-2026": {
-   "deadline": "2026-10-31",
-   "first_seen": "2026-10-04",
-   "name": "HACKER HOUSE GOA 2026",
-   "platform": "Devfolio"
-  },
-  "devfolio:haxfinity": {
-   "deadline": "2026-12-13",
-   "first_seen": "2026-10-04",
-   "name": "haxfinity",
-   "platform": "Devfolio"
-  },
-  "devfolio:tum": {
-   "deadline": "2026-10-31",
-   "first_seen": "2026-10-04",
-   "name": "TUM Blockchain & AI Hackathon",
-   "platform": "Devfolio"
-  },
-  "devpost:29114": {
-   "deadline": "2026-10-25",
-   "first_seen": "2026-10-05",
-   "name": "IEEE ClimateChain Global Hackathon",
-   "platform": "Devpost"
-  },
-  "devpost:29411": {
-   "deadline": "2026-10-31",
-   "first_seen": "2026-10-04",
-   "name": "Galuxium Nexus V2",
-   "platform": "Devpost"
-  },
-  "devpost:30350": {
-   "deadline": "2026-10-16",
-   "first_seen": "2026-10-04",
-   "name": "Hack Apertus",
-   "platform": "Devpost"
-  },
-  "devpost:30447": {
-   "deadline": "2026-10-26",
-   "first_seen": "2026-10-04",
-   "name": "Build With AI: Basics",
-   "platform": "Devpost"
-  },
-  "devpost:30539": {
-   "deadline": "2026-10-27",
-   "first_seen": "2026-10-04",
-   "name": "HTCJ × PROOF Aviation Futures Challenge",
-   "platform": "Devpost"
-  },
-  "devpost:30548": {
-   "deadline": "2026-10-30",
-   "first_seen": "2026-10-04",
-   "name": "HackFW: MADE Challenge",
-   "platform": "Devpost"
-  },
-  "devpost:30740": {
-   "deadline": "2027-01-15",
-   "first_seen": "2026-10-04",
-   "name": "Code for Humanity",
-   "platform": "Devpost"
-  },
-  "devpost:30764": {
-   "deadline": "2027-01-14",
-   "first_seen": "2026-10-04",
-   "name": "Syntax Summit",
-   "platform": "Devpost"
-  },
-  "devpost:30790": {
-   "deadline": "2026-10-30",
-   "first_seen": "2026-10-04",
-   "name": "Nebius x NVIDIA Global AI Hackathon",
-   "platform": "Devpost"
-  },
-  "devpost:30984": {
-   "deadline": "2026-10-27",
-   "first_seen": "2026-10-04",
-   "name": "OpenCV AI Competition 2026, powered by AWS",
-   "platform": "Devpost"
-  },
-  "devpost:30992": {
-   "deadline": "2026-10-23",
-   "first_seen": "2026-10-04",
-   "name": "Build, Ship, Shape: Amazon Developer Hackathon",
-   "platform": "Devpost"
-  },
-  "devpost:31024": {
-   "deadline": "2026-11-18",
-   "first_seen": "2026-10-04",
-   "name": "Meta VR Start Developer Competition 2026",
-   "platform": "Devpost"
-  },
-  "devpost:31052": {
-   "deadline": "2026-10-28",
-   "first_seen": "2026-10-04",
-   "name": "AWS Communication Developer Services (CDS) Agentic AI Partner Hackathon",
-   "platform": "Devpost"
-  },
-  "devpost:31054": {
-   "deadline": "2026-10-30",
-   "first_seen": "2026-10-04",
-   "name": "Qloo Agentic Hackathon",
-   "platform": "Devpost"
-  },
-  "devpost:31103": {
-   "deadline": "2026-10-14",
-   "first_seen": "2026-10-04",
-   "name": "WarriorHacks 2.0",
-   "platform": "Devpost"
-  },
-  "devpost:31113": {
-   "deadline": "2026-10-16",
-   "first_seen": "2026-10-04",
-   "name": "MLAI Hackathon 2026",
-   "platform": "Devpost"
-  },
-  "devpost:31116": {
-   "deadline": "2026-10-23",
-   "first_seen": "2026-10-04",
-   "name": "Next Gen Hackathon 2026 -Bengaluru",
-   "platform": "Devpost"
-  },
-  "devpost:31302": {
-   "deadline": "2026-11-12",
-   "first_seen": "2026-10-04",
-   "name": "PayPal AI Hackathon",
-   "platform": "Devpost"
-  },
-  "devpost:31400": {
-   "deadline": "2026-11-02",
-   "first_seen": "2026-10-04",
-   "name": "YouCam API Skin AI & eCommerce VTO Hackathon",
-   "platform": "Devpost"
-  },
-  "devpost:31481": {
-   "deadline": "2026-10-14",
-   "first_seen": "2026-10-04",
-   "name": "Multimodal AI Hackathon 2026",
-   "platform": "Devpost"
-  },
-  "devpost:31503": {
-   "deadline": "2026-10-27",
-   "first_seen": "2026-10-06",
-   "name": "Life After Code",
-   "platform": "Devpost"
-  },
-  "devpost:31548": {
-   "deadline": "2026-10-12",
-   "first_seen": "2026-10-04",
-   "name": "AIC Internal Competition -2026 (Agentic AI)",
-   "platform": "Devpost"
-  },
-  "devpost:31609": {
-   "deadline": "2026-10-31",
-   "first_seen": "2026-10-04",
-   "name": "InterWell Hack2.0",
-   "platform": "Devpost"
-  },
-  "devpost:31611": {
-   "deadline": "2026-11-18",
-   "first_seen": "2026-10-05",
-   "name": "Reality Check(Meet-up)",
-   "platform": "Devpost"
-  },
-  "devpost:31681": {
-   "deadline": "2027-01-23",
-   "first_seen": "2026-10-12",
-   "name": "GSD Hackathon - Get Shit Done",
-   "platform": "Devpost"
-  },
-  "hackster:infineon-boss-battle": {
-   "deadline": "2027-01-04",
-   "first_seen": "2026-10-04",
-   "name": "Infineon Boss Battle in the AI Arena",
-   "platform": "Hackster"
-  },
-  "lablab:amd-developer-hackathon-act-iii": {
-   "deadline": "2026-10-18",
-   "first_seen": "2026-10-04",
-   "name": "AMD Developer Hackathon: ACT III",
-   "platform": "lablab.ai"
-  },
-  "lablab:amd-lablab-ai-academy-challenge": {
-   "deadline": "2026-12-02",
-   "first_seen": "2026-10-04",
-   "name": "Lablab x AMD AI Academy Challenge",
-   "platform": "lablab.ai"
-  },
-  "lablab:techex-amsterdam-hackathon": {
-   "deadline": "2026-10-20",
-   "first_seen": "2026-10-04",
-   "name": "TechEx Amsterdam Hackathon - AI & Big Data Expo Europe",
-   "platform": "lablab.ai"
-  },
-  "lablab:vultr-hackathon": {
-   "deadline": "2026-11-09",
-   "first_seen": "2026-10-04",
-   "name": "Vultr: Agent Rush Hackathon",
-   "platform": "lablab.ai"
-  },
-  "mlcontests:agenthon.net": {
-   "deadline": "2026-10-12",
-   "first_seen": "2026-10-04",
-   "name": "Verifiable AI Agents for Quantitative Finance",
-   "platform": "mlcontests"
-  },
-  "mlcontests:aimo-interp.github.io": {
-   "deadline": "2026-10-25",
-   "first_seen": "2026-10-04",
-   "name": "Interpretability for AI Mathematical Olympiad Reasoning",
-   "platform": "mlcontests"
-  },
-  "mlcontests:aimslab.stanford.edu/competition": {
-   "deadline": "2026-10-30",
-   "first_seen": "2026-10-04",
-   "name": "Predict Whether AI Systems Answer Benchmark Items Correctly",
-   "platform": "mlcontests"
-  },
-  "mlcontests:ansperformance.eu/study/data-challenge/dc2026": {
-   "deadline": "2026-10-11",
-   "first_seen": "2026-10-04",
-   "name": "Predict Aircraft Taxi-Out Time at European Airports",
-   "platform": "mlcontests"
-  },
-  "mlcontests:codabench.org/competitions/10902": {
-   "deadline": "2026-10-11",
-   "first_seen": "2026-10-04",
-   "name": "Weak Lensing Uncertainty under Distribution Shift",
-   "platform": "mlcontests"
-  },
-  "mlcontests:codabench.org/competitions/18185": {
-   "deadline": "2026-11-20",
-   "first_seen": "2026-10-04",
-   "name": "Language-Conditioned Visual Navigation",
-   "platform": "mlcontests"
-  },
-  "mlcontests:flagos.io/race-detail-season2": {
-   "deadline": "2026-11-15",
-   "first_seen": "2026-10-04",
-   "name": "Optimise LLM Operators & Inference Across AI Chips",
-   "platform": "mlcontests"
-  },
-  "mlcontests:fusion-equilibrium-challenge.sophelio.io": {
-   "deadline": "2026-10-26",
-   "first_seen": "2026-10-04",
-   "name": "Infer Fusion Reactor Magnetic Geometry",
-   "platform": "mlcontests"
-  },
-  "mlcontests:hub.crunchdao.com/competitions/datacrunch-2": {
-   "deadline": "2026-12-31",
-   "first_seen": "2026-10-04",
-   "name": "Predict Cross-sectional Equity Returns",
-   "platform": "mlcontests"
-  },
-  "mlcontests:kaggle.com/competitions/arc-prize-2026-arc-agi-2": {
-   "deadline": "2026-11-02",
-   "first_seen": "2026-10-04",
-   "name": "ARC Prize 2026 - ARC-AGI-2",
-   "platform": "mlcontests"
-  },
-  "mlcontests:kaggle.com/competitions/arc-prize-2026-arc-agi-3": {
-   "deadline": "2026-11-02",
-   "first_seen": "2026-10-04",
-   "name": "ARC Prize 2026 - ARC-AGI-3",
-   "platform": "mlcontests"
-  },
-  "mlcontests:kaggle.com/competitions/arc-prize-2026-paper-track": {
-   "deadline": "2026-11-09",
-   "first_seen": "2026-10-04",
-   "name": "ARC Prize 2026 - Paper Track",
-   "platform": "mlcontests"
-  },
-  "mlcontests:kaggle.com/competitions/enveda-casmi26-molecule-id-mass-spectra": {
-   "deadline": "2026-12-14",
-   "first_seen": "2026-10-04",
-   "name": "Predict 2D Chemical Structures From Mass Spectra",
-   "platform": "mlcontests"
-  },
-  "mlcontests:kaggle.com/competitions/gemma-4-developer-agent": {
-   "deadline": "2026-12-02",
-   "first_seen": "2026-10-04",
-   "name": "Build Coding Agents with Gemma 4",
-   "platform": "mlcontests"
-  },
-  "mlcontests:kaggle.com/competitions/gemma-4-developer-agent-paper": {
-   "deadline": "2026-11-12",
-   "first_seen": "2026-10-04",
-   "name": "Write a Research Paper on Coding Agents",
-   "platform": "mlcontests"
-  },
-  "mlcontests:kaggle.com/competitions/misconception-detection-in-k-12-student-math-workings/overview": {
-   "deadline": "2026-11-17",
-   "first_seen": "2026-10-09",
-   "name": "Detect root misconceptions in K–12 math solutions",
-   "platform": "mlcontests"
-  },
-  "mlcontests:kaggle.com/competitions/nfl-big-data-bowl-2027": {
-   "deadline": "2027-01-06",
-   "first_seen": "2026-10-09",
-   "name": "NFL Big Data Bowl 2027",
-   "platform": "mlcontests"
-  },
-  "mlcontests:kaggle.com/competitions/rsna-knee-abnormality-detection": {
-   "deadline": "2026-10-22",
-   "first_seen": "2026-10-04",
-   "name": "Detect Knee Abnormalities in Multimodal Imaging Data",
-   "platform": "mlcontests"
-  },
-  "mlcontests:learn2design2026.com": {
-   "deadline": "2026-10-15",
-   "first_seen": "2026-10-04",
-   "name": "Design Physics Experiments for Gravitational Waves",
-   "platform": "mlcontests"
-  },
-  "mlcontests:neural-interfaces26.github.io": {
-   "deadline": "2026-11-21",
-   "first_seen": "2026-10-04",
-   "name": "Decode Brains Signals in Task-Specific Settings",
-   "platform": "mlcontests"
-  },
-  "mlcontests:quantiphy.stanford.edu/competition/index.html": {
-   "deadline": "2026-11-05",
-   "first_seen": "2026-10-04",
-   "name": "Quantitative Physical Reasoning for VLMs",
-   "platform": "mlcontests"
-  },
-  "mlcontests:realpdecompetition.github.io": {
-   "deadline": "2026-10-25",
-   "first_seen": "2026-10-04",
-   "name": "RealPDE: Scientific ML for Real-World Physical Systems",
-   "platform": "mlcontests"
-  },
-  "mlcontests:robosyn-bench.net": {
-   "deadline": "2026-10-11",
-   "first_seen": "2026-10-04",
-   "name": "Sim2Real Bimanual Robot Manipulation",
-   "platform": "mlcontests"
-  },
-  "mlcontests:situatedevals.org/simulacrabench": {
-   "deadline": "2026-11-14",
-   "first_seen": "2026-10-04",
-   "name": "Generate Synthetic Humanitarian Survey Responses",
-   "platform": "mlcontests"
-  },
-  "mlcontests:virtualembryo.ai/challenge": {
-   "deadline": "2026-10-25",
-   "first_seen": "2026-10-04",
-   "name": "Generative Modeling of Mouse Embryo Development",
-   "platform": "mlcontests"
-  },
-  "mlcontests:wundernn.io/connectome": {
-   "deadline": "2026-11-15",
-   "first_seen": "2026-10-04",
-   "name": "Predict Price Movements from Limit Order Book Data",
-   "platform": "mlcontests"
-  },
-  "mlcontests:xiuwenz2.github.io/sapc2-website": {
-   "deadline": "2026-10-24",
-   "first_seen": "2026-10-09",
-   "name": "Automated Speech Recognition Under Diverse Speech Patterns",
-   "platform": "mlcontests"
-  },
-  "mlcontests:zindi.africa/competitions/caribbean-voices-hackathon": {
-   "deadline": "2026-12-07",
-   "first_seen": "2026-10-04",
-   "name": "Build Speech Recognition Systems for Caribbean Voices",
-   "platform": "mlcontests"
-  },
-  "mlh:sheridan-datathon-2026": {
-   "deadline": "2026-11-09",
-   "first_seen": "2026-10-04",
-   "name": "Sheridan Datathon 2026",
-   "platform": "MLH"
-  },
-  "mlh:tamu-datathon-ce": {
-   "deadline": "2026-11-09",
-   "first_seen": "2026-10-04",
-   "name": "TAMU Datathon",
-   "platform": "MLH"
-  },
-  "mlh:ucla-ai-hackathon-2026": {
-   "deadline": "2026-10-19",
-   "first_seen": "2026-10-04",
-   "name": "LA Hacks AI Hackathon 2026",
-   "platform": "MLH"
-  },
-  "taikai:cmguimaraes/hack4guimaraes2035": {
-   "deadline": "2026-10-28",
-   "first_seen": "2026-10-04",
-   "name": "Hack4Guimarães 2035",
-   "platform": "TAIKAI"
-  },
-  "taikai:spacexai/spacexai-digital-transformation-lab": {
-   "deadline": "2026-10-27",
-   "first_seen": "2026-10-04",
-   "name": "SpaceXAI Digital Transformation Lab",
-   "platform": "TAIKAI"
-  },
-  "unstop:1746976": {
-   "deadline": "2026-11-11",
-   "first_seen": "2026-10-04",
-   "name": "Agentic AI Hackathon",
-   "platform": "Unstop"
-  },
-  "unstop:1751106": {
-   "deadline": "2026-11-01",
-   "first_seen": "2026-10-04",
-   "name": "AI-Manthan 2.0",
-   "platform": "Unstop"
-  },
-  "unstop:1760776": {
-   "deadline": "2026-10-11",
-   "first_seen": "2026-10-04",
-   "name": "Computer Vision AI Hackathon",
-   "platform": "Unstop"
-  },
-  "unstop:1762328": {
-   "deadline": "2026-10-11",
-   "first_seen": "2026-10-04",
-   "name": "Edge AI Challenge",
-   "platform": "Unstop"
-  },
-  "unstop:1762421": {
-   "deadline": "2026-10-30",
-   "first_seen": "2026-10-04",
-   "name": "AI Synergy Hackathon 2026",
-   "platform": "Unstop"
-  },
-  "unstop:1762519": {
-   "deadline": "2026-10-12",
-   "first_seen": "2026-10-04",
-   "name": "Anna AI OS Founding Builder Challenge 2026",
-   "platform": "Unstop"
-  },
-  "unstop:1763378": {
-   "deadline": "2026-10-30",
-   "first_seen": "2026-10-04",
-   "name": "JAI 2026 Hackathon - Jaypee Agentic AI Hackathon 2026",
-   "platform": "Unstop"
-  },
-  "unstop:1764026": {
-   "deadline": "2026-10-15",
-   "first_seen": "2026-10-04",
-   "name": "VORTEX 2K26 – Global AI Innovation Hackathon",
-   "platform": "Unstop"
-  },
-  "unstop:1765191": {
-   "deadline": "2026-10-21",
-   "first_seen": "2026-10-09",
-   "name": "Build with AI: ABC (Anybody Can Code)",
-   "platform": "Unstop"
-  },
-  "unstop:1765780": {
-   "deadline": "2026-10-24",
-   "first_seen": "2026-10-11",
-   "name": "Webforge AI",
-   "platform": "Unstop"
-  },
-  "unstop:1767524": {
-   "deadline": "2026-10-23",
-   "first_seen": "2026-10-08",
-   "name": "Commit for Good | AI × Open Source × Public Good",
-   "platform": "Unstop"
-  },
-  "unstop:1769081": {
-   "deadline": "2026-10-30",
-   "first_seen": "2026-10-12",
-   "name": "CodewithChat AI Dev Challenge: Build, Launch & Monetize with Vibe Coding",
-   "platform": "Unstop"
-  },
-  "unstop:1769121": {
-   "deadline": "2026-12-06",
-   "first_seen": "2026-10-12",
-   "name": "Homingo Hack Days: Online AI Hackathon",
-   "platform": "Unstop"
+ "checked": {
+  "zindi:google-waxal-asr-challenge-october-study-jam": {
+   "date": "2026-10-12",
+   "name": "October Study Jam: Google WAXAL ASR Challenge",
+   "reasons": [
+    "cash prize under $5,000 (about $500)"
+   ]
   }
  },
- "version": 1
+ "failing": {},
+ "platforms": {
+  "AIcrowd": "2026-10-12",
+  "Devfolio": "2026-10-12",
+  "Devpost": "2026-10-12",
+  "Hackster": "2026-10-12",
+  "MLH": "2026-10-12",
+  "TAIKAI": "2026-10-12",
+  "Unstop": "2026-10-12",
+  "Zindi": "2026-10-12",
+  "lablab.ai": "2026-10-12",
+  "mlcontests": "2026-10-12"
+ },
+ "seen": {
+  "mlcontests:kaggle.com/competitions/arc-prize-2026-arc-agi-2": {
+   "cash_usd": 700000,
+   "deadline": "2026-11-02",
+   "first_seen": "2026-10-12",
+   "name": "ARC Prize 2026 - ARC-AGI-2",
+   "platform": "mlcontests",
+   "url": "https://www.kaggle.com/competitions/arc-prize-2026-arc-agi-2"
+  },
+  "mlcontests:kaggle.com/competitions/arc-prize-2026-arc-agi-3": {
+   "cash_usd": 850000,
+   "deadline": "2026-11-02",
+   "first_seen": "2026-10-12",
+   "name": "ARC Prize 2026 - ARC-AGI-3",
+   "platform": "mlcontests",
+   "url": "https://www.kaggle.com/competitions/arc-prize-2026-arc-agi-3"
+  },
+  "mlcontests:kaggle.com/competitions/arc-prize-2026-paper-track": {
+   "cash_usd": 450000,
+   "deadline": "2026-11-09",
+   "first_seen": "2026-10-12",
+   "name": "ARC Prize 2026 - Paper Track",
+   "platform": "mlcontests",
+   "url": "https://www.kaggle.com/competitions/arc-prize-2026-paper-track"
+  },
+  "mlcontests:kaggle.com/competitions/enveda-casmi26-molecule-id-mass-spectra": {
+   "cash_usd": 50000,
+   "deadline": "2026-12-14",
+   "first_seen": "2026-10-12",
+   "name": "Predict 2D Chemical Structures From Mass Spectra",
+   "platform": "mlcontests",
+   "url": "https://www.kaggle.com/competitions/enveda-CASMI26-molecule-id-mass-spectra"
+  },
+  "mlcontests:kaggle.com/competitions/gemma-4-developer-agent": {
+   "cash_usd": 65000,
+   "deadline": "2026-12-02",
+   "first_seen": "2026-10-12",
+   "name": "Build Coding Agents with Gemma 4",
+   "platform": "mlcontests",
+   "url": "https://www.kaggle.com/competitions/gemma-4-developer-agent"
+  },
+  "mlcontests:kaggle.com/competitions/gemma-4-developer-agent-paper": {
+   "cash_usd": 35000,
+   "deadline": "2026-11-12",
+   "first_seen": "2026-10-12",
+   "name": "Write a Research Paper on Coding Agents",
+   "platform": "mlcontests",
+   "url": "https://www.kaggle.com/competitions/gemma-4-developer-agent-paper"
+  },
+  "mlcontests:kaggle.com/competitions/misconception-detection-in-k-12-student-math-workings/overview": {
+   "cash_usd": 6000,
+   "deadline": "2026-11-17",
+   "first_seen": "2026-10-12",
+   "name": "Detect root misconceptions in K–12 math solutions",
+   "platform": "mlcontests",
+   "url": "https://www.kaggle.com/competitions/misconception-detection-in-k-12-student-math-workings/overview"
+  },
+  "mlcontests:kaggle.com/competitions/nfl-big-data-bowl-2027": {
+   "cash_usd": 100000,
+   "deadline": "2027-01-06",
+   "first_seen": "2026-10-12",
+   "name": "NFL Big Data Bowl 2027",
+   "platform": "mlcontests",
+   "url": "https://www.kaggle.com/competitions/nfl-big-data-bowl-2027"
+  },
+  "mlcontests:kaggle.com/competitions/rsna-knee-abnormality-detection": {
+   "cash_usd": 77000,
+   "deadline": "2026-10-22",
+   "first_seen": "2026-10-12",
+   "name": "Detect Knee Abnormalities in Multimodal Imaging Data",
+   "platform": "mlcontests",
+   "url": "https://www.kaggle.com/competitions/rsna-knee-abnormality-detection"
+  },
+  "zindi:bias-bounty-mapping-equity-challenge": {
+   "cash_usd": 10000,
+   "deadline": "2026-11-01",
+   "first_seen": "2026-10-12",
+   "name": "Bias Bounty Mapping Equity Challenge",
+   "platform": "Zindi",
+   "url": "https://zindi.africa/competitions/bias-bounty-mapping-equity-challenge"
+  }
+ },
+ "version": 2
 }
