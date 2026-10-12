@@ -1,5 +1,230 @@
 {
  "checked": {
+  "aicrowd:epfl-machine-learning-project-1": {
+   "date": "2026-10-12",
+   "name": "EPFL Machine Learning Project 1",
+   "reasons": [
+    "cash prize under $5,000 (none found)"
+   ]
+  },
+  "aicrowd:mediqa-2021-question-summarization-qs": {
+   "date": "2026-10-12",
+   "name": "MEDIQA 2021 - Question Summarization (QS)",
+   "reasons": [
+    "cash prize under $5,000 (none found)"
+   ]
+  },
+  "aicrowd:spotify-million-playlist-dataset-challenge": {
+   "date": "2026-10-12",
+   "name": "Spotify Million Playlist Dataset Challenge",
+   "reasons": [
+    "cash prize under $5,000 (none found)"
+   ]
+  },
+  "aicrowd:test-p": {
+   "date": "2026-10-12",
+   "name": "Test P",
+   "reasons": [
+    "cash prize under $5,000 (none found)"
+   ]
+  },
+  "aicrowd:trajnet-a-trajectory-forecasting-challenge": {
+   "date": "2026-10-12",
+   "name": "Trajnet++ (A Trajectory Forecasting Challenge)",
+   "reasons": [
+    "cash prize under $5,000 (none found)"
+   ]
+  },
+  "devfolio:genarrative-clash": {
+   "date": "2026-10-12",
+   "name": "GeNarrative Clash",
+   "reasons": [
+    "cash prize under $5,000 (none found)",
+    "in person or hybrid, and the page offers no paid travel (flights or travel grant)",
+    "in person or hybrid, and the page offers no visa help"
+   ]
+  },
+  "devfolio:hacker-house-goa-2026": {
+   "date": "2026-10-12",
+   "name": "HACKER HOUSE GOA 2026",
+   "reasons": [
+    "cash prize under $5,000 (none found)",
+    "in person or hybrid, and the page offers no paid travel (flights or travel grant)",
+    "in person or hybrid, and the page offers no visa help"
+   ]
+  },
+  "devfolio:haxfinity": {
+   "date": "2026-10-12",
+   "name": "haxfinity",
+   "reasons": [
+    "cash prize under $5,000 (none found)",
+    "in person or hybrid, and the page offers no paid travel (flights or travel grant)",
+    "in person or hybrid, and the page offers no visa help",
+    "students only: \"HAXFINITY is open to students from all streams and colleges.\""
+   ]
+  },
+  "devfolio:tum": {
+   "date": "2026-10-12",
+   "name": "TUM Blockchain & AI Hackathon",
+   "reasons": [
+    "in person or hybrid, and the page offers no paid travel (flights or travel grant)",
+    "in person or hybrid, and the page offers no visa help"
+   ]
+  },
+  "devpost:29411": {
+   "date": "2026-10-12",
+   "name": "Galuxium Nexus V2",
+   "reasons": [
+    "students only: \"Devpost: Students only\""
+   ]
+  },
+  "devpost:30539": {
+   "date": "2026-10-12",
+   "name": "HTCJ × PROOF Aviation Futures Challenge",
+   "reasons": [
+    "cash prize under $5,000 (none found)",
+    "in person or hybrid, and the page offers no paid travel (flights or travel grant)",
+    "in person or hybrid, and the page offers no visa help"
+   ]
+  },
+  "devpost:30740": {
+   "date": "2026-10-12",
+   "name": "Code for Humanity",
+   "reasons": [
+    "cash prize under $5,000 (none found)",
+    "students only: \"Devpost: Students only\""
+   ]
+  },
+  "devpost:30764": {
+   "date": "2026-10-12",
+   "name": "Syntax Summit",
+   "reasons": [
+    "cash prize under $5,000 (none found)",
+    "students only: \"Devpost: Students only\""
+   ]
+  },
+  "devpost:30880": {
+   "date": "2026-10-12",
+   "name": "DevFest Münster 2026: Agentic AI Hackathon",
+   "reasons": [
+    "cash prize under $5,000 (none found)",
+    "in person or hybrid, and the page offers no paid travel (flights or travel grant)",
+    "in person or hybrid, and the page offers no visa help",
+    "only some countries, not India: \"Devpost: Above legal age of majority in country of residence Only specific countries/territories included View full rules Submissions open soon\""
+   ]
+  },
+  "devpost:31024": {
+   "date": "2026-10-12",
+   "name": "Meta VR Start Developer Competition 2026",
+   "reasons": [
+    "only for one organisation's staff or members: \"Meta VR Start Developer Competition 2026: Accelerate your VR development journey with Meta VR Start and compete for $1M in cash prizes - Devpost Log in Sign up Join a hackathon Devpost Particip"
+   ]
+  },
+  "devpost:31122": {
+   "date": "2026-10-12",
+   "name": "Action Space",
+   "reasons": [
+    "cash prize under $5,000 (none found)",
+    "in person or hybrid, and the page offers no paid travel (flights or travel grant)",
+    "in person or hybrid, and the page offers no visa help"
+   ]
+  },
+  "hackster:infineon-boss-battle": {
+   "date": "2026-10-12",
+   "name": "Infineon Boss Battle in the AI Arena",
+   "reasons": [
+    "cash prize under $5,000 (about $2,000)"
+   ]
+  },
+  "mlcontests:aimslab.stanford.edu/competition": {
+   "date": "2026-10-12",
+   "name": "Predict Whether AI Systems Answer Benchmark Items Correctly",
+   "reasons": [
+    "cash prize under $5,000 (none found)"
+   ]
+  },
+  "mlcontests:quantiphy.stanford.edu/competition/index.html": {
+   "date": "2026-10-12",
+   "name": "Quantitative Physical Reasoning for VLMs",
+   "reasons": [
+    "cash prize under $5,000 (about $1,000)",
+    "registration closed"
+   ]
+  },
+  "mlcontests:zindi.africa/competitions/caribbean-voices-hackathon": {
+   "date": "2026-10-12",
+   "name": "Build Speech Recognition Systems for Caribbean Voices",
+   "reasons": [
+    "only residents of other countries: \"Eligibility This competition is open ONLY to participants who live in (with a valid proof of address) in the following countries: Anguilla Antigua and Barbuda Bahamas Barbados Belize Bermuda British Virgi"
+   ]
+  },
+  "mlh:sheridan-datathon-2026": {
+   "date": "2026-10-12",
+   "name": "Sheridan Datathon 2026",
+   "reasons": [
+    "in person or hybrid, and the page offers no paid travel (flights or travel grant)",
+    "in person or hybrid, and the page offers no visa help"
+   ]
+  },
+  "mlh:tamu-datathon-ce": {
+   "date": "2026-10-12",
+   "name": "TAMU Datathon",
+   "reasons": [
+    "cash prize under $5,000 (none found)",
+    "in person or hybrid, and the page offers no visa help"
+   ]
+  },
+  "mlh:ucla-ai-hackathon-2026": {
+   "date": "2026-10-12",
+   "name": "LA Hacks AI Hackathon 2026",
+   "reasons": [
+    "cash prize under $5,000 (none found)",
+    "in person or hybrid, and the page offers no paid travel (flights or travel grant)",
+    "in person or hybrid, and the page offers no visa help"
+   ]
+  },
+  "taikai:cmguimaraes/hack4guimaraes2035": {
+   "date": "2026-10-12",
+   "name": "Hack4Guimarães 2035",
+   "reasons": [
+    "in person or hybrid, and the page offers no paid travel (flights or travel grant)",
+    "in person or hybrid, and the page offers no visa help"
+   ]
+  },
+  "unstop:1762421": {
+   "date": "2026-10-12",
+   "name": "AI Synergy Hackathon 2026",
+   "reasons": [
+    "cash prize under $5,000 (none found)",
+    "in person or hybrid, and the page offers no paid travel (flights or travel grant)",
+    "in person or hybrid, and the page offers no visa help"
+   ]
+  },
+  "unstop:1763378": {
+   "date": "2026-10-12",
+   "name": "JAI 2026 Hackathon - Jaypee Agentic AI Hackathon 2026",
+   "reasons": [
+    "cash prize under $5,000 (none found)",
+    "in person or hybrid, and the page offers no paid travel (flights or travel grant)",
+    "in person or hybrid, and the page offers no visa help"
+   ]
+  },
+  "unstop:1765191": {
+   "date": "2026-10-12",
+   "name": "Build with AI: ABC (Anybody Can Code)",
+   "reasons": [
+    "cash prize under $5,000 (none found)",
+    "in person or hybrid, and the page offers no paid travel (flights or travel grant)",
+    "in person or hybrid, and the page offers no visa help"
+   ]
+  },
+  "unstop:1769081": {
+   "date": "2026-10-12",
+   "name": "CodewithChat AI Dev Challenge: Build, Launch & Monetize with Vibe Coding",
+   "reasons": [
+    "cash prize under $5,000 (none found)"
+   ]
+  },
   "zindi:google-waxal-asr-challenge-october-study-jam": {
    "date": "2026-10-12",
    "name": "October Study Jam: Google WAXAL ASR Challenge",
@@ -22,6 +247,110 @@
   "mlcontests": "2026-10-12"
  },
  "seen": {
+  "devpost:30790": {
+   "cash_usd": 50000,
+   "deadline": "2026-10-30",
+   "first_seen": "2026-10-12",
+   "name": "Nebius x NVIDIA Global AI Hackathon",
+   "platform": "Devpost",
+   "url": "https://nebiusglobalaihackathon.devpost.com/"
+  },
+  "devpost:30984": {
+   "cash_usd": 20250,
+   "deadline": "2026-10-27",
+   "first_seen": "2026-10-12",
+   "name": "OpenCV AI Competition 2026, powered by AWS",
+   "platform": "Devpost",
+   "url": "https://opencv26.devpost.com/"
+  },
+  "devpost:30992": {
+   "cash_usd": 138000,
+   "deadline": "2026-10-23",
+   "first_seen": "2026-10-12",
+   "name": "Build, Ship, Shape: Amazon Developer Hackathon",
+   "platform": "Devpost",
+   "url": "https://amazonappdev2026.devpost.com/"
+  },
+  "devpost:31052": {
+   "cash_usd": 40000,
+   "deadline": "2026-10-28",
+   "first_seen": "2026-10-12",
+   "name": "AWS Communication Developer Services (CDS) Agentic AI Partner Hackathon",
+   "platform": "Devpost",
+   "url": "https://aws-cds-partner.devpost.com/"
+  },
+  "devpost:31054": {
+   "cash_usd": 25000,
+   "deadline": "2026-10-30",
+   "first_seen": "2026-10-12",
+   "name": "Qloo Agentic Hackathon",
+   "platform": "Devpost",
+   "url": "https://qloo.devpost.com/"
+  },
+  "devpost:31302": {
+   "cash_usd": 67500,
+   "deadline": "2026-11-12",
+   "first_seen": "2026-10-12",
+   "name": "PayPal AI Hackathon",
+   "platform": "Devpost",
+   "url": "https://paypalaihackathon.devpost.com/"
+  },
+  "devpost:31400": {
+   "cash_usd": 6000,
+   "deadline": "2026-11-02",
+   "first_seen": "2026-10-12",
+   "name": "YouCam API Skin AI & eCommerce VTO Hackathon",
+   "platform": "Devpost",
+   "url": "https://youcam-api-skin-ai-ecommerce.devpost.com/"
+  },
+  "devpost:31503": {
+   "cash_usd": 45000,
+   "deadline": "2026-10-27",
+   "first_seen": "2026-10-12",
+   "name": "Life After Code",
+   "platform": "Devpost",
+   "url": "https://gitlab-transcend.devpost.com/"
+  },
+  "lablab:amd-lablab-ai-academy-challenge": {
+   "cash_usd": 10000,
+   "deadline": "2026-12-02",
+   "first_seen": "2026-10-12",
+   "name": "AMD AI League",
+   "platform": "lablab.ai",
+   "url": "https://lablab.ai/ai-hackathons/amd-lablab-ai-academy-challenge"
+  },
+  "lablab:vultr-hackathon": {
+   "cash_usd": 9000,
+   "deadline": "2026-11-09",
+   "first_seen": "2026-10-12",
+   "name": "Vultr: Agent Rush Hackathon",
+   "platform": "lablab.ai",
+   "url": "https://lablab.ai/ai-hackathons/vultr-hackathon"
+  },
+  "mlcontests:aimo-interp.github.io": {
+   "cash_usd": 10000,
+   "deadline": "2026-10-25",
+   "first_seen": "2026-10-12",
+   "name": "Interpretability for AI Mathematical Olympiad Reasoning",
+   "platform": "mlcontests",
+   "url": "https://aimo-interp.github.io/"
+  },
+  "mlcontests:flagos.io/race-detail-season2": {
+   "cash_usd": 14925,
+   "deadline": "2026-11-15",
+   "first_seen": "2026-10-12",
+   "name": "Optimise LLM Operators & Inference Across AI Chips",
+   "platform": "mlcontests",
+   "url": "https://flagos.io/race-detail-season2?id=8q4m2x7p&lang=en"
+  },
+  "mlcontests:hub.crunchdao.com/competitions/datacrunch-2": {
+   "cash_usd": 52000,
+   "deadline": "2026-12-31",
+   "first_seen": "2026-10-12",
+   "name": "Predict Cross-sectional Equity Returns",
+   "platform": "mlcontests",
+   "url": "https://hub.crunchdao.com/competitions/datacrunch-2"
+  },
   "mlcontests:kaggle.com/competitions/arc-prize-2026-arc-agi-2": {
    "cash_usd": 700000,
    "deadline": "2026-11-02",
@@ -93,6 +422,38 @@
    "name": "Detect Knee Abnormalities in Multimodal Imaging Data",
    "platform": "mlcontests",
    "url": "https://www.kaggle.com/competitions/rsna-knee-abnormality-detection"
+  },
+  "mlcontests:neural-interfaces26.github.io": {
+   "cash_usd": 20000,
+   "deadline": "2026-11-21",
+   "first_seen": "2026-10-12",
+   "name": "Decode Brains Signals in Task-Specific Settings",
+   "platform": "mlcontests",
+   "url": "https://neural-interfaces26.github.io"
+  },
+  "mlcontests:virtualembryo.ai/challenge": {
+   "cash_usd": 54000,
+   "deadline": "2026-10-25",
+   "first_seen": "2026-10-12",
+   "name": "Generative Modeling of Mouse Embryo Development",
+   "platform": "mlcontests",
+   "url": "https://virtualembryo.ai/challenge"
+  },
+  "mlcontests:wundernn.io/connectome": {
+   "cash_usd": 13600,
+   "deadline": "2026-11-15",
+   "first_seen": "2026-10-12",
+   "name": "Predict Price Movements from Limit Order Book Data",
+   "platform": "mlcontests",
+   "url": "https://wundernn.io/connectome"
+  },
+  "mlcontests:xiuwenz2.github.io/sapc2-website": {
+   "cash_usd": 10000,
+   "deadline": "2026-10-24",
+   "first_seen": "2026-10-12",
+   "name": "Automated Speech Recognition Under Diverse Speech Patterns",
+   "platform": "mlcontests",
+   "url": "https://xiuwenz2.github.io/SAPC2-website/"
   },
   "zindi:bias-bounty-mapping-equity-challenge": {
    "cash_usd": 10000,
