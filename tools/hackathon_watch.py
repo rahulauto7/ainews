@@ -1,5 +1,5 @@
 """
-Email rahul as soon as a new AI hackathon appears on any platform.
+Email rahul the AI hackathons rahul can actually enter and win cash in.
 
 rahul, 2026-10-03: "make a scheduler who check popular hackathon sites for the
 moment hackathon launched it will email me" (at rahularebhai@gmail.com). It runs
@@ -7,28 +7,36 @@ hourly from GitHub Actions (.github/workflows/hackathon_alerts.yml), not from a
 Claude session: Claude cloud sessions in this project get linked to rahul's
 computer, and a linked session cannot sign in to Gmail (found 2026-10-03).
 
-Each run reads the platforms in hackathon_sources.py (all but HackerEarth,
-which refuses GitHub's servers; see NOT_FROM_GITHUB) and keeps the AI
-hackathons that anyone can enter and whose submission deadline leaves 7+ days
-to build - the daily section's rule. An event that lists no deadline is kept and
-marked, because a missed hackathon costs more than a check. Events not seen
-before are emailed; the seen-list is a JSON file the workflow keeps on the
-`hackathon-alerts-state` branch.
+rahul, 2026-10-12: "Only give me cash-based price hackathons ... more than
+$5,000 in prizes. And online hackathons and check eligibility as well before
+sending mail, like Indian working professional in IOCL ... the price is given
+with priorities, with the highest price first ... make sure that when you send
+it, I can sign up, and that the registration date is not in the past."
 
-The first time a platform is read successfully its whole listing is recorded
-without an alert, or the first run (and every platform added later) would mail
-each open event as "new". The very first run instead sends one welcome email
-listing everything open now. A platform that cannot be read for a day gets one
-email saying so, and another when it is back.
+Each run reads the platforms in hackathon_sources.py (all but HackerEarth,
+which refuses GitHub's servers; see NOT_FROM_GITHUB). A listing goes on to a
+page check when it is an AI hackathon, not invite-only, not in person, its
+sign-up has not closed, its submission deadline leaves 7+ days to build (or is
+not listed), and its listed prize is not known to be under $5,000. The page
+check (hackathon_check.py) reads the event's own page and rules for the cash
+prize, an online format, an open sign-up and who may enter (an Indian citizen
+working at state-owned IOCL). Only events that pass are emailed, biggest cash
+prize first, each once; the seen-list is a JSON file the workflow keeps on the
+`hackathon-alerts-state` branch. A rejection is remembered for a week, so the
+same page is not re-read every hour; a page that could not be read is tried
+again next run.
+
+A state file from before these checks (version 1) is replaced, and that run
+emails every hackathon that passes now. A platform that cannot be read for a
+day gets one email saying so, and another when it is back.
 
 Usage:
   python3 tools/hackathon_watch.py --state PATH [--to EMAIL] [--dry-run]
 
 --to defaults to HACKATHON_ALERT_EMAIL. Mail goes through the Gmail API with the
 token JSON in GMAIL_TOKEN_JSON (the secret send_edition.yml uses too) or in
-token.json, refreshed with plain HTTPS, so the workflow needs only requests.
---dry-run prints each email instead of sending it and leaves the state file
-alone.
+token.json, refreshed with plain HTTPS. --dry-run prints each email instead of
+sending it and leaves the state file alone.
 
 Exits 1 when every platform failed or an email could not be sent. Events are
 recorded only after their email went out, so a failed send is retried next run.
@@ -41,6 +49,7 @@ import json
 import os
 import re
 import sys
+from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime, timedelta, timezone
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -49,15 +58,22 @@ import requests
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+import hackathon_check as hc
 import hackathon_sources as hs
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 GMAIL_SEND = "https://gmail.googleapis.com/gmail/v1/users/me/messages/send"
+STATE_VERSION = 2
 # Seen events are forgotten this long after their deadline; by then no listing
 # shows them as open, so they cannot come back as "new".
 FORGET_AFTER_DAYS = 30
 # A platform unreadable for this long gets one email; a blip does not.
 WARN_AFTER_HOURS = 24
+# A rejected event's page is read again after this long (rules and prizes change).
+RECHECK_AFTER_DAYS = 7
+# Pages read per run, biggest listed prize first; the rest wait for the next run.
+MAX_CHECKS_PER_RUN = 60
+CHECK_WORKERS = 8
 
 # Platforms that refuse GitHub's servers. HackerEarth's event feed answers 403
 # to every GitHub Actions runner (first dry run, 2026-10-03) while answering a
@@ -70,14 +86,18 @@ WATCHED = tuple((name, read) for name, read in hs.PLATFORMS if name not in NOT_F
 # ── State ────────────────────────────────────────────────────────────────────
 
 def empty_state():
-    return {"version": 1, "platforms": {}, "seen": {}, "failing": {}}
+    return {"version": STATE_VERSION, "platforms": {}, "seen": {}, "checked": {}, "failing": {}}
 
 
 def load_state(path):
+    """The saved state, or a fresh one when there is none or it predates the
+    cash and eligibility checks (its seen-list holds events rahul never wanted)."""
     try:
         with open(path, encoding="utf-8") as f:
             state = json.load(f)
     except (OSError, ValueError):
+        return empty_state()
+    if state.get("version") != STATE_VERSION:
         return empty_state()
     return {**empty_state(), **state}
 
@@ -105,53 +125,98 @@ def _same_event(deadline, other):
     return abs((deadline - other).days) <= 3
 
 
-# ── Deciding what is new ─────────────────────────────────────────────────────
+# ── Deciding what to email ───────────────────────────────────────────────────
 
-def worth_alerting(e, today):
-    """An AI hackathon anyone can enter, with 7+ days to build or no deadline listed."""
-    return (e["ai"] and not e["restricted"]
-            and (e["deadline"] is None or hs.has_build_time(e["deadline"], today)))
+def listing_problem(e, today):
+    """Why the listing alone rules an event out, or "" to read its page."""
+    if not e["ai"]:
+        return "not AI"
+    if e["restricted"]:
+        return e["restricted"]
+    if e.get("online") is False:
+        return "in person or hybrid"
+    if e["deadline"] is not None and not hs.has_build_time(e["deadline"], today):
+        return f"under {hs.MIN_BUILD_DAYS} days to build"
+    if e.get("reg_closes") and e["reg_closes"] < today:
+        return "registration closed"
+    listed = hs.prize_usd(e["prize"])
+    # Devpost's listed figure counts swag and credits too, so it is never below the cash.
+    if listed and listed < hc.MIN_CASH_USD:
+        return f"prize under ${hc.MIN_CASH_USD:,}"
+    return ""
 
 
-def plan(events, errors, state, today):
-    """Split this run's events into (new, seeded).
-
-    new     events to email: not seen before, on a platform read successfully
-            before this run.
-    seeded  events on a platform read successfully for the first time; recorded
-            silently (or listed in the welcome email on the very first run).
-    """
-    seen = state["seen"]
+def candidates(events, errors, state, today):
+    """Events whose page should be read this run, biggest listed prize first:
+    not seen, not the same event as one seen, not rejected in the last week."""
+    seen, checked = state["seen"], state["checked"]
     names = {}
     for v in seen.values():
         nk = name_key(v.get("name"))
         if nk:
             names.setdefault(nk, []).append(date.fromisoformat(v["deadline"]) if v.get("deadline") else None)
-    new, seeded = [], []
-    order = [name for name, _ in WATCHED]
-    for e in sorted(events, key=lambda e: order.index(e["platform"]) if e["platform"] in order else 99):
-        if e["platform"] in errors or not worth_alerting(e, today):
+    recheck = (today - timedelta(days=RECHECK_AFTER_DAYS)).isoformat()
+    out = []
+    for e in sorted(events, key=lambda e: (-hs.prize_usd(e["prize"]), e["deadline"] or date.max, e["key"])):
+        if e["platform"] in errors or listing_problem(e, today):
             continue
         nk = name_key(e["name"])
         if e["key"] in seen or any(_same_event(e["deadline"], d) for d in names.get(nk, [])):
             continue
+        if checked.get(e["key"], {}).get("date", "") > recheck:
+            continue
         if nk:
             names.setdefault(nk, []).append(e["deadline"])
-        (seeded if e["platform"] not in state["platforms"] else new).append(e)
-    return new, seeded
+        out.append(e)
+    return out
 
 
-def record(state, events, today):
-    for e in events:
-        state["seen"][e["key"]] = {"name": e["name"], "platform": e["platform"],
-                                   "first_seen": today.isoformat(),
+def check_pages(events, today, fetch=hc.page_text):
+    """Read each event's page and run hackathon_check.check on it.
+
+    Returns (passed, rejected, unreadable): passed is [(event, result)],
+    rejected {key: result}, unreadable {key: "error"}."""
+    def one(e):
+        try:
+            return e, hc.check(e, fetch(e), today), None
+        except Exception as exc:  # noqa: BLE001 - one page failing never hides the others
+            return e, None, f"{type(exc).__name__}: {str(exc)[:150]}"
+
+    passed, rejected, unreadable = [], {}, {}
+    if not events:
+        return passed, rejected, unreadable
+    with ThreadPoolExecutor(max_workers=min(CHECK_WORKERS, len(events))) as ex:
+        for e, result, err in ex.map(one, events):
+            if err:
+                unreadable[e["key"]] = err
+            elif result["ok"]:
+                passed.append((e, result))
+            else:
+                rejected[e["key"]] = result
+    return passed, rejected, unreadable
+
+
+def record(state, passed, today):
+    for e, result in passed:
+        state["seen"][e["key"]] = {"name": e["name"], "platform": e["platform"], "url": e["url"],
+                                   "first_seen": today.isoformat(), "cash_usd": round(result["cash_usd"]),
                                    "deadline": e["deadline"].isoformat() if e["deadline"] else None}
+        state["checked"].pop(e["key"], None)
+
+
+def remember_rejections(state, events, rejected, today):
+    by_key = {e["key"]: e for e in events}
+    for key, result in rejected.items():
+        state["checked"][key] = {"name": by_key[key]["name"], "date": today.isoformat(),
+                                 "reasons": [r[:240] for r in result["reasons"]]}
 
 
 def forget_expired(state, today):
     cutoff = (today - timedelta(days=FORGET_AFTER_DAYS)).isoformat()
     for key in [k for k, v in state["seen"].items() if v.get("deadline") and v["deadline"] < cutoff]:
         del state["seen"][key]
+    for key in [k for k, v in state["checked"].items() if v.get("date", "") < cutoff]:
+        del state["checked"][key]
 
 
 def platform_health(state, errors, ok_platforms, now):
@@ -176,35 +241,50 @@ def platform_health(state, errors, ok_platforms, now):
 
 # ── The emails ───────────────────────────────────────────────────────────────
 
+def money(usd):
+    return f"${usd:,.0f}"
+
+
 def _due_text(e, today):
     if not e["deadline"]:
-        return "Deadline not listed, check the page"
+        return "Submission deadline not listed, check the page"
     days = hs.days_to_build(e["deadline"], today)
     what = "Submissions close" if e["deadline_kind"] == "submission" else "Ends"
     return f"{what} {e['deadline']:%a %d %b %Y} ({days} days to build)"
 
 
-def _by_deadline(events):
-    return sorted(events, key=lambda e: (e["deadline"] is None, e["deadline"] or date.max, e["name"]))
+def _signup_text(e, result):
+    reg = result.get("reg_closes")
+    return f"Sign up by {reg:%a %d %b %Y}" if reg else "Sign-up open now (no closing date listed)"
 
 
-def event_text(e, today):
-    lines = [f"{e['name']} ({e['platform']})", f"  {_due_text(e, today)}"]
-    details = " | ".join(x for x in (e["prize"] and f"Prize: {e['prize']}", e["where"]) if x)
-    if details:
-        lines.append(f"  {details}")
-    lines.append(f"  {e['url']}")
-    return "\n".join(lines)
+def _by_cash(passed):
+    return sorted(passed, key=lambda p: (-p[1]["cash_usd"], p[0]["deadline"] or date.max, p[0]["name"]))
 
 
-def event_html(e, today):
-    details = " &middot; ".join(html.escape(x) for x in (e["prize"] and f"Prize: {e['prize']}", e["where"]) if x)
+def _lines(e, result, today):
+    prize = f"Cash prizes about {money(result['cash_usd'])}"
+    if e["prize"] and hs.prize_usd(e["prize"]) != result["cash_usd"]:
+        prize += f" (listed: {e['prize']})"
+    lines = [prize, _due_text(e, today), _signup_text(e, result)]
+    if result.get("who"):
+        lines.append(f"Who can enter: {result['who']}")
+    return lines
+
+
+def event_text(e, result, today):
+    return "\n".join([f"{e['name']} ({e['platform']})"] + [f"  {l}" for l in _lines(e, result, today)]
+                     + [f"  {e['url']}"])
+
+
+def event_html(e, result, today):
+    rows = "".join(f'<div style="font-size:13px;color:#333;margin-top:3px;">{html.escape(l)}</div>'
+                   for l in _lines(e, result, today))
     return (f'<tr><td style="padding:10px 0;border-bottom:1px solid #e5e5e5;">'
             f'<a href="{html.escape(e["url"], quote=True)}" style="font-size:15px;font-weight:bold;'
             f'color:#1a4fd6;text-decoration:none;">{html.escape(e["name"])}</a>'
-            f'<div style="font-size:13px;color:#333;margin-top:3px;">{html.escape(_due_text(e, today))}</div>'
-            f'<div style="font-size:12px;color:#777;margin-top:2px;">{html.escape(e["platform"])}'
-            f'{" &middot; " + details if details else ""}</div></td></tr>')
+            f'<span style="font-size:12px;color:#777;"> &middot; {html.escape(e["platform"])}</span>'
+            f'{rows}</td></tr>')
 
 
 def _page(intro_html, rows_html, footer):
@@ -216,39 +296,33 @@ AI Hackathon Alerts</span></div>
 <p style="color:#888;font-size:12px;margin-top:20px;">{footer}</p></div></div>"""
 
 
-FOOTER = (f"Checked every hour on {len(WATCHED)} platforms: "
-          + ", ".join(name if name != "mlcontests" else "mlcontests.com (Kaggle, AIcrowd, DrivenData, Zindi"
+FOOTER = (f"Checked every hour on {len(WATCHED)} sites: "
+          + ", ".join(name if name != "mlcontests" else "mlcontests.com (Kaggle, DrivenData, CodaLab"
                       " and more)" for name, _ in WATCHED)
-          + f". Only AI hackathons with {hs.MIN_BUILD_DAYS}+ days left before the submission deadline.")
+          + f". Only online AI hackathons with at least {money(hc.MIN_CASH_USD)} in cash prizes, sign-up "
+          f"still open, {hs.MIN_BUILD_DAYS}+ days before the submission deadline, and rules that let an "
+          "Indian working professional at a state-owned company enter (no students-only, country-limited "
+          "or government-staff-excluded events). Eligibility is read from each event's own page; confirm "
+          "it in the official rules before you submit.")
 
 
-def alert_email(new, today):
-    """(subject, text, html) for newly announced hackathons."""
-    new = _by_deadline(new)
-    if len(new) == 1:
-        e = new[0]
-        verb = "closes" if e["deadline_kind"] == "submission" else "ends"
-        when = f" ({verb} {e['deadline']:%d %b})" if e["deadline"] else ""
-        subject = f"New AI hackathon: {e['name'][:80]}{when}"
-        intro = "A new AI hackathon was just listed:"
+def alert_email(passed, today, first=False):
+    """(subject, text, html) listing the events that passed, biggest cash first."""
+    passed = _by_cash(passed)
+    top_e, top = passed[0]
+    if len(passed) == 1:
+        subject = f"AI hackathon, {money(top['cash_usd'])} cash: {top_e['name'][:80]}"
+        intro = "A new AI hackathon you can enter:"
     else:
-        platforms = sorted({e["platform"] for e in new})
-        subject = f"{len(new)} new AI hackathons on {', '.join(platforms)}"
-        intro = f"{len(new)} new AI hackathons were just listed, soonest deadline first:"
-    text = intro + "\n\n" + "\n\n".join(event_text(e, today) for e in new) + "\n\n" + FOOTER
+        subject = f"{len(passed)} AI hackathons you can enter, up to {money(top['cash_usd'])} cash"
+        intro = f"{len(passed)} new AI hackathons you can enter, biggest cash prize first:"
+    if first:
+        subject = f"Hackathon alerts, now cash and eligibility checked: {len(passed)} open"
+        intro = ("From now on you only get online AI hackathons with real cash prizes that you can sign up "
+                 f"for and enter. These {len(passed)} pass today, biggest cash prize first:")
+    text = intro + "\n\n" + "\n\n".join(event_text(e, r, today) for e, r in passed) + "\n\n" + FOOTER
     body = _page(f'<p style="font-size:14px;color:#333;">{intro}</p>',
-                 "".join(event_html(e, today) for e in new), FOOTER)
-    return subject, text, body
-
-
-def welcome_email(seeded, today):
-    seeded = _by_deadline(seeded)
-    subject = f"Hackathon alerts are on: {len(seeded)} AI hackathons open now"
-    intro = (f"From now on you get an email whenever a new AI hackathon is listed. "
-             f"These {len(seeded)} are open today, soonest deadline first:")
-    text = intro + "\n\n" + "\n\n".join(event_text(e, today) for e in seeded) + "\n\n" + FOOTER
-    body = _page(f'<p style="font-size:14px;color:#333;">{intro}</p>',
-                 "".join(event_html(e, today) for e in seeded), FOOTER)
+                 "".join(event_html(e, r, today) for e, r in passed), FOOTER)
     return subject, text, body
 
 
@@ -303,7 +377,7 @@ def gmail_send(to, subject, text, body, token=None):
 
 # ── One run ──────────────────────────────────────────────────────────────────
 
-def run(state_path, to=None, dry_run=False, now=None, collect=hs.collect, send=gmail_send):
+def run(state_path, to=None, dry_run=False, now=None, collect=hs.collect, send=gmail_send, fetch=hc.page_text):
     now = now or datetime.now(timezone.utc)
     today = hs.today_ist(now)
     state = load_state(state_path)
@@ -322,17 +396,24 @@ def run(state_path, to=None, dry_run=False, now=None, collect=hs.collect, send=g
         print("Every platform failed; nothing recorded.")
         return 1
 
-    new, seeded = plan(events, errors, state, today)
-    newly_down, back_up = platform_health(state, errors, ok_platforms, now)
-    print(f"New AI hackathons with {hs.MIN_BUILD_DAYS}+ days to build: {len(new)} | "
-          f"first read of a platform, recorded quietly: {len(seeded)}"
-          + (" (first run: welcome email)" if first_run else ""))
+    todo = candidates(events, errors, state, today)
+    waiting = todo[MAX_CHECKS_PER_RUN:]
+    todo = todo[:MAX_CHECKS_PER_RUN]
+    passed, rejected, unreadable = check_pages(todo, today, fetch)
+    by_key = {e["key"]: e for e in todo}
+    print(f"Pages checked: {len(todo)} (left for next run: {len(waiting)}) | pass: {len(passed)} | "
+          f"rejected: {len(rejected)} | unreadable: {len(unreadable)}" + (" | first run" if first_run else ""))
+    for e, r in _by_cash(passed):
+        print(f"  PASS {money(r['cash_usd'])} {e['name']} ({e['platform']})")
+    for key, r in rejected.items():
+        print(f"  no   {by_key[key]['name']} ({by_key[key]['platform']}): {'; '.join(r['reasons'])[:200]}")
+    for key, err in unreadable.items():
+        print(f"  ??   {by_key[key]['name']} ({by_key[key]['platform']}): {err}")
 
+    newly_down, back_up = platform_health(state, errors, ok_platforms, now)
     emails = []
-    if first_run and seeded:
-        emails.append(("welcome", welcome_email(seeded, today)))
-    if new:
-        emails.append(("alert", alert_email(new, today)))
+    if passed:
+        emails.append(("alert", alert_email(passed, today, first=first_run)))
     if newly_down or back_up:
         emails.append(("health", health_email(newly_down, back_up)))
 
@@ -349,7 +430,8 @@ def run(state_path, to=None, dry_run=False, now=None, collect=hs.collect, send=g
 
     if dry_run:
         return 0
-    record(state, new + seeded, today)
+    record(state, passed, today)
+    remember_rejections(state, todo, rejected, today)
     for p, entry in newly_down:
         entry["warned"] = True
     for p in ok_platforms:
