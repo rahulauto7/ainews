@@ -247,6 +247,55 @@ def main():
     check(failures, got and got[0]["deadline"] == date(2027, 1, 4) and got[0]["ai"] and not got[1]["ai"],
           f"Hackster fields: {got!r}")
 
+    # ── Online and sign-up facts the alert checks lean on ───────────────────
+    nd_got = hs.parse_devfolio(f'<script id="__NEXT_DATA__" type="application/json">{json.dumps(nd)}</script>', TODAY)
+    unstop_got = hs.parse_unstop(data, TODAY)
+    cases += 2
+    check(failures, [e["online"] for e in nd_got] == [False, True] and nd_got[0]["reg_closes"] == date(2026, 10, 4),
+          f"Devfolio online flag and sign-up close: {[(e['online'], e['reg_closes']) for e in nd_got]!r}")
+    check(failures, unstop_got and unstop_got[0]["online"] is True
+          and unstop_got[0]["reg_closes"] == date(2026, 10, 5),
+          f"Unstop online flag and sign-up close: {unstop_got and unstop_got[0]!r}")
+
+    # ── Zindi: open competitions, "$10 000 USD" read as $10,000 ──────────────
+    zindi = {"data": [
+        {"id": "bias-bounty", "title": "Bias Bounty Mapping Equity Challenge", "open": True, "kind": "competition",
+         "reward": "$10 000 USD", "reward_type": "prize", "end_time": "2026-11-01T21:59:00.000Z",
+         "entries_close_at": "2026-10-25T21:59:00.000Z", "is_access_restricted": False},
+        {"id": "study-jam", "title": "October Study Jam", "open": True, "kind": "competition",
+         "reward": "Knowledge", "reward_type": "knowledge", "end_time": "2026-11-01T21:59:00.000Z"},
+        {"id": "private", "title": "Partner-Only Challenge", "open": True, "kind": "competition",
+         "reward": "$5 000 USD", "reward_type": "prize", "end_time": "2026-11-01T21:59:00.000Z",
+         "secret_code_required": True},
+        {"id": "closed", "title": "Closed Challenge", "open": False, "reward": "$20 000 USD",
+         "end_time": "2026-11-01T21:59:00.000Z"}]}
+    got = hs.parse_zindi(zindi, TODAY)
+    cases += 3
+    check(failures, [e["key"] for e in got] == ["zindi:bias-bounty", "zindi:study-jam", "zindi:private"],
+          f"Zindi open competitions: {[e['key'] for e in got]!r}")
+    check(failures, got and hs.prize_usd(got[0]["prize"]) == 10_000 and got[0]["online"]
+          and got[0]["deadline"] == date(2026, 11, 2) and got[0]["reg_closes"] == date(2026, 10, 26),
+          f"Zindi fields (21:59 UTC is the next day in IST): {got and got[0]!r}")
+    check(failures, len(got) == 3 and got[1]["prize"] == "" and got[2]["restricted"],
+          f"Zindi knowledge-only prize and private entry: {got!r}")
+
+    # ── AIcrowd: the card's clock and its cash badge ─────────────────────────
+    card = ('<a class="card-img-overlay" href="/challenges/{slug}">\n  <span class="badge" '
+            'data-toggle="tooltip" title="{when}">\n Phase 2: 30 days left\n</span>\n</a></div>'
+            '<div class="card-body"><div class="card-intro">\n<h5 class="card-title">'
+            '<a href="/challenges/{slug}">{title}</a>\n</h5></div>{prize}<div class="card-footer"></div>')
+    cash = '<div class="prizes-breakdown"><div class="prize-item prize-item-cash">\n $150,000+ Prize Money\n </div>'
+    page_html = (card.format(slug="white-box", when="2026-11-17 23:59:00 UTC", title="ARC White-Box Estimation",
+                             prize=cash)
+                 + card.format(slug="trajnet", when="2026-12-31 23:59:00 UTC", title="Trajnet++", prize="")
+                 + card.format(slug="over", when="2026-10-01 23:59:00 UTC", title="Ended Challenge", prize=cash))
+    got = hs.parse_aicrowd(page_html, TODAY)
+    cases += 2
+    check(failures, [e["key"] for e in got] == ["aicrowd:white-box", "aicrowd:trajnet"],
+          f"AIcrowd open challenges: {[e['key'] for e in got]!r}")
+    check(failures, got and hs.prize_usd(got[0]["prize"]) == 150_000 and got[0]["deadline"] == date(2026, 11, 18)
+          and len(got) == 2 and got[1]["prize"] == "", f"AIcrowd fields: {got!r}")
+
     # ── What counts as AI ────────────────────────────────────────────────────
     for text, want in (("AI4Good Hackathon", True), ("Hack4AI", True), ("GenAI Sprint", True),
                        ("Agentic Systems Jam", True), ("TAMU Datathon", True), ("Dubai FinTech Hack", False),

@@ -1,13 +1,17 @@
-# Emails rahul as soon as a new AI hackathon is listed anywhere it can be read.
+# Emails rahul the AI hackathons rahul can actually enter and win cash in.
 #
-# Every hour tools/hackathon_watch.py reads eight platforms from
+# Every hour tools/hackathon_watch.py reads ten platforms from
 # tools/hackathon_sources.py (Devpost, lablab.ai, mlcontests.com for Kaggle and
-# the other ML competition sites, Devfolio, Unstop, MLH, TAIKAI, Hackster;
-# HackerEarth refuses GitHub's servers, so it is in the daily PDF list only)
-# and mails each AI hackathon it has not seen before whose submission
-# deadline is at least 7 days away. The very first run sends one email listing
-# everything open now. The seen-list is kept on the hackathon-alerts-state
-# branch, so main stays clean, and changes only when something new turns up.
+# the other ML competition sites, Devfolio, Unstop, MLH, TAIKAI, Hackster, Zindi,
+# AIcrowd; HackerEarth refuses GitHub's servers, so it is in the daily PDF list
+# only). Each AI hackathon whose listing allows it then has its own page and
+# rules read by tools/hackathon_check.py, and only those with at least $5,000 in
+# cash, held online (or in person / hybrid with the travel paid), with sign-up
+# still open, 7+ days before the submission
+# deadline, and rules that let an Indian working professional at a state-owned
+# company enter are mailed, biggest cash prize first, each once. The seen-list
+# is kept on the hackathon-alerts-state branch, so main stays clean, and changes
+# only when something new turns up or a page is rejected.
 #
 # It runs here rather than in a Claude routine because Claude cloud sessions in
 # this project get linked to rahul's computer and then cannot sign in to Gmail.
@@ -34,6 +38,7 @@ on:
     paths:
       - "tools/hackathon_sources.py"
       - "tools/hackathon_watch.py"
+      - "tools/hackathon_check.py"
       - "tools/find_opportunities.py"
       - "tools/check_quality.py"
       - "tools/generate_pdf.py"
@@ -76,7 +81,7 @@ jobs:
             echo "Loaded the seen-list from $STATE_BRANCH."
           else
             rm -f "$STATE_FILE"
-            echo "No seen-list yet: this run records what is open and sends the welcome email."
+            echo "No seen-list yet: this run emails every hackathon that passes the checks."
           fi
 
       - name: Check the platforms and email what is new
@@ -133,6 +138,7 @@ jobs:
         shell: bash   # -eo pipefail: a failing test fails the step
         run: |
           for t in tools/tests/test_hackathon_platforms.py tools/tests/test_hackathon_watch.py \
+                   tools/tests/test_hackathon_check.py \
                    tools/tests/test_hackathon_prizes.py tools/tests/test_build_window.py \
                    tools/tests/test_check_quality.py; do
             echo "== $t"

@@ -552,12 +552,41 @@ launched it will email me" (at rahularebhai@gmail.com). This is **not** part of 
 no session:
 
 - **`.github/workflows/hackathon_alerts.yml`** runs `tools/hackathon_watch.py` every hour (at :23) on
-  GitHub Actions. It reads the platforms in `hackathon_sources.py` and emails each AI hackathon it has
-  not seen before that anyone can enter and that leaves 7+ days before the submission deadline (one
-  with no deadline listed is sent too, marked "Deadline not listed"). Several new ones go in one email,
-  soonest deadline first. **HackerEarth is not watched:** its event feed answers 403 to GitHub's
-  runners (first dry run, 2026-10-03) though a Claude session reads it, and its listing page renders
-  in the browser. It stays in `.tmp/hackathons.txt` for the PDF (`NOT_FROM_GITHUB` in the watcher).
+  GitHub Actions. It reads the platforms in `hackathon_sources.py` (ten from GitHub: Devpost with six
+  AI searches, lablab.ai, mlcontests.com, Devfolio, Unstop, MLH, TAIKAI, Hackster, Zindi, AIcrowd).
+  **HackerEarth is not watched:** its event feed answers 403 to GitHub's runners (first dry run,
+  2026-10-03) though a Claude session reads it, and its listing page renders in the browser. It stays
+  in `.tmp/hackathons.txt` for the PDF (`NOT_FROM_GITHUB` in the watcher).
+- **What gets mailed** (rahul, 2026-10-12: "Only give me cash-based price hackathons ... more than
+  $5,000 in prizes. And online hackathons and check eligibility ... like Indian working professional
+  in IOCL ... the highest price first ... make sure ... I can sign up, and that the registration date
+  is not in the past"). Two steps:
+  1. **The listing** must show an AI hackathon, not invite-only, sign-up not closed,
+     7+ days before the submission deadline (or no deadline listed, mailed marked "not listed"), and a
+     listed prize that is not under $5,000.
+  2. **The event's own page** is read by `tools/hackathon_check.py` (Devpost: the page and its /rules;
+     Zindi and Kaggle: their public JSON, which needs only the session cookie the page sets). It must
+     show at least **$5,000 in cash** in rough US dollars (Devpost: its own "$X in cash" figure, since
+     its listed total counts swag and credits), an online format, or for an in-person or hybrid
+     event the organiser paying the trip (rahul, later on 2026-10-12: "It may be hybrid, but
+     sponsorships for hybrid (like onsite) will be required, like flight, visa": the page must say
+     flights or travel are covered, reimbursed or sponsored, or offer travel grants; "at your own
+     expense" or "not covered" fails; and, rahul later the same day, "If they don't say, 'We will
+     provide a visa' ... just skip it": the page must also offer visa help (support, sponsorship,
+     assistance or invitation letters); the email quotes both sentences),
+     an open sign-up (registration period not over, no "registration closed"), and rules that let
+     rahul enter: an Indian citizen in India working at IOCL, a state-owned company, or (rahul,
+     later on 2026-10-12) a startup founder with no job. Out: students only (Devpost's "Students
+     only" tag included; a student-only *award* is fine), limited to residents of countries that do
+     not include India, India excluded, only for one company's staff or members. An event that
+     excludes government or state-owned company staff passes with a note to enter as the founder.
+  Only events that pass both are emailed, **biggest cash prize first**, each showing the cash, the
+  submission deadline and days to build, "Sign up by" (or "open, no closing date listed"), who can
+  enter, and the link. Up to 60 pages are read a run, biggest listed prize first; the rest wait for
+  the next run. A rejection is remembered for 7 days (with its reasons, in the state file); a page
+  that cannot be read (Hackster's event pages answer 403) is tried again next run and never mailed
+  unchecked. The checks are text rules, so the email asks rahul to confirm eligibility in the
+  official rules before submitting.
 - **Why GitHub and not a Claude routine:** Claude cloud sessions in this project get linked to rahul's
   computer and then cannot sign in to Gmail (2026-10-03), and a routine draws on rahul's plan usage.
 - **Why hourly:** the repository is private, so Actions minutes count against the free 2,000 a month;
@@ -566,10 +595,11 @@ no session:
   daily edition's send uses. The recipient defaults to rahularebhai@gmail.com; the repository variable
   `HACKATHON_ALERT_EMAIL` overrides it. Without the secret the run skips with a warning.
 - **The seen-list** is `seen.json` on the `hackathon-alerts-state` branch, committed only when it
-  changes. The first run sends one welcome email listing everything open; a platform read for the
-  first time later is recorded quietly, so it never floods the inbox. An event is recorded only after
-  its email went out, so a failed send is retried next hour. Entries are forgotten 30 days after their
-  deadline. To start over (a fresh welcome email), delete that branch.
+  changes. It holds the events mailed (with their cash), the rejections and their reasons, and
+  platform failures. A state file from before the 2026-10-12 checks (version 1) is replaced, and that
+  run emails every hackathon that passes. An event is recorded only after its email went out, so a
+  failed send is retried next hour. Entries are forgotten 30 days after their deadline. To start over
+  (one email listing everything that passes now), delete that branch.
 - **A platform that cannot be read for 24 hours** gets one email saying so, and another when it is
   back. Shorter failures only show as warnings in the Actions run.
 - **On a pull request** that touches the watcher the workflow runs the hackathon tests and a dry run
@@ -820,6 +850,11 @@ stale jobs. The readers are pure functions over a `get`, tested offline in `test
 | A smaller prize printed above a bigger one in AI Hackathons, or "$100k in credits" outranking cash (2026-10-03) | `prize_usd()` / `by_prize()` in `hackathon_sources.py`, `test_hackathon_prizes.py` |
 
 ### History
+- **2026-10-12:** Hackathon alerts only mail AI hackathons with $5,000+ in cash that rahul can
+  sign up for and enter, online or in person / hybrid with the travel paid (Indian working professional at state-owned IOCL), biggest cash prize first.
+  New `tools/hackathon_check.py` reads each event's page and rules before it is mailed. Zindi and
+  AIcrowd joined the platforms, Devpost is searched for six AI terms instead of one theme, and Kaggle
+  rules are read through its public page JSON. The PDF is unchanged. See **Hackathon Alerts**.
 - **2026-10-09:** Friday, quantum out. The 05:18 IST routine run stopped on the account's weekly
   usage limit, so the edition was built by hand in a cloud session on rahul's request, with the
   2026-10-08 edition as the model for the explanations (see the Plain-Language News Rule). Shipped

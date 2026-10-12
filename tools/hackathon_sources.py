@@ -33,6 +33,9 @@ Each reader returns a list of event dicts:
   prize, where   short display text, "" when unknown
   ai             True when the event is about AI (see is_ai)
   restricted     why it cannot be entered by anyone ("invite-only"), or ""
+  online         True online, False in person or hybrid, None when the listing
+                 does not say
+  reg_closes     datetime.date registration closes, when the listing gives one
 
 Used by find_opportunities.py (candidates for the daily AI Hackathons section)
 and hackathon_watch.py (the hourly new-hackathon email). Needs only requests
@@ -74,6 +77,8 @@ UNSTOP_API = "https://unstop.com/api/public/opportunity/search-result"
 MLH_EVENTS = "https://mlh.io/seasons/{season}/events"
 TAIKAI_LISTING = "https://taikai.network/hackathons"
 HACKSTER_CONTESTS = "https://www.hackster.io/contests"
+ZINDI_API = "https://api.zindi.africa/v1/competitions"
+AICROWD_CHALLENGES = "https://www.aicrowd.com/challenges?challenge_filter=active"
 
 JSON_HEADERS = {**web_text.HEADERS, "Accept": "application/json"}
 
@@ -208,7 +213,8 @@ def is_ai(*texts):
 # organiser's own figure.
 TO_USD = {"$": 1.0, "usd": 1.0, "usdc": 1.0, "usdt": 1.0, "dollars": 1.0,
           "€": 1.1, "eur": 1.1, "euros": 1.1, "£": 1.3, "gbp": 1.3, "pounds": 1.3,
-          "₹": 1 / 85, "inr": 1 / 85, "rs": 1 / 85, "rupees": 1 / 85}
+          "₹": 1 / 85, "inr": 1 / 85, "rs": 1 / 85, "rupees": 1 / 85,
+          "chf": 1.1, "cad": 0.73, "aud": 0.66, "sgd": 0.74, "zar": 0.055}
 _SCALE = {"k": 1e3, "thousand": 1e3, "m": 1e6, "mn": 1e6, "million": 1e6,
           "lakh": 1e5, "lakhs": 1e5, "crore": 1e7, "crores": 1e7, "cr": 1e7}
 # An amount with its currency on either side: "$138k", "₹ 1,00,000", "€10,680",
@@ -218,7 +224,8 @@ _MONEY_RE = re.compile(
     r"(?:(?P<pre>[$€£₹])|\b(?P<code>usd|eur|gbp|inr|rs)(?![a-z])\.?)?\s?"
     r"(?<![\d.,])(?P<num>\d[\d,]*(?:\.\d+)?)"
     r"(?:\s?(?P<scale>million|thousand|lakhs?|crores?|mn|cr|k|m)\b)?"
-    r"(?:\s?(?P<post>usdc|usdt|usd|eur|gbp|inr|dollars|euros|pounds|rupees)\b|(?P<postsym>[€£₹]))?",
+    r"(?:\s?(?P<post>usdc|usdt|usd|eur|gbp|inr|chf|cad|aud|sgd|zar|dollars|euros|pounds|rupees)\b"
+    r"|(?P<postsym>[€£₹]))?",
     re.I)
 # "$100k in AWS credits" is not cash, so it never outranks "$25k cash".
 _CREDITS_RE = re.compile(r"\s*(?:in\s+)?(?:[\w.+-]+\s+){0,2}credits?\b", re.I)
@@ -251,11 +258,11 @@ def by_prize(stories):
 
 
 def event(platform, key, name, url, deadline, deadline_kind, prize="", where="", ai=True,
-          restricted=""):
+          restricted="", online=None, reg_closes=None):
     return {"platform": platform, "key": key, "name": " ".join((name or "").split()) or key,
             "url": url, "deadline": deadline, "deadline_kind": deadline_kind,
             "prize": " ".join((prize or "").split()), "where": " ".join((where or "").split()),
-            "ai": bool(ai), "restricted": restricted}
+            "ai": bool(ai), "restricted": restricted, "online": online, "reg_closes": reg_closes}
 
 
 def _norm_url(url):
@@ -288,20 +295,26 @@ def devpost_event(h):
     themes = {t.get("name") for t in h.get("themes") or []}
     prize = re.sub(r"<[^>]+>", "", h.get("prize_amount") or "")
     cash = (h.get("prizes_counts") or {}).get("cash", 0)
+    where = (h.get("displayed_location") or {}).get("location", "")
     return event("Devpost", f"devpost:{h.get('id') or _norm_url(h['url'])}", h.get("title"), h["url"],
                  devpost_deadline(h.get("submission_period_dates")), "submission",
                  prize=f"{prize} ({cash} cash prizes)" if cash else ("" if prize in ("", "$0") else prize),
-                 where=(h.get("displayed_location") or {}).get("location", ""),
-                 ai=DEVPOST_THEME in themes or is_ai(h.get("title")),
-                 restricted="invite-only" if h.get("invite_only") else "")
+                 where=where, ai=DEVPOST_THEME in themes or is_ai(h.get("title")),
+                 restricted="invite-only" if h.get("invite_only") else "",
+                 online=where.strip().lower() == "online")
+
+
+# Besides the AI theme, events filed under another theme are found by searching
+# these words (rahul, 2026-10-12: "expand the site to everywhere").
+DEVPOST_SEARCHES = ("AI", "agent", "LLM", "GenAI", "machine learning", "Gemini")
 
 
 def read_devpost(today, pages=3):
-    """The newest open and upcoming events: the AI theme listing, plus the "AI"
-    search for events filed under another theme. Newest first, so an hourly check
-    sees a new event on the first page."""
+    """The newest open and upcoming events: the AI theme listing, plus a search
+    for each of DEVPOST_SEARCHES. Newest first, so an hourly check sees a new
+    event on the first page."""
     seen, out = set(), []
-    for params in ({"themes[]": DEVPOST_THEME}, {"search": "AI"}):
+    for params in ({"themes[]": DEVPOST_THEME}, *({"search": q} for q in DEVPOST_SEARCHES)):
         rows, _ = devpost_rows({"status[]": ["open", "upcoming"], "order_by": "recently-added", **params},
                                pages)
         for h in rows:
@@ -353,7 +366,8 @@ def parse_lablab_listing(html, now):
 def lablab_events(listing):
     return [event("lablab.ai", f"lablab:{e['slug']}", e["name"],
                   f"https://lablab.ai/ai-hackathons/{e['slug']}", ist_date(e["end_at"]), "end",
-                  where="Online", ai=True, restricted="" if e["signup"] else "sign-up closed")
+                  where="Online", ai=True, restricted="" if e["signup"] else "sign-up closed",
+                  online=True)
             for e in listing]
 
 
@@ -374,11 +388,13 @@ def parse_mlcontests(html, today):
         if not url:
             continue
         # "deadline" is the final submission deadline; "registration-deadline",
-        # when given, is earlier and does not count.
+        # when given, is earlier: it does not count for build time, only for
+        # whether rahul can still sign up.
         out.append(event("mlcontests", f"mlcontests:{_norm_url(url)}", c.get("name"), url,
                          parse_deadline(c.get("deadline"), today), "submission",
                          prize=c.get("prize") or "",
-                         where="" if c.get("platform") in (None, "Independent") else c["platform"], ai=True))
+                         where="" if c.get("platform") in (None, "Independent") else c["platform"], ai=True,
+                         online=True, reg_closes=parse_deadline(c.get("registration-deadline"), today)))
     return _still_open(out, today)
 
 
@@ -398,7 +414,7 @@ def parse_hackerearth(data, today):
             continue
         out.append(event("HackerEarth", f"hackerearth:{_norm_url(url)}", e.get("title"), url,
                          ist_date(e.get("end_utc_tz") or e.get("end_tz")), "end", where="Online",
-                         ai=is_ai(e.get("title"), e.get("description"))))
+                         ai=is_ai(e.get("title"), e.get("description")), online=True))
     return _still_open(out, today)
 
 
@@ -434,7 +450,8 @@ def parse_devfolio(html, today):
                 out.append(event("Devfolio", f"devfolio:{slug}", h.get("name"), f"https://{slug}.devfolio.co/",
                                  ist_date(h.get("ends_at")), "end",
                                  where="Online" if h.get("is_online") else "In person",
-                                 ai=is_ai(h.get("name"), themes)))
+                                 ai=is_ai(h.get("name"), themes), online=bool(h.get("is_online")),
+                                 reg_closes=ist_date((h.get("settings") or {}).get("reg_ends_at"))))
     return _still_open(out, today)
 
 
@@ -446,8 +463,9 @@ def read_devfolio(today):
 # ── Unstop ───────────────────────────────────────────────────────────────────
 
 def parse_unstop(data, today):
-    """Unstop search results. end_date is the competition's end; the registration
-    deadline (regnRequirements.end_regn_dt) is deliberately not read."""
+    """Unstop search results. end_date is the competition's end, used for build
+    time; the registration deadline (regnRequirements.end_regn_dt) only decides
+    whether rahul can still sign up."""
     rows = (data or {}).get("data") or []
     if isinstance(rows, dict):
         rows = rows.get("data") or []
@@ -463,10 +481,13 @@ def parse_unstop(data, today):
         symbol = {"fa-rupee": "₹", "fa-dollar": "$", "fa-euro": "€"}.get(
             (prizes[0].get("currency") if prizes else "") or "", "")
         prize = f"{symbol}{cash:,} total cash" if cash else ""
+        region = (rec.get("region") or "").lower()
         out.append(event("Unstop", f"unstop:{rec.get('id') or _norm_url(url)}", rec.get("title"), url,
                          ist_date(rec.get("end_date")), "end", prize=prize,
                          where=" | ".join(x for x in (rec.get("region") or "", org) if x),
-                         ai=is_ai(rec.get("title"), skills)))
+                         ai=is_ai(rec.get("title"), skills),
+                         online=(region == "online") if region else None,
+                         reg_closes=ist_date((rec.get("regnRequirements") or {}).get("end_regn_dt"))))
     return _still_open(out, today)
 
 
@@ -494,7 +515,8 @@ def parse_mlh(html, today):
             where = "Online"
         url = e.get("websiteUrl") or f"https://mlh.io{e.get('url') or ''}"
         out.append(event("MLH", f"mlh:{e.get('slug') or _norm_url(url)}", e.get("name"), url,
-                         ist_date(e.get("endsAt")), "end", where=where, ai=is_ai(e.get("name"), focus)))
+                         ist_date(e.get("endsAt")), "end", where=where, ai=is_ai(e.get("name"), focus),
+                         online=e.get("formatType") == "digital"))
     return _still_open(out, today)
 
 
@@ -557,13 +579,70 @@ def parse_hackster(html, today):
             continue
         seen.add(slug)
         out.append(event("Hackster", f"hackster:{slug}", title, f"https://www.hackster.io/contests/{slug}",
-                         parse_deadline(m.group(3), today), "submission", where="Online", ai=is_ai(title)))
+                         parse_deadline(m.group(3), today), "submission", where="Online", ai=is_ai(title),
+                         online=True))
     return _still_open(out, today)
 
 
 def read_hackster(today):
     html, _ = web_text.fetch_html(HACKSTER_CONTESTS)
     return parse_hackster(html, today)
+
+
+# ── Zindi ────────────────────────────────────────────────────────────────────
+
+def parse_zindi(data, today):
+    """Open Zindi competitions from its public JSON. entries_close_at, when set,
+    is the last day to join. Rewards are written "$10 000 USD"."""
+    out = []
+    for c in (data or {}).get("data") or []:
+        if not c.get("open") or c.get("kind") not in (None, "competition", "hackathon"):
+            continue
+        reward = re.sub(r"(?<=\d) (?=\d{3}\b)", ",", c.get("reward") or "")
+        out.append(event("Zindi", f"zindi:{c.get('id')}", c.get("title"),
+                         f"https://zindi.africa/competitions/{c.get('id')}",
+                         ist_date(c.get("end_time")), "end",
+                         prize=reward if c.get("reward_type") in (None, "prize") else "",
+                         where="Zindi", ai=True, online=True,
+                         restricted="restricted entry" if c.get("is_access_restricted")
+                         or c.get("secret_code_required") else "",
+                         reg_closes=ist_date(c.get("entries_close_at"))))
+    return _still_open(out, today)
+
+
+def read_zindi(today):
+    r = requests.get(ZINDI_API, params={"page": 0, "per_page": 50}, headers=JSON_HEADERS, timeout=25)
+    r.raise_for_status()
+    return parse_zindi(r.json(), today)
+
+
+# ── AIcrowd ──────────────────────────────────────────────────────────────────
+
+_AICROWD_CARD = re.compile(
+    r'<a class="card-img-overlay" href="/challenges/([a-z0-9-]+)">\s*<span[^>]*title="([^"]+)"'
+    r'(?:(?!card-img-overlay).)*?<h5 class="card-title"><a[^>]*>([^<]+)</a>'
+    r'(?:(?!card-img-overlay).)*?(?:prize-item-cash">\s*([^<]+?)\s*<|card-footer)', re.S)
+
+
+def parse_aicrowd(html, today):
+    """Active challenges. Each card's clock gives the end of the running phase
+    (a later phase can follow), and the cash badge its prize money."""
+    out, seen = [], set()
+    for m in _AICROWD_CARD.finditer(html):
+        slug = m.group(1)
+        if slug in seen:
+            continue
+        seen.add(slug)
+        out.append(event("AIcrowd", f"aicrowd:{slug}", html_lib.unescape(m.group(3)),
+                         f"https://www.aicrowd.com/challenges/{slug}", ist_date(m.group(2).replace(" UTC", "Z")
+                                                                              .replace(" ", "T")),
+                         "end", prize=html_lib.unescape(m.group(4) or ""), where="AIcrowd", ai=True, online=True))
+    return _still_open(out, today)
+
+
+def read_aicrowd(today):
+    html, _ = web_text.fetch_html(AICROWD_CHALLENGES)
+    return parse_aicrowd(html, today)
 
 
 # ── All of them ──────────────────────────────────────────────────────────────
@@ -578,6 +657,8 @@ PLATFORMS = (
     ("MLH", read_mlh),
     ("TAIKAI", read_taikai),
     ("Hackster", read_hackster),
+    ("Zindi", read_zindi),
+    ("AIcrowd", read_aicrowd),
 )
 
 
