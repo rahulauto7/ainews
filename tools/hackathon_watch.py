@@ -267,8 +267,8 @@ def _lines(e, result, today):
     if e["prize"] and hs.prize_usd(e["prize"]) != result["cash_usd"]:
         prize += f" (listed: {e['prize']})"
     lines = [prize, _due_text(e, today), _signup_text(e, result)]
-    if result.get("who"):
-        lines.append(f"Who can enter: {result['who']}")
+    lines.append(f"Who can enter: {result['who']}" if result.get("who")
+                 else "Who can enter: the page sets no limit we could find, check the rules")
     return lines
 
 
