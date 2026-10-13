@@ -129,6 +129,15 @@
     "in person or hybrid, and the page offers no visa help"
    ]
   },
+  "devpost:31660": {
+   "date": "2026-10-13",
+   "name": "AWS x A10 Hack 2026",
+   "reasons": [
+    "in person or hybrid, and the page offers no paid travel (flights or travel grant)",
+    "in person or hybrid, and the page offers no visa help",
+    "students only: \"Devpost: College students only\""
+   ]
+  },
   "hackster:infineon-boss-battle": {
    "date": "2026-10-12",
    "name": "Infineon Boss Battle in the AI Arena",
