@@ -138,6 +138,25 @@
     "students only: \"Devpost: College students only\""
    ]
   },
+  "devpost:31735": {
+   "date": "2026-10-14",
+   "name": "AI Build India",
+   "reasons": [
+    "cash prize under $5,000 (none found)",
+    "in person or hybrid, and the page offers no paid travel (flights or travel grant)",
+    "in person or hybrid, and the page offers no visa help",
+    "India excluded: \"India Join hackathon Who can participate Above legal age of majority in country of residence Team required: 2 to 4 members All countries/territories, excluding standard exceptions View full rules October 31 at 5:00am EDT\""
+   ]
+  },
+  "devpost:31736": {
+   "date": "2026-10-14",
+   "name": "Graph Hacks",
+   "reasons": [
+    "cash prize under $5,000 (about $2,000)",
+    "in person or hybrid, and the page offers no paid travel (flights or travel grant)",
+    "in person or hybrid, and the page offers no visa help"
+   ]
+  },
   "hackster:infineon-boss-battle": {
    "date": "2026-10-12",
    "name": "Infineon Boss Battle in the AI Arena",
