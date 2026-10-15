@@ -35,6 +35,15 @@
     "cash prize under $5,000 (none found)"
    ]
   },
+  "devfolio:cognition-2026": {
+   "date": "2026-10-15",
+   "name": "Cognition 2026",
+   "reasons": [
+    "cash prize under $5,000 (about $200)",
+    "in person or hybrid, and the page offers no paid travel (flights or travel grant)",
+    "in person or hybrid, and the page offers no visa help"
+   ]
+  },
   "devfolio:genarrative-clash": {
    "date": "2026-10-12",
    "name": "GeNarrative Clash",
@@ -161,6 +170,15 @@
    "name": "Graph Hacks",
    "reasons": [
     "cash prize under $5,000 (about $2,000)",
+    "in person or hybrid, and the page offers no paid travel (flights or travel grant)",
+    "in person or hybrid, and the page offers no visa help"
+   ]
+  },
+  "devpost:31745": {
+   "date": "2026-10-15",
+   "name": "Deal Flow: NYC's First VC Hackathon @ Betaworks",
+   "reasons": [
+    "cash prize under $5,000 (none found)",
     "in person or hybrid, and the page offers no paid travel (flights or travel grant)",
     "in person or hybrid, and the page offers no visa help"
    ]
@@ -517,6 +535,14 @@
    "name": "Automated Speech Recognition Under Diverse Speech Patterns",
    "platform": "mlcontests",
    "url": "https://xiuwenz2.github.io/SAPC2-website/"
+  },
+  "unstop:1762519": {
+   "cash_usd": 80000,
+   "deadline": "2026-11-30",
+   "first_seen": "2026-10-15",
+   "name": "Anna AI OS Founding Builder Challenge 2026",
+   "platform": "Unstop",
+   "url": "https://unstop.com/hackathons/anna-ai-os-founding-builder-challenge-2026-talentsec-technology-hong-kong-limited-1762519"
   },
   "zindi:bias-bounty-mapping-equity-challenge": {
    "cash_usd": 10000,
