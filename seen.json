@@ -488,6 +488,14 @@
    "platform": "mlcontests",
    "url": "https://www.kaggle.com/competitions/misconception-detection-in-k-12-student-math-workings/overview"
   },
+  "mlcontests:kaggle.com/competitions/name-that-llm": {
+   "cash_usd": 50000,
+   "deadline": "2027-01-13",
+   "first_seen": "2026-10-16",
+   "name": "Identify Which LLM Generated Text Samples",
+   "platform": "mlcontests",
+   "url": "https://www.kaggle.com/competitions/name-that-llm"
+  },
   "mlcontests:kaggle.com/competitions/nfl-big-data-bowl-2027": {
    "cash_usd": 100000,
    "deadline": "2027-01-06",
